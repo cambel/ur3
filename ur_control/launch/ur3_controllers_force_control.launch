@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- Launch file parameters -->
+  <arg name="debug"     default="true" />
+
+  <arg if=      "$(arg debug)"  name="DEBUG" value="screen"/>
+  <arg unless = "$(arg debug)"  name="DEBUG" value="log"/>
+
+  <!-- Controllers config -->
+  <rosparam file="$(find ur_control)/config/ur3_controllers.yaml" command="load" />
+  <rosparam file="$(find ur_control)/config/gripper_controller.yaml" command="load" />
+
+  <!-- Load controllers -->
+  <node name="robot_controllers" pkg="controller_manager" type="spawner" respawn="false"
+        output="$(arg DEBUG)"
+        args="joint_state_controller gripper_controller"/>
+  <node name="position_controllers" pkg="controller_manager" type="spawner" output="log" 
+        args="shoulder_pan_joint shoulder_lift_joint elbow_joint wrist_1_joint wrist_2_joint wrist_3_joint"/>
+
+  <!-- TF -->
+  <node pkg="robot_state_publisher" type="state_publisher" name="state_publisher"> 
+    <param name="publish_frequency"  type="double" value="50" />
+  </node>
+</launch>

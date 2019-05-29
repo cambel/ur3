@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<package format="2">
+  <name>ur3_ikfast_plugin</name>
+  <version>0.1.0</version>
+  <description>IKFast package for UR3 robot</description>
+  
+  <author email="beltran@hlab.sys.es.osaka-u.ac.jp">Cristian Beltran</author>
+  <maintainer email="beltran@hlab.sys.es.osaka-u.ac.jp">Cristian Beltran</maintainer>
+  <license>BSD</license>
+  
+  <buildtool_depend>catkin</buildtool_depend>
+  
+  <build_depend>moveit_core</build_depend>
+  <build_depend>liblapack-dev</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>tf_conversions</build_depend>
+  <build_depend>pluginlib</build_depend>
+  
+  <exec_depend>moveit_core</exec_depend>
+  <exec_depend>liblapack-dev</exec_depend>
+  <exec_depend>roscpp</exec_depend>
+  <exec_depend>tf_conversions</exec_depend>
+  <exec_depend>pluginlib</exec_depend>
+
+  <export>
+    <moveit_core plugin="${prefix}/ur3_arm_description.xml"/>
+    <moveit_core plugin="${prefix}/ur3_extended_ee_description.xml"/>
+  </export>
+
+</package>

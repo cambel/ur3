@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+
+<package format="2">
+  <name>ur3_description</name>
+  <version>0.1.0</version>
+  <description>
+    URDF description for Universal UR3 robot with a robotiq gripper.
+    The model for the UR3 robot (without gripper) was taken from:
+    https://github.com/ros-industrial/universal_robot.git
+    inspired also on http://osrobotics.org/osr/ implementation of denso
+    robot with robotiq gripper.
+  </description>
+
+  <author email="beltran@hlab.sys.es.osaka-u.ac.jp">Cristian Beltran</author>
+  <maintainer email="beltran@hlab.sys.es.osaka-u.ac.jp">Cristian Beltran</maintainer>
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <exec_depend>robotiq_description</exec_depend>
+  
+  <export>
+  </export>
+
+</package>
