@@ -283,7 +283,7 @@ class JointTrajectoryController(JointControllerBase):
     - B{Quintic}: Position, velocity and acceleration are specified: Guarantees continuity at 
       the acceleration level.
   """
-  def __init__(self, namespace='', timeout=5.0):
+  def __init__(self, publisher_name='arm_controller', namespace='', timeout=5.0):
     """
     JointTrajectoryController constructor. It creates the C{SimpleActionClient}.
     @type namespace: string
@@ -293,7 +293,7 @@ class JointTrajectoryController(JointControllerBase):
     @param timeout: Time in seconds that will wait for the controller
     """
     super(JointTrajectoryController, self).__init__(namespace, timeout=timeout)
-    action_server = self.ns + 'arm_controller/follow_joint_trajectory'
+    action_server = self.ns + publisher_name + '/follow_joint_trajectory'
     self._client = actionlib.SimpleActionClient(action_server, FollowJointTrajectoryAction)
     self._goal = FollowJointTrajectoryGoal()
     rospy.logdebug('Waiting for [%s] action server' % action_server)
@@ -425,18 +425,19 @@ class JointTrajectoryController(JointControllerBase):
 class FTsensor(object):
   queue_len = 10
   
-  def __init__(self, namespace='', timeout=3.0):
+  def __init__(self, namespace='', timeout=3.0, sim_ft=True):
     ns = utils.solve_namespace(namespace)
     self.raw_msg = None
     self.rate = 100
     self.wrench_rate = 100
     self.wrench_filter = filters.ButterLowPass(2.5, self.rate, 2)
     self.wrench_window = int(self.wrench_rate)
+    self.sim_ft = sim_ft
     assert( self.wrench_window >= 5)
     self.wrench_queue = collections.deque(maxlen=self.wrench_window)
-    rospy.Subscriber('%sft_sensor/raw' % ns, WrenchStamped, self.cb_raw)
+    rospy.Subscriber('%s' % ns, WrenchStamped, self.cb_raw)
     if not utils.wait_for(lambda : self.raw_msg is not None, timeout=timeout):
-      rospy.logerr('Timed out waiting for {0}ft_sensor/raw topic'.format(ns))
+      rospy.logerr('Timed out waiting for {0} topic'.format(ns))
       return
     rospy.loginfo('FTSensor successfully initialized')
     
@@ -452,5 +453,10 @@ class FTsensor(object):
     if len(self.wrench_queue) < self.wrench_window:
       return None    
     wrench_filtered = self.wrench_filter(np.array(self.wrench_queue))
-    return wrench_filtered[-1,:]
+    if self.sim_ft:
+      ft = wrench_filtered[-1,:]
+      ft[2] *= -1
+      return ft
+    else: 
+      return wrench_filtered[-1,:]
     

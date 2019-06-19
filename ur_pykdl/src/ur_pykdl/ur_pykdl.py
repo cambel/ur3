@@ -71,7 +71,6 @@ class ur_kinematics(object):
     UR Kinematics with PyKDL
     """
     def __init__(self, robot, ee_link=None):
-        # self._ur = URDF.from_parameter_server(key='robot_description')
         rospack = rospkg.RosPack()
         pykdl_dir = rospack.get_path('ur_pykdl')
         TREE_PATH = pykdl_dir + '/urdf/' + robot + '.urdf'
@@ -86,7 +85,6 @@ class ur_kinematics(object):
                                                   self._tip_link)
 
         # UR Interface Limb Instances
-        # self._limb_interface = ur_interface.Limb(limb)
         self._joint_names = JOINT_ORDER
         self._num_jnts = len(self._joint_names)
 
