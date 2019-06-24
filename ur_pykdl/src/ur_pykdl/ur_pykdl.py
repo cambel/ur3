@@ -56,6 +56,7 @@ WRIST_1_LINK = 'wrist_1_link'
 WRIST_2_LINK = 'wrist_2_link'
 WRIST_3_LINK = 'wrist_3_link'
 EE_LINK = 'ur3_robotiq_85_gripper'
+EE_LINK = 'ee_link'
 
 # Only edit these when editing the robot joints and links. 
 # The lengths of these arrays define numerous parameters in GPS.
@@ -76,7 +77,7 @@ class ur_kinematics(object):
         TREE_PATH = pykdl_dir + '/urdf/' + robot + '.urdf'
         self._ur = URDF.from_xml_file(TREE_PATH)
         self._kdl_tree = kdl_tree_from_urdf_model(self._ur)
-        self._base_link = self._ur.get_root()
+        self._base_link = BASE_LINK
 
         ee_link = EE_LINK if ee_link is None else ee_link
         self._tip_link = ee_link

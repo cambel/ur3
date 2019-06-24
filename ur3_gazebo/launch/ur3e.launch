@@ -21,12 +21,12 @@
     <arg name="gui"        value="$(arg gui)"/>
   </include>
 
-  <include file="$(find ur_control)/launch/ur3_controllers.launch">
+  <include file="$(find ur_control)/launch/ur3e_controllers.launch">
       <arg name="effort_interface" value="$(arg effort_interface)"/>
   </include>
   <!-- Send robot urdf to param server -->
   <param name="robot_description" 
-         command="$(find xacro)/xacro --inorder '$(find ur3_description)/urdf/ur3_robotiq85_gripper.urdf.xacro'
+         command="$(find xacro)/xacro --inorder '$(find ur3_description)/urdf/ur3e/ur3e_peg_gripper.urdf.xacro'
                  use_effort_interface:=$(arg effort_interface) grasp_plugin:=$(arg grasp_plugin)" />
   <!-- Spawn robot in gazebo (and move it upwards):
        better initial values should be -2.355 and 1.57 but the robot does
@@ -34,7 +34,7 @@
   -->
   <node name="spawn_gazebo_model" pkg="gazebo_ros" type="spawn_model"
         args="-urdf -param robot_description -model robot 
-              -z 0.75
+              -z 0.76
               -J shoulder_pan_joint 1.57
               -J shoulder_lift_joint -1.57
               -J elbow_joint 1.57

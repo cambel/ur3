@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- Launch file parameters -->
+  <arg name="debug"     default="true" />
+  <arg name="effort_interface"     default="false" />
+
+  <arg if=      "$(arg debug)"  name="DEBUG" value="screen"/>
+  <arg unless = "$(arg debug)"  name="DEBUG" value="log"/>
+
+  <!-- Controllers config -->
+  <rosparam unless = "$(arg effort_interface)" file="$(find ur_control)/config/ur3_controllers.yaml" command="load" />
+  <rosparam if =     "$(arg effort_interface)" file="$(find ur_control)/config/ur3_controllers_effort.yaml" command="load" />
+
+  <!-- Load controllers -->
+  <node name="robot_controllers" pkg="controller_manager" type="spawner" respawn="false"
+        output="$(arg DEBUG)"
+        args="joint_state_controller arm_controller"/>
+
+  <!-- TF -->
+  <node pkg="robot_state_publisher" type="state_publisher" name="state_publisher"> 
+    <param name="publish_frequency"  type="double" value="50" />
+  </node>
+</launch>
