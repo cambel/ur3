@@ -7,8 +7,8 @@ import argparse
 
 import rospy
 
-from gps.agent.ur.arm import Arm
-import ur3_kinematics.arm as ur3_arm
+from ur_control.arm import Arm
+import ur3_kinematics.e_arm as ur3_arm
 import getch
 
 import numpy as np
@@ -54,49 +54,62 @@ def map_keyboard(arm):
         print("Joint angles:", arm.joint_angles())
         print("End Effector:", arm.end_effector())
 
-    def set_j(joint_name, delta):
+    def set_j(joint_name, sign):
+        global delta_q
         current_position = arm.joint_angles()
-        current_position[joint_name] += delta 
-        arm.set_joint_positions(current_position, wait=True, t=1.0)
+        current_position[joint_name] += delta_q*sign
+        arm.set_joint_positions_flex(current_position, t=0.25)
     
     def update_d(delta, increment):
-        delta =+ increment
-
-    def set_xyz(dim, delta):
+        if delta == 'q':
+            global delta_q
+            delta_q += increment
+            print "delta_q", delta_q
+        if delta == 'x':
+            global delta_x
+            delta_x += increment
+            print "delta_x", delta_x
+        
+    def set_xyz(dim, sign):
+        global delta_x
         x = arm.end_effector()
-        x[dim] += delta
+        x[dim] += delta_x*sign
         q = solve_ik(arm, x)
-        arm.set_joint_positions(q, wait=True, t=1.0)
+        arm.set_joint_positions_flex(q, t=0.25)
 
-    delta_q = 0.005
-    delta_x = 0.005
+    global delta_q
+    global delta_x
+    delta_q = 0.0025
+    delta_x = 0.0025
     
     bindings = {
     #'shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_joint', 'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint'
     #   key: (function, args, description)
-        '4': (set_j, [0, delta_q], "shoulder_pan_joint increase"),
-        '1': (set_j, [0, -delta_q], "shoulder_pan_joint decrease"),
-        '3': (set_j, [1, delta_q], "shoulder_lift_joint increase"),
-        '2': (set_j, [1, -delta_q], "shoulder_lift_joint decrease"),
-        'r': (set_j, [2, delta_q], "elbow_joint increase"),
-        'q': (set_j, [2, -delta_q], "elbow_joint decrease"),
-        'e': (set_j, [3, delta_q], "wrist_1_joint increase"),
-        'w': (set_j, [3, -delta_q], "wrist_1_joint decrease"),
-        'f': (set_j, [4, delta_q], "wrist_2_joint increase"),
-        'a': (set_j, [4, -delta_q], "wrist_2_joint decrease"),
-        'd': (set_j, [5, delta_q], "wrist_3_joint increase"),
-        's': (set_j, [5, -delta_q], "wrist_3_joint decrease"),
-        't': (print_robot_state, [], "right: printing"),
+        'z': (set_j, [0, 1], "shoulder_pan_joint increase"),
+        'v': (set_j, [0, -1], "shoulder_pan_joint decrease"),
+        'x': (set_j, [1, 1], "shoulder_lift_joint increase"),
+        'c': (set_j, [1, -1], "shoulder_lift_joint decrease"),
+        'a': (set_j, [2, 1], "elbow_joint increase"),
+        'f': (set_j, [2, -1], "elbow_joint decrease"),
+        's': (set_j, [3, 1], "wrist_1_joint increase"),
+        'd': (set_j, [3, -1], "wrist_1_joint decrease"),
+        'q': (set_j, [4, 1], "wrist_2_joint increase"),
+        'r': (set_j, [4, -1], "wrist_2_joint decrease"),
+        'w': (set_j, [5, 1], "wrist_3_joint increase"),
+        'e': (set_j, [5, -1], "wrist_3_joint decrease"),
+        'p': (print_robot_state, [], "right: printing"),
         # Task Space
-        'u': (set_xyz, [0, delta_x], "x increase"),
-        'i': (set_xyz, [0, -delta_x], "x decrease"),
-        'j': (set_xyz, [1, delta_x], "y increase"),
-        'k': (set_xyz, [1, -delta_x], "y decrease"),
-        'm': (set_xyz, [2, delta_x], "z increase"),
-        ',': (set_xyz, [2, -delta_x], "z decrease"),
+        'h': (set_xyz, [0, 1], "x increase"),
+        'k': (set_xyz, [0, -1], "x decrease"),
+        'y': (set_xyz, [1, 1], "y increase"),
+        'i': (set_xyz, [1, -1], "y decrease"),
+        'u': (set_xyz, [2, 1], "z increase"),
+        'j': (set_xyz, [2, -1], "z decrease"),
         # Increase or decrease delta
-        '[': (update_d, [delta_x, 0.001], "delta_x increase"),
-        ']': (update_d, [delta_x, -0.001], "delta_x decrease"),
+        '1': (update_d, ['q', 0.001], "delta_q increase"),
+        '2': (update_d, ['q', -0.001], "delta_q decrease"),
+        '6': (update_d, ['x', 0.001], "delta_x increase"),
+        '7': (update_d, ['x', -0.001], "delta_x decrease"),
      }
     done = False
     print("Controlling joints. Press ? for help, Esc to quit.")
