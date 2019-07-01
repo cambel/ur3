@@ -1,5 +1,10 @@
-JOINT_PUBLISHER_REAL  = '/vel_based_pos_traj_controller/command'
-JOINT_PUBLISHER_SIM  = '/arm_controller/command'
+ROBOT_GAZEBO = "simulation"
+ROBOT_UR_MODERN_DRIVER = "ur_modern_driver"
+ROBOT_UR_RTDE_DRIVER = "ur_rtde_driver"
+
+JOINT_PUBLISHER_REAL  = 'vel_based_pos_traj_controller'
+JOINT_PUBLISHER_BETA  = 'pos_based_pos_traj_controller'
+JOINT_PUBLISHER_SIM  = 'arm_controller'
 JOINT_SUBSCRIBER = '/arm_controller/state'
 JOINT_STATE_SUBSCRIBER = 'joint_states'
 FT_SUBSCRIBER_REAL = '/wrench'

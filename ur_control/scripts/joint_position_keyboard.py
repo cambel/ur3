@@ -8,6 +8,7 @@ import argparse
 import rospy
 
 from ur_control.arm import Arm
+from ur_control.constants import ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, ROBOT_UR_RTDE_DRIVER
 import ur3_kinematics.e_arm as ur3_arm
 import getch
 
@@ -152,15 +153,19 @@ See help inside the example with the '?' key for key bindings.
                                      description=main.__doc__,
                                      epilog=epilog)
     parser.add_argument('--robot', action='store_true', help='for the real robot')
+    parser.add_argument('--beta', action='store_true', help='for the real robot. beta driver')
     args = parser.parse_args(rospy.myargv()[1:])
 
     rospy.init_node("joint_position_keyboard")
     
-    global arm
+    driver = ROBOT_GAZEBO
     if args.robot:
-        arm = Arm(ft_sensor=True, real_robot=True)
-    else:
-        arm = Arm(ft_sensor=True, real_robot=False)
+        driver = ROBOT_UR_MODERN_DRIVER
+    elif args.beta:
+        driver = ROBOT_UR_RTDE_DRIVER
+    
+    global arm
+    arm = Arm(ft_sensor=False, robot=driver)
     
     map_keyboard(arm)
     print("Done.")
