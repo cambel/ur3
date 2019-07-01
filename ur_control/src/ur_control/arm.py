@@ -9,7 +9,9 @@ from trajectory_msgs.msg import (
     JointTrajectoryPoint,
 )
 
-from ur_control.constants import JOINT_ORDER, JOINT_PUBLISHER_REAL, JOINT_PUBLISHER_SIM, FT_SUBSCRIBER_REAL, FT_SUBSCRIBER_SIM
+from ur_control.constants import JOINT_ORDER, JOINT_PUBLISHER_REAL, \
+                                 JOINT_PUBLISHER_BETA, JOINT_PUBLISHER_SIM, \
+                                 FT_SUBSCRIBER_REAL, FT_SUBSCRIBER_SIM
 
 import ur3_kinematics.arm as ur3_arm
 import ur3_kinematics.e_arm as ur3e_arm
@@ -21,7 +23,7 @@ from ur_pykdl import ur_kinematics
 class Arm(object):
     """ UR3 arm controller """
 
-    def __init__(self, ft_sensor=False, real_robot=False, ee_transform=[0, 0, 0, 0, 0, 0, 1], robot_urdf='ur3e_robot'):
+    def __init__(self, ft_sensor=False, robot="simulation", ee_transform=[0, 0, 0, 0, 0, 0, 1], robot_urdf='ur3e_robot'):
         """ Constructor 
         
             ft_sensor bool: whether or not to try to load ft sensor information
@@ -56,18 +58,7 @@ class Arm(object):
         # We need the special end effector link for adjusting the wrench directions
         self.ee_transform = ee_transform
 
-        if real_robot:
-            # Flexible trajectory (point by point)
-            self._flex_trajectory_pub = rospy.Publisher(
-                JOINT_PUBLISHER_REAL, JointTrajectory, queue_size=10)
-            self.joint_traj_controller = JointTrajectoryController(publisher_name='vel_based_pos_traj_controller')
-            # Subscribe to get the FT information (Gazebo)
-            if ft_sensor:
-                self.ft_sensor = FTsensor(namespace=FT_SUBSCRIBER_REAL, sim_ft=False)
-                self.wrench_offset = None
-                rospy.sleep(1)
-
-        else:        
+        if robot == "simulation":
             # Flexible trajectory (point by point)
             self._flex_trajectory_pub = rospy.Publisher(
                 JOINT_PUBLISHER_SIM, JointTrajectory, queue_size=10)
@@ -78,6 +69,26 @@ class Arm(object):
                 self.ft_sensor = FTsensor(namespace=FT_SUBSCRIBER_SIM)
                 self.wrench_offset = None
                 rospy.sleep(1)
+        else:
+            traj_publisher = None
+            if robot == 'ur_modern_driver':        
+                traj_publisher = '/' + JOINT_PUBLISHER_REAL + '/command'
+            elif robot == 'ur_rtde_driver':
+                traj_publisher = '/' + JOINT_PUBLISHER_BETA + '/command'
+            else:
+                raise Exception("invalid driver")
+
+            print "connecting to", traj_publisher
+            # Flexible trajectory (point by point)
+            self._flex_trajectory_pub = rospy.Publisher(traj_publisher, JointTrajectory, queue_size=10)
+            self.joint_traj_controller = JointTrajectoryController(publisher_name=JOINT_PUBLISHER_BETA)
+
+            # FT sensor data
+            if ft_sensor:
+                self.ft_sensor = FTsensor(namespace=FT_SUBSCRIBER_REAL, sim_ft=False)
+                self.wrench_offset = None
+                rospy.sleep(1)
+
         
     def _flexible_trajectory(self, position, time=5.0, vel=None):
         """ Publish point by point making it more flexible for real-time control """
