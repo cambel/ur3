@@ -24,8 +24,8 @@
     <plugin name="ros_link_attacher_plugin" filename="libgazebo_ros_link_attacher.so"/>
 
     <scene>
-      <ambient>0.4 0.4 0.4 1</ambient>
-      <background>0.40 0.43 0.67 1</background>
+      <ambient>0.6 0.6 0.6 1</ambient>
+      <background>1.0 1.0 1.0 1</background>
       <shadows>1</shadows>
     </scene>
 
@@ -36,7 +36,7 @@
 
     <!-- A ground plane -->
     <include>
-      <uri>model://ground_plane</uri>
+      <uri>model://floor</uri>
       <pose>0 0 0 0 0 0</pose>
     </include>
 

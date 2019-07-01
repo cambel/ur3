@@ -51,15 +51,15 @@ def map_keyboard(arm):
     arm = arm
 
     def print_robot_state():
-        print("Joint angles:", arm.joint_angles())
-        print("End Effector:", arm.end_effector())
+        print("Joint angles:", np.round(arm.joint_angles(), 4))
+        print("End Effector:", np.round(arm.end_effector(), 4))
 
     def set_j(joint_name, sign):
         global delta_q
         current_position = arm.joint_angles()
         current_position[joint_name] += delta_q*sign
         arm.set_joint_positions_flex(current_position, t=0.25)
-    
+        
     def update_d(delta, increment):
         if delta == 'q':
             global delta_q
@@ -152,7 +152,7 @@ See help inside the example with the '?' key for key bindings.
                                      description=main.__doc__,
                                      epilog=epilog)
     parser.add_argument('--robot', action='store_true', help='for the real robot')
-    args = parser.parse_args()
+    args = parser.parse_args(rospy.myargv()[1:])
 
     rospy.init_node("joint_position_keyboard")
     

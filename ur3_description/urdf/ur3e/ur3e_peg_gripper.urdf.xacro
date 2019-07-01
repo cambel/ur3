@@ -26,7 +26,7 @@
   </link>
 
   <joint name="robotiq_coupler_joint" type="fixed">
-    <origin xyz="0 0 0" rpy="${-pi/2.0} 0 0" />
+    <origin xyz="0 0 0" rpy="${pi/2.0} 0 0" />
     <parent link="tool0"/>
     <child link="robotiq_coupler"/>
   </joint>
@@ -55,7 +55,7 @@
   </gazebo>
   <gazebo>
     <plugin name="ft_sensor" filename="libgazebo_ros_ft_sensor.so">
-      <updateRate>100.0</updateRate>
+      <updateRate>500.0</updateRate>
       <topicName>ft_sensor/raw</topicName>
       <gaussianNoise>0.0</gaussianNoise>
       <jointName>wrist_3_link-tool0_fixed_joint</jointName>
