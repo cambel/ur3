@@ -2,38 +2,38 @@
 <robot name="ur3" xmlns:xacro="http://ros.org/wiki/xacro">
 
   <xacro:arg name="grasp_plugin" default="false" />
+  <xacro:arg name="peg_shape" default="cylinder" />
 
   <xacro:include filename="$(find ur3_description)/urdf/ur3e/ur3e_joint_limited_robot.urdf.xacro" />
   
   <link name="robotiq_coupler">
     <visual>
       <geometry>
-        <mesh filename="package://ur3_description/meshes/gripper/cylinder_gripper.dae" />
+        <mesh filename="package://ur3_description/meshes/gripper/$(arg peg_shape)_gripper.dae" />
       </geometry>
-      <material name="flat_black"/>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="package://ur3_description/meshes/gripper/cylinder_gripper.dae" />
+        <mesh filename="package://ur3_description/meshes/gripper/$(arg peg_shape)_gripper.dae" />
       </geometry>
     </collision>
     <inertial>
       <origin xyz="0   0  0" rpy="0 0 0" />
-      <mass value="0.100" />
-      <inertia ixx="0" ixy="0" ixz="0" 
-               iyy="0" iyz="0" izz="0"/>
+      <mass value="0.1" />
+      <inertia ixx="1" ixy="0" ixz="0" 
+               iyy="1" iyz="0" izz="1"/>
     </inertial>
   </link>
 
   <joint name="robotiq_coupler_joint" type="fixed">
-    <origin xyz="0 0 0" rpy="${-pi/2.0} 0 0" />
+    <origin xyz="0 0 0" rpy="${pi/2.0} 0 0" />
     <parent link="tool0"/>
     <child link="robotiq_coupler"/>
   </joint>
   <gazebo reference="robotiq_coupler">
     <mu1>0.9</mu1>
     <mu2>0.9</mu2>
-    <material>Gazebo/FlatBlack</material>
+    <material>Gazebo/Bricks</material>
   </gazebo>
 
   <!-- Equivalent to the OpenRAVE manipulator denso_robotiq_85_gripper -->
