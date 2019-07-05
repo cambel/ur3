@@ -425,14 +425,13 @@ class JointTrajectoryController(JointControllerBase):
 class FTsensor(object):
   queue_len = 10
   
-  def __init__(self, namespace='', timeout=3.0, sim_ft=True):
+  def __init__(self, namespace='', timeout=3.0):
     ns = utils.solve_namespace(namespace)
     self.raw_msg = None
     self.rate = 500
     self.wrench_rate = 500
     self.wrench_filter = filters.ButterLowPass(2.5, self.rate, 2)
     self.wrench_window = int(self.wrench_rate)
-    self.sim_ft = sim_ft
     assert( self.wrench_window >= 5)
     self.wrench_queue = collections.deque(maxlen=self.wrench_window)
     rospy.Subscriber('%s' % ns, WrenchStamped, self.cb_raw)
@@ -440,6 +439,7 @@ class FTsensor(object):
       rospy.logerr('Timed out waiting for {0} topic'.format(ns))
       return
     rospy.loginfo('FTSensor successfully initialized')
+    rospy.sleep(0.5)
     
   def add_wrench_observation(self,wrench):
     self.wrench_queue.append(np.array(wrench))
