@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 """
 UR Joint Position Example: keyboard
 """
@@ -9,23 +8,31 @@ import rospy
 
 from ur_control.arm import Arm
 from ur_control.constants import ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, ROBOT_UR_RTDE_DRIVER
+import ur_control.conversions as conversions
+
 import ur3_kinematics.e_arm as ur3_arm
 import getch
 
 import numpy as np
+from pyquaternion import Quaternion
+
+import tf
+from geometry_msgs.msg import Vector3
+np.set_printoptions(suppress=True)
 
 
-def solve_ik(arm, pose):
+def solve_ik(pose):
     """ Solve IK for ur3 arm 
         pose: [x y z aw ax ay az] array
     """
     pose = np.array(pose).reshape(1, -1)
     current_q = arm.joint_angles()
-    
+
     ik = ur3_arm.inverse(pose)
     q = best_ik_sol(ik, current_q)
-    
+
     return current_q if q is None else q
+
 
 def best_ik_sol(sols, q_guess, weights=np.ones(6)):
     """ Get best IK solution """
@@ -35,9 +42,8 @@ def best_ik_sol(sols, q_guess, weights=np.ones(6)):
         for i in range(6):
             for add_ang in [-2. * np.pi, 0, 2. * np.pi]:
                 test_ang = sol[i] + add_ang
-                if (abs(test_ang) <= 2. * np.pi
-                        and abs(test_ang - q_guess[i]) <
-                        abs(test_sol[i] - q_guess[i])):
+                if (abs(test_ang) <= 2. * np.pi and abs(test_ang - q_guess[i])
+                        < abs(test_sol[i] - q_guess[i])):
                     test_sol[i] = test_ang
         if np.all(test_sol != 9999.):
             valid_sols.append(test_sol)
@@ -48,19 +54,19 @@ def best_ik_sol(sols, q_guess, weights=np.ones(6)):
         np.sum((weights * (valid_sols - np.array(q_guess)))**2, 1))
     return valid_sols[best_sol_ind]
 
-def map_keyboard(arm):
-    arm = arm
 
+def map_keyboard():
     def print_robot_state():
-        print("Joint angles:", np.round(arm.joint_angles(), 4))
-        print("End Effector:", np.round(arm.end_effector(), 4))
+        print("Joint angles:", np.round(arm.joint_angles(), 5))
+        print("End Effector:", np.round(arm.end_effector(rot_type='euler'), 5))
+        print("quaternion:", np.round(arm.end_effector()[3:], 6))
 
     def set_j(joint_name, sign):
         global delta_q
         current_position = arm.joint_angles()
-        current_position[joint_name] += delta_q*sign
+        current_position[joint_name] += delta_q * sign
         arm.set_joint_positions_flex(current_position, t=0.25)
-        
+
     def update_d(delta, increment):
         if delta == 'q':
             global delta_q
@@ -70,22 +76,45 @@ def map_keyboard(arm):
             global delta_x
             delta_x += increment
             print "delta_x", delta_x
-        
-    def set_xyz(dim, sign):
+
+    def set_pose(dim, sign):
         global delta_x
-        x = arm.end_effector()
-        x[dim] += delta_x*sign
-        q = solve_ik(arm, x)
-        arm.set_joint_positions_flex(q, t=0.25)
+
+        J = np.zeros((6, 6))
+        twist = np.zeros(6)
+
+        x = arm.end_effector(rot_type='euler')
+        qc = arm.joint_angles()
+
+        if dim <= 2:
+            twist[dim] += delta_x * sign
+
+        if dim > 2:
+            euler = x[3:]
+            euler_diff = np.zeros(3)
+            euler_diff[dim - 3] += delta_x * sign
+
+            T = conversions.euler_transformation_matrix(euler)
+            twist[3:] = np.dot(T, euler_diff)
+
+        J = arm.kinematics.jacobian(arm.joint_angles())
+        J_inv = np.linalg.pinv(J)
+        dqc = np.dot(J_inv, twist).tolist()[0]
+
+        qc += dqc
+
+        # Publish command
+        arm.set_joint_positions_flex(position=qc, t=0.25)
+        rospy.sleep(0.25)
 
     global delta_q
     global delta_x
     delta_q = 0.0025
     delta_x = 0.0025
-    
+
     bindings = {
-    #'shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_joint', 'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint'
-    #   key: (function, args, description)
+        #'shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_joint', 'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint'
+        #   key: (function, args, description)
         'z': (set_j, [0, 1], "shoulder_pan_joint increase"),
         'v': (set_j, [0, -1], "shoulder_pan_joint decrease"),
         'x': (set_j, [1, 1], "shoulder_lift_joint increase"),
@@ -100,18 +129,25 @@ def map_keyboard(arm):
         'e': (set_j, [5, -1], "wrist_3_joint decrease"),
         'p': (print_robot_state, [], "right: printing"),
         # Task Space
-        'h': (set_xyz, [0, 1], "x increase"),
-        'k': (set_xyz, [0, -1], "x decrease"),
-        'y': (set_xyz, [1, 1], "y increase"),
-        'i': (set_xyz, [1, -1], "y decrease"),
-        'u': (set_xyz, [2, 1], "z increase"),
-        'j': (set_xyz, [2, -1], "z decrease"),
+        'h': (set_pose, [0, 1], "x increase"),
+        'k': (set_pose, [0, -1], "x decrease"),
+        'y': (set_pose, [1, 1], "y increase"),
+        'i': (set_pose, [1, -1], "y decrease"),
+        'u': (set_pose, [2, 1], "z increase"),
+        'j': (set_pose, [2, -1], "z decrease"),
+        'n': (set_pose, [3, 1], "ax increase"),
+        'm': (set_pose, [3, -1], "ax decrease"),
+        ',': (set_pose, [4, 1], "ay increase"),
+        '.': (set_pose, [4, -1], "ay decrease"),
+        'o': (set_pose, [5, 1], "az increase"),
+        'l': (set_pose, [5, -1], "az decrease"),
+
         # Increase or decrease delta
         '1': (update_d, ['q', 0.001], "delta_q increase"),
         '2': (update_d, ['q', -0.001], "delta_q decrease"),
         '6': (update_d, ['x', 0.001], "delta_x increase"),
         '7': (update_d, ['x', -0.001], "delta_x decrease"),
-     }
+    }
     done = False
     print("Controlling joints. Press ? for help, Esc to quit.")
     while not done and not rospy.is_shutdown():
@@ -125,13 +161,13 @@ def map_keyboard(arm):
                 cmd = bindings[c]
                 #expand binding to something like "set_j(right, 's0', 0.1)"
                 cmd[0](*cmd[1])
-                print("command: %s" % (cmd[2],))
+                print("command: %s" % (cmd[2], ))
             else:
                 print("key bindings: ")
                 print("  Esc: Quit")
                 print("  ?: Help")
-                for key, val in sorted(bindings.items(),
-                                       key=lambda x: x[1][2]):
+                for key, val in sorted(
+                        bindings.items(), key=lambda x: x[1][2]):
                     print("  %s: %s" % (key, val[2]))
 
 
@@ -149,25 +185,26 @@ def main():
 See help inside the example with the '?' key for key bindings.
     """
     arg_fmt = argparse.RawDescriptionHelpFormatter
-    parser = argparse.ArgumentParser(formatter_class=arg_fmt,
-                                     description=main.__doc__,
-                                     epilog=epilog)
-    parser.add_argument('--robot', action='store_true', help='for the real robot')
-    parser.add_argument('--beta', action='store_true', help='for the real robot. beta driver')
+    parser = argparse.ArgumentParser(
+        formatter_class=arg_fmt, description=main.__doc__, epilog=epilog)
+    parser.add_argument(
+        '--robot', action='store_true', help='for the real robot')
+    parser.add_argument(
+        '--beta', action='store_true', help='for the real robot. beta driver')
     args = parser.parse_args(rospy.myargv()[1:])
 
     rospy.init_node("joint_position_keyboard")
-    
+
     driver = ROBOT_GAZEBO
     if args.robot:
         driver = ROBOT_UR_MODERN_DRIVER
     elif args.beta:
         driver = ROBOT_UR_RTDE_DRIVER
-    
+
     global arm
-    arm = Arm(ft_sensor=False, robot=driver)
-    
-    map_keyboard(arm)
+    arm = Arm(ft_sensor=False, driver=driver)
+
+    map_keyboard()
     print("Done.")
 
 
