@@ -1,41 +1,38 @@
 import numpy as np
 from pyquaternion import Quaternion
 
-import tf
 import rospy
+import utils as utils
 from geometry_msgs.msg import WrenchStamped
 from trajectory_msgs.msg import (
     JointTrajectory,
     JointTrajectoryPoint,
 )
 
-import ur_control.utils as utils
-import ur_control.spalg as spalg
-import ur_control.conversions as conversions
 from ur_control.constants import JOINT_ORDER, JOINT_PUBLISHER_REAL, \
-    JOINT_PUBLISHER_BETA, JOINT_PUBLISHER_SIM, \
-    FT_SUBSCRIBER_REAL, FT_SUBSCRIBER_SIM, \
-    ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, ROBOT_UR_RTDE_DRIVER
+                                 JOINT_PUBLISHER_BETA, JOINT_PUBLISHER_SIM, \
+                                 FT_SUBSCRIBER_REAL, FT_SUBSCRIBER_SIM, \
+                                 ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, ROBOT_UR_RTDE_DRIVER
 
 import ur3_kinematics.arm as ur3_arm
 import ur3_kinematics.e_arm as ur3e_arm
 
-from ur_control.controllers import JointTrajectoryController, FTsensor
+from controllers import JointTrajectoryController, FTsensor
+import spalg as spalg
 from ur_pykdl import ur_kinematics
-
 
 class Arm(object):
     """ UR3 arm controller """
 
-    def __init__(self, ft_sensor=False, driver=ROBOT_GAZEBO, ee_transform=[0, 0, 0, 0, 0, 0, 1], robot_urdf='ur3e_robot'):
-        """ Constructor
-
+    def __init__(self, ft_sensor=False, robot="simulation", ee_transform=[0, 0, 0, 0, 0, 0, 1], robot_urdf='ur3e_robot'):
+        """ Constructor 
+        
             ft_sensor bool: whether or not to try to load ft sensor information
 
-            driver string: type of driver to use for real robot or simulation
+            real_robot bool: where or not to use the node ids for the real robot
 
-            ee_tranform array [x,y,z,ax,ay,az,w]: optional transformation to the end-effector
-                                                  that is applied before doing any operation in task space
+            ee_tranform array [x,y,z,ax,ay,az,w]: optional transformation to the end-effector 
+                    that is applied before doing any operation in task space
 
             robot_urdf string: name of the robot urdf file to be used
 
@@ -45,7 +42,7 @@ class Arm(object):
         self._joint_effort = dict()
         self._current_ft = []
 
-        self.kinematics = ur_kinematics(robot_urdf, ee_link='tool0')
+        self.kinematics = ur_kinematics(robot_urdf)
 
         # IKfast libraries
         if robot_urdf == 'ur3_robot':
@@ -54,7 +51,7 @@ class Arm(object):
             self.arm_ikfast = ur3e_arm
 
         self.ft_sensor = None
-
+    
         # Publisher of wrench
         self.pub_ee_wrench = rospy.Publisher(
             '/ur3/ee_ft', WrenchStamped, queue_size=10)
@@ -63,11 +60,11 @@ class Arm(object):
         self.ee_transform = ee_transform
 
         traj_publisher = None
-        if driver == ROBOT_UR_MODERN_DRIVER:
+        if robot == ROBOT_UR_MODERN_DRIVER:
             traj_publisher = JOINT_PUBLISHER_REAL
-        elif driver == ROBOT_UR_RTDE_DRIVER:
+        elif robot == ROBOT_UR_RTDE_DRIVER:
             traj_publisher = JOINT_PUBLISHER_BETA
-        elif driver == ROBOT_GAZEBO:
+        elif robot == ROBOT_GAZEBO:
             traj_publisher = JOINT_PUBLISHER_SIM
         else:
             raise Exception("invalid driver")
@@ -81,13 +78,14 @@ class Arm(object):
 
         # FT sensor data
         if ft_sensor:
-            if driver == ROBOT_GAZEBO:
+            if robot == ROBOT_GAZEBO:
                 self.ft_sensor = FTsensor(namespace=FT_SUBSCRIBER_SIM)
             else:
                 self.ft_sensor = FTsensor(namespace=FT_SUBSCRIBER_REAL)
             self.wrench_offset = None
             rospy.sleep(1)
 
+        
     def _flexible_trajectory(self, position, time=5.0, vel=None):
         """ Publish point by point making it more flexible for real-time control """
         # Set up a trajectory message to publish.
@@ -114,8 +112,8 @@ class Arm(object):
         " Get measurements from FT Sensor "
         if self.ft_sensor is None:
             raise Exception("FT Sensor not initialized")
-
-        ft_limitter = [300, 300, 300, 30, 30, 30]
+            
+        ft_limitter = [100, 100, 100, 30, 30, 30]
         ft = self.ft_sensor.get_filtered_wrench()
         ft = [
             ft[i] if abs(ft[i]) < ft_limitter[i] else ft_limitter[i]
@@ -127,11 +125,11 @@ class Arm(object):
         """ Set a wrench offset """
         if override:
             self._update_wrench_offset()
-        else:
+        else:    
             self.wrench_offset = rospy.get_param('/ur3/ft_offset', None)
             if self.wrench_offset is None:
                 self._update_wrench_offset()
-
+                
     def _update_wrench_offset(self):
         self.wrench_offset = self.get_ft_measurements().tolist()
         rospy.set_param('/ur3/ft_offset', self.wrench_offset)
@@ -140,22 +138,20 @@ class Arm(object):
         """ Get the wrench (force/torque) in task-space """
         wrench_force = self.ft_sensor.get_filtered_wrench()
 
-        # compute force transformation?
         if self.wrench_offset is not None:
             wrench_force = np.array(wrench_force) - np.array(self.wrench_offset)
 
         q_actual = self.joint_angles()
 
-        # # Transform of EE
+        # Transform of EE
         ee_transform = self.kinematics.end_effector_transform(q_actual)
-
-        # # Wrench force transformation
+        
+        # Wrench force transformation
         wFtS = spalg.force_frame_transform(ee_transform)
-
+        
         return np.dot(wFtS, wrench_force)
 
     def publish_wrench(self):
-        " Publish filtered wrench "
         wrench = self.get_ee_wrench()
         msg = WrenchStamped()
         # Note you need to call rospy.init_node() before this will work
@@ -168,22 +164,8 @@ class Arm(object):
         msg.wrench.torque.z = wrench[5]
         self.pub_ee_wrench.publish(msg)
 
-    def end_effector(self, q=None, ee_link='tool0', rot_type='quaternion'):
-        """ Return End Effector Pose """
-        q = self.joint_angles() if q is None else q
-        if rot_type=='quaternion':
-            if ee_link == 'ee_link':
-                return self.arm_ikfast.forward(q, 'q')[0]
-            elif ee_link == 'tool0':
-                return self.kinematics.forward_position_kinematics(q)
-            else:
-                raise Exception ("end effector link not supported", rot_type)
-        elif rot_type=='euler':
-            x = self.end_effector(q, ee_link=ee_link)
-            euler = np.array(tf.transformations.euler_from_quaternion(x[3:], axes='rxyz'))
-            return np.concatenate((x[:3],euler))
-        else:
-            raise Exception ("Type not supported", rot_type)
+    def end_effector(self):
+        return self.kinematics.forward_position_kinematics(self.joint_angles())
 
     def joint_angle(self, joint):
         """
@@ -254,16 +236,16 @@ class Arm(object):
         self.set_joint_positions_flex(q, t=t)
 
     def solve_ik(self, pose):
-        """ Solve IK for ur3 arm
+        """ Solve IK for ur3 arm 
             pose: [x y z aw ax ay az] array
         """
-        pose = conversions.transform_end_effector(pose, self.ee_transform)
+        pose = self.transform_end_effector(pose, self.ee_transform)
         pose = np.array(pose).reshape(1, -1)
         current_q = self.joint_angles()
-
+        
         ik = self.arm_ikfast.inverse(pose)
         q = self._best_ik_sol(ik, current_q)
-
+        
         return self.joint_angles() if q is None else q
 
     def _best_ik_sol(self, sols, q_guess, weights=np.ones(6)):
@@ -286,3 +268,29 @@ class Arm(object):
         best_sol_ind = np.argmin(
             np.sum((weights * (valid_sols - np.array(q_guess)))**2, 1))
         return valid_sols[best_sol_ind]
+
+    def transform_end_effector(self, pose, extra_pose, matrix=False):
+        """ 
+        Transform end effector pose
+         pose: current pose [x, y, z, ax, ay, az, w]
+         extra_pose: additional transformation [x, y, z, ax, ay, az, w]
+         matrix: if true: return (translation, rotation matrix)
+                 else: return translation + quaternion list
+        """
+        extra_translation = np.array(extra_pose[:3]).reshape(3, 1)
+        extra_rot = Quaternion(np.roll(extra_pose[3:], 1)).rotation_matrix
+
+        c_trans = np.array(pose[:3]).reshape(3, 1)
+        c_rot = Quaternion(np.roll(
+            pose[3:],
+            1)).rotation_matrix  # BE CAREFUL!! Pose from KDL is ax ay az aw
+        #              Pose from IKfast is aw ax ay az
+
+        n_trans = np.matmul(c_rot, extra_translation) + c_trans
+        n_rot = np.matmul(c_rot, extra_rot)
+
+        if matrix:
+            return n_trans.flatten(), n_rot
+
+        return n_trans.flatten().tolist() + np.roll(
+            Quaternion(matrix=n_rot).normalised.elements, -1).tolist()
