@@ -48,7 +48,7 @@ def best_ik_sol(sols, q_guess, weights=np.ones(6)):
         if np.all(test_sol != 9999.):
             valid_sols.append(test_sol)
     if len(valid_sols) == 0:
-        print "ik failed :("
+        print("ik failed :(")
         return None
     best_sol_ind = np.argmin(
         np.sum((weights * (valid_sols - np.array(q_guess)))**2, 1))
@@ -57,9 +57,9 @@ def best_ik_sol(sols, q_guess, weights=np.ones(6)):
 
 def map_keyboard():
     def print_robot_state():
-        print("Joint angles:", np.round(arm.joint_angles(), 5))
-        print("End Effector:", np.round(arm.end_effector(rot_type='euler'), 5))
-        print("quaternion:", np.round(arm.end_effector()[3:], 6))
+        print(("Joint angles:", np.round(arm.joint_angles(), 5)))
+        print(("End Effector:", np.round(arm.end_effector(rot_type='euler'), 5)))
+        print(("quaternion:", np.round(arm.end_effector()[3:], 6)))
 
     def set_j(joint_name, sign):
         global delta_q
@@ -71,11 +71,11 @@ def map_keyboard():
         if delta == 'q':
             global delta_q
             delta_q += increment
-            print "delta_q", delta_q
+            print(("delta_q", delta_q))
         if delta == 'x':
             global delta_x
             delta_x += increment
-            print "delta_x", delta_x
+            print(("delta_x", delta_x))
 
     def set_pose(dim, sign):
         global delta_x
@@ -160,14 +160,14 @@ def map_keyboard():
                 cmd = bindings[c]
                 #expand binding to something like "set_j(right, 's0', 0.1)"
                 cmd[0](*cmd[1])
-                print("command: %s" % (cmd[2], ))
+                print(("command: %s" % (cmd[2], )))
             else:
                 print("key bindings: ")
                 print("  Esc: Quit")
                 print("  ?: Help")
                 for key, val in sorted(
-                        bindings.items(), key=lambda x: x[1][2]):
-                    print("  %s: %s" % (key, val[2]))
+                        list(bindings.items()), key=lambda x: x[1][2]):
+                    print(("  %s: %s" % (key, val[2])))
 
 
 def main():

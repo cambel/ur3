@@ -34,41 +34,41 @@ from ur_pykdl import ur_kinematics
 
 def main():
     rospy.init_node('ur_kinematics')
-    print '*** ur PyKDL Kinematics ***\n'
+    print('*** ur PyKDL Kinematics ***\n')
     kin = ur_kinematics('right')
 
-    print '\n*** ur Description ***\n'
+    print('\n*** ur Description ***\n')
     kin.print_robot_description()
-    print '\n*** ur KDL Chain ***\n'
+    print('\n*** ur KDL Chain ***\n')
     kin.print_kdl_chain()
     # FK Position
-    print '\n*** ur Position FK ***\n'
-    print kin.forward_position_kinematics()
+    print('\n*** ur Position FK ***\n')
+    print((kin.forward_position_kinematics()))
     # FK Velocity
     # print '\n*** ur Velocity FK ***\n'
     # kin.forward_velocity_kinematics()
     # IK
-    print '\n*** ur Position IK ***\n'
+    print('\n*** ur Position IK ***\n')
     pos = [0.582583, -0.180819, 0.216003]
     rot = [0.03085, 0.9945, 0.0561, 0.0829]
-    print kin.inverse_kinematics(pos)  # position, don't care orientation
-    print '\n*** ur Pose IK ***\n'
-    print kin.inverse_kinematics(pos, rot)  # position & orientation
+    print((kin.inverse_kinematics(pos)))  # position, don't care orientation
+    print('\n*** ur Pose IK ***\n')
+    print((kin.inverse_kinematics(pos, rot)))  # position & orientation
     # Jacobian
-    print '\n*** ur Jacobian ***\n'
-    print kin.jacobian()
+    print('\n*** ur Jacobian ***\n')
+    print((kin.jacobian()))
     # Jacobian Transpose
-    print '\n*** ur Jacobian Tranpose***\n'
-    print kin.jacobian_transpose()
+    print('\n*** ur Jacobian Tranpose***\n')
+    print((kin.jacobian_transpose()))
     # Jacobian Pseudo-Inverse (Moore-Penrose)
-    print '\n*** ur Jacobian Pseudo-Inverse (Moore-Penrose)***\n'
-    print kin.jacobian_pseudo_inverse()
+    print('\n*** ur Jacobian Pseudo-Inverse (Moore-Penrose)***\n')
+    print((kin.jacobian_pseudo_inverse()))
     # Joint space mass matrix
-    print '\n*** ur Joint Inertia ***\n'
-    print kin.inertia()
+    print('\n*** ur Joint Inertia ***\n')
+    print((kin.inertia()))
     # Cartesian space mass matrix
-    print '\n*** ur Cartesian Inertia ***\n'
-    print kin.cart_inertia()
+    print('\n*** ur Cartesian Inertia ***\n')
+    print((kin.cart_inertia()))
 
 if __name__ == "__main__":
     main()

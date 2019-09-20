@@ -1,8 +1,7 @@
 #! /usr/bin/env python
-import rospy
-import PyKDL
+
 import numpy as np
-import tf.transformations as tr
+import ur_control.transformations as tr
 # Messages
 from geometry_msgs.msg import (Point, Quaternion, Pose, Vector3, Transform,
                                Wrench)
@@ -226,7 +225,7 @@ def from_rviz_vector(value, dtype=float):
   @return: The resulting numpy array
   """
     strlst = value.split(';')
-    return np.array(map(dtype, strlst))
+    return np.array(list(map(dtype, strlst)))
 
 
 def angleAxis_from_euler(euler):

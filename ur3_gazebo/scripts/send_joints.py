@@ -18,7 +18,7 @@ def _observation_callback(message):
     GPS, which runs in the "main thread".
     message: observation from the robot to store each listen."""
 
-    print message
+    print(message)
 
 def main():
 

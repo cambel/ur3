@@ -20,6 +20,7 @@
         </inertia>
       </inertial>
       <visual name='visual'>
+        <transparency> 0.3 </transparency>
         <pose frame=''>0 0 0 0 0 0</pose>
         <geometry>
           <mesh>
@@ -74,8 +75,8 @@
             <collide_without_contact_bitmask>1</collide_without_contact_bitmask>
             <collide_bitmask>1</collide_bitmask>
             <ode>
-              <soft_cfm>0</soft_cfm>
-              <soft_erp>0.1</soft_erp>
+              <soft_cfm>0.01</soft_cfm>
+              <soft_erp>0.2</soft_erp>
               <kp>1e+13</kp>
               <kd>1</kd>
               <max_vel>0.01</max_vel>

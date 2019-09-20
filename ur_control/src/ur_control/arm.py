@@ -1,7 +1,6 @@
 import numpy as np
 from pyquaternion import Quaternion
 
-import tf
 import rospy
 from geometry_msgs.msg import WrenchStamped
 from trajectory_msgs.msg import (
@@ -12,13 +11,14 @@ from trajectory_msgs.msg import (
 import ur_control.utils as utils
 import ur_control.spalg as spalg
 import ur_control.conversions as conversions
+import ur_control.transformations as transformations
 from ur_control.constants import JOINT_ORDER, JOINT_PUBLISHER_REAL, \
     JOINT_PUBLISHER_BETA, JOINT_PUBLISHER_SIM, \
     FT_SUBSCRIBER_REAL, FT_SUBSCRIBER_SIM, \
     ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, ROBOT_UR_RTDE_DRIVER
 
-import ur3_kinematics.arm as ur3_arm
-import ur3_kinematics.e_arm as ur3e_arm
+# import ur3_kinematics.arm as ur3_arm
+# import ur3_kinematics.e_arm as ur3e_arm
 
 from ur_control.controllers import JointTrajectoryController, FTsensor
 from ur_pykdl import ur_kinematics
@@ -48,10 +48,11 @@ class Arm(object):
         self.kinematics = ur_kinematics(robot_urdf, ee_link='tool0')
 
         # IKfast libraries
-        if robot_urdf == 'ur3_robot':
-            self.arm_ikfast = ur3_arm
-        elif robot_urdf == 'ur3e_robot':
-            self.arm_ikfast = ur3e_arm
+        # if robot_urdf == 'ur3_robot':
+        #     self.arm_ikfast = ur3_arm
+        # elif robot_urdf == 'ur3e_robot':
+        #     self.arm_ikfast = ur3e_arm
+        self.arm_ikfast = None
 
         self.ft_sensor = None
 
@@ -74,7 +75,7 @@ class Arm(object):
 
         traj_publisher_flex = '/' + traj_publisher + '/command'
 
-        print "connecting to", traj_publisher
+        print(("connecting to", traj_publisher))
         # Flexible trajectory (point by point)
         self._flex_trajectory_pub = rospy.Publisher(traj_publisher_flex, JointTrajectory, queue_size=10)
         self.joint_traj_controller = JointTrajectoryController(publisher_name=traj_publisher)
@@ -180,7 +181,7 @@ class Arm(object):
                 raise Exception ("end effector link not supported", rot_type)
         elif rot_type=='euler':
             x = self.end_effector(q, ee_link=ee_link)
-            euler = np.array(tf.transformations.euler_from_quaternion(x[3:], axes='rxyz'))
+            euler = np.array(transformations.euler_from_quaternion(x[3:], axes='rxyz'))
             return np.concatenate((x[:3],euler))
         else:
             raise Exception ("Type not supported", rot_type)
@@ -281,7 +282,7 @@ class Arm(object):
             if np.all(test_sol != 9999.):
                 valid_sols.append(test_sol)
         if len(valid_sols) == 0:
-            print "ik failed :("
+            print("ik failed :(")
             return None
         best_sol_ind = np.argmin(
             np.sum((weights * (valid_sols - np.array(q_guess)))**2, 1))

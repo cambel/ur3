@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 import actionlib
 import copy
-import conversions
+from . import conversions
 import collections
-import filters
+from . import filters
 import rospy
-import utils
+from . import utils
 import os
 import numpy as np
 from std_msgs.msg import Float64
@@ -210,7 +210,7 @@ class JointPositionController(JointControllerBase):
       raise rospy.ROSException('JointPositionController timed out waiting joint_states topic: {0}'.format(namespace))
     self._cmd_pub = dict()
     for joint in self._joint_names:
-      print '%s%s/command' % (self.ns, joint)
+      print(('%s%s/command' % (self.ns, joint)))
       self._cmd_pub[joint] = rospy.Publisher('%s%s/command' % (self.ns, joint), Float64, queue_size=3)
     # Wait for the joint position controllers
     controller_list_srv = self.ns + 'controller_manager/list_controllers'
@@ -251,7 +251,7 @@ class JointPositionController(JointControllerBase):
       try:
         self._cmd_pub[name].publish(q)
       except:
-        print "some error"
+        print("some error")
         pass
   
   def valid_jnt_command(self, command):

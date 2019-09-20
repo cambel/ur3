@@ -90,7 +90,7 @@ class TextColors:
     @type  msg: string
     @param msg: the message to be printed.
     """
-    print(self.OKBLUE + msg + self.ENDC)
+    print((self.OKBLUE + msg + self.ENDC))
 
   def debug(self, msg):
     """
@@ -98,7 +98,7 @@ class TextColors:
     @type  msg: string
     @param msg: the message to be printed.
     """
-    print(self.OKGREEN + msg + self.ENDC)
+    print((self.OKGREEN + msg + self.ENDC))
 
   def error(self, msg):
     """
@@ -106,7 +106,7 @@ class TextColors:
     @type  msg: string
     @param msg: the message to be printed.
     """
-    print(self.FAIL + msg + self.ENDC)
+    print((self.FAIL + msg + self.ENDC))
 
   def ok(self, msg):
     """
@@ -114,7 +114,7 @@ class TextColors:
     @type  msg: string
     @param msg: the message to be printed.
     """
-    print(self.OKGREEN + msg + self.ENDC)
+    print((self.OKGREEN + msg + self.ENDC))
 
   def warning(self, msg):
     """
@@ -122,7 +122,7 @@ class TextColors:
     @type  msg: string
     @param msg: the message to be printed.
     """
-    print(self.WARNING + msg + self.ENDC)
+    print((self.WARNING + msg + self.ENDC))
 
   def logdebug(self, msg):
     """
@@ -132,7 +132,7 @@ class TextColors:
     @param msg: the message to be printed.
     """
     if self.log_level <= rospy.DEBUG:
-      print(self.OKGREEN + 'Debug ' + self.ENDC + str(msg))
+      print((self.OKGREEN + 'Debug ' + self.ENDC + str(msg)))
 
   def loginfo(self, msg):
     """
@@ -142,7 +142,7 @@ class TextColors:
     @param msg: the message to be printed.
     """
     if self.log_level <= rospy.INFO:
-      print('INFO ' + str(msg))
+      print(('INFO ' + str(msg)))
 
   def logwarn(self, msg):
     """
@@ -152,7 +152,7 @@ class TextColors:
     @param msg: the message to be printed.
     """
     if self.log_level <= rospy.WARN:
-      print(self.WARNING + 'Warning ' + self.ENDC + str(msg))
+      print((self.WARNING + 'Warning ' + self.ENDC + str(msg)))
 
   def logerr(self, msg):
     """
@@ -162,7 +162,7 @@ class TextColors:
     @param msg: the message to be printed.
     """
     if self.log_level <= rospy.ERROR:
-      print(self.FAIL + 'Error ' + self.ENDC + str(msg))
+      print((self.FAIL + 'Error ' + self.ENDC + str(msg)))
 
   def logfatal(self, msg):
     """
@@ -172,7 +172,7 @@ class TextColors:
     @param msg: the message to be printed.
     """
     if self.log_level <= rospy.FATAL:
-      print(self.FAIL + 'Fatal ' + self.ENDC + str(msg))
+      print((self.FAIL + 'Fatal ' + self.ENDC + str(msg)))
 
   def set_log_level(self, level):
     """

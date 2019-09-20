@@ -42,10 +42,10 @@ def main():
     args = parser.parse_args()
 
     if args.file is None:
-        print 'FROM PARAM SERVER'
+        print('FROM PARAM SERVER')
         robot = URDF.from_parameter_server()
     else:
-        print 'FROM STRING'
+        print('FROM STRING')
         robot = URDF.from_xml_string(args.file.read())
 
     print(robot)
