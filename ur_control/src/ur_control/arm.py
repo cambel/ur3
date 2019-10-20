@@ -17,8 +17,8 @@ from ur_control.constants import JOINT_ORDER, JOINT_PUBLISHER_REAL, \
     FT_SUBSCRIBER_REAL, FT_SUBSCRIBER_SIM, \
     ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, ROBOT_UR_RTDE_DRIVER
 
-# import ur3_kinematics.arm as ur3_arm
-# import ur3_kinematics.e_arm as ur3e_arm
+import ur3_kinematics.arm as ur3_arm
+import ur3_kinematics.e_arm as ur3e_arm
 
 from ur_control.controllers import JointTrajectoryController, FTsensor
 from ur_pykdl import ur_kinematics
@@ -48,11 +48,10 @@ class Arm(object):
         self.kinematics = ur_kinematics(robot_urdf, ee_link='tool0')
 
         # IKfast libraries
-        # if robot_urdf == 'ur3_robot':
-        #     self.arm_ikfast = ur3_arm
-        # elif robot_urdf == 'ur3e_robot':
-        #     self.arm_ikfast = ur3e_arm
-        self.arm_ikfast = None
+        if robot_urdf == 'ur3_robot':
+            self.arm_ikfast = ur3_arm
+        elif robot_urdf == 'ur3e_robot':
+            self.arm_ikfast = ur3e_arm
 
         self.ft_sensor = None
 
@@ -139,6 +138,9 @@ class Arm(object):
 
     def get_ee_wrench(self):
         """ Get the wrench (force/torque) in task-space """
+        if self.ft_sensor is None:
+            return np.zeros(6)
+            
         wrench_force = self.ft_sensor.get_filtered_wrench()
 
         # compute force transformation?

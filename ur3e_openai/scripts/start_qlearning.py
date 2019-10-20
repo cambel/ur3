@@ -4,24 +4,26 @@ import gym
 import numpy
 import time
 import qlearn
+
+from functools import reduce
+
 from gym import wrappers
 # ROS packages required
 import rospy
 import rospkg
 from openai_ros.openai_ros_common import StartOpenAI_ROS_Environment
-from functools import reduce
 
 
 if __name__ == '__main__':
 
-    rospy.init_node('ur3e_learn_to_pick_cube_qlearn',
-                    anonymous=True, log_level=rospy.WARN)
+    rospy.init_node('ur3e_openai_test',
+                    anonymous=True, log_level=rospy.INFO)
 
     # Init OpenAI_ROS ENV
     task_and_robot_environment_name = rospy.get_param(
         '/ur3e/task_and_robot_environment_name')
     env = StartOpenAI_ROS_Environment(
-        task_and_robot_environment_name)
+        task_and_robot_environment_name,timestep_limit_per_episode=100)
     # Create the Gym environment
     rospy.loginfo("Gym environment done")
     rospy.loginfo("Starting Learning")
@@ -46,7 +48,7 @@ if __name__ == '__main__':
     nsteps = rospy.get_param("/ur3e/nsteps")
 
     # Initialises the algorithm that we are going to use for learning
-    qlearn = qlearn.QLearn(actions=list(range(env.action_space.low.size)),
+    qlearn = qlearn.QLearn(actions=range(env.action_space.low.size),
                            alpha=Alpha, gamma=Gamma, epsilon=Epsilon)
     initial_epsilon = qlearn.epsilon
 

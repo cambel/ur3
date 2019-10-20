@@ -7,7 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
   pluginlib
 )
 find_package(Boost REQUIRED COMPONENTS system)
-find_package(PythonLibs 2.7 REQUIRED)
+find_package(PythonLibs 3 REQUIRED)
 
 catkin_python_setup()
 

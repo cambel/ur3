@@ -1,0 +1,28 @@
+ur3e: #namespace
+    task_and_robot_environment_name: 'UR3eBasicEnv-v0'
+    ros_ws_abspath: "/home/cambel/ws_ur5"
+    #qlearn parameters
+    alpha: 0.1
+    gamma: 0.7
+    epsilon: 0.9
+    epsilon_discount: 0.999
+    nepisodes: 5
+    nsteps: 100
+
+    ft_sensor: true
+    driver: "/arm_controller/command"
+    n_actions: 2 
+    slowness: 1
+    init_pos: [0.29004, -0.96341,  2.21555, -2.82236, -1.57056,  0.28972]
+    target_pos: [0.2491 ,  0.18742,  0.04009, -3.14128, -0.00034,  1.57046]
+    tgt_pose_indices: [0,1]
+    pose_indices: [0,1]
+    scale_pos: 100
+    end_effector_points: [[0.,0.,0.]]
+    distance_threshold: 0.05
+    reward_type: 'continuous'
+    dt: 0.05 
+
+    control: "force_control"
+    xF_tradeoff: [1.,1.,0.,0.,0.,0.]
+

@@ -14,10 +14,7 @@ import ur3_kinematics.e_arm as ur3_arm
 import getch
 
 import numpy as np
-from pyquaternion import Quaternion
 
-import tf
-from geometry_msgs.msg import Vector3
 np.set_printoptions(suppress=True)
 
 
