@@ -8,5 +8,5 @@
     version: master
 - git:
     local-name: openai_ros
-    uri: https://bitbucket.org/theconstructcore/openai_ros.git
+    uri: https://github.com/cambel/openai_ros.git
     version: master
