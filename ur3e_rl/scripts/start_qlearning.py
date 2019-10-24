@@ -11,12 +11,12 @@ from gym import wrappers
 # ROS packages required
 import rospy
 import rospkg
-from openai_ros.openai_ros_common import StartOpenAI_ROS_Environment
+from ur3e_openai.common import StartOpenAI_ROS_Environment
 
 
 if __name__ == '__main__':
 
-    rospy.init_node('ur3e_openai_test',
+    rospy.init_node('ur3e_rl_test',
                     anonymous=True, log_level=rospy.INFO)
 
     # Init OpenAI_ROS ENV
@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
     # Set the logging system
     rospack = rospkg.RosPack()
-    pkg_path = rospack.get_path('ur3e_openai')
+    pkg_path = rospack.get_path('ur3e_rl')
     outdir = pkg_path + '/training_results'
     env = wrappers.Monitor(env, outdir, force=True)
     rospy.loginfo("Monitor Wrapper started")

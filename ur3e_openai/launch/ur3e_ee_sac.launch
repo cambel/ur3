@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<launch>
-    <rosparam command="load" file="$(find ur3e_openai)/config/ur3e_ee_sac.yaml" />
-    <!-- Launch the training system -->
-    <node pkg="ur3e_openai" name="train_ur3e_ee_sac" type="sac.py" output="screen"/>
-</launch>

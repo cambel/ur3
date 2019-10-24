@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import rospy
-from openai_ros.openai_ros_common import StartOpenAI_ROS_Environment
+from ur3e_openai.common import load_environment
 
 from drl.agents.actor_critic_agents.SAC import SAC
 from drl.agents.actor_critic_agents.TD3 import TD3
@@ -15,7 +15,7 @@ rospy.init_node('ur3e_learn_to_pick_cube_qlearn',
 # Init OpenAI_ROS ENV
 task_and_robot_environment_name = rospy.get_param(
     '/ur3e/task_and_robot_environment_name')
-env = StartOpenAI_ROS_Environment(task_and_robot_environment_name,
+env = load_environment(task_and_robot_environment_name,
                                   timestep_limit_per_episode=100)
 
 # load parameters 
