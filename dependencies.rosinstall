@@ -6,7 +6,3 @@
     local-name: gazebo_ros_link_attacher
     uri: https://github.com/pal-robotics/gazebo_ros_link_attacher.git
     version: master
-- git:
-    local-name: openai_ros
-    uri: https://github.com/cambel/openai_ros.git
-    version: master
