@@ -1,0 +1,4 @@
+*.pyc
+.~*
+ur3e_openai/doc/.idea/
+doc/html/

@@ -1,0 +1,4 @@
+- git:
+    local-name: ur3
+    uri: https://github.com/cambel/ur3.git
+    version: master
