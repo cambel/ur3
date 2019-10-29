@@ -1,0 +1,15 @@
+ur3e: #namespace
+    env_name: 'UR3ePegInHoleEnv-v0'
+    ros_ws_abspath: "/home/cambel/ws_ur5"
+
+# Robot parameters
+    driver: "gazebo"
+    ft_sensor: false
+    dt: 0.05
+
+# Learning parameters
+    num_episodes_to_run: 100
+    discount_rate: 0.99
+    min_steps_before_learning: 100
+    batch_size: 256
+
