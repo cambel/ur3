@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<launch>
-    <rosparam command="load" file="$(find ur3e_rl)/config/ur3e_ee_rlpyt.yaml" />
-    <!-- Launch the training system -->
-    <node pkg="ur3e_rl" name="train_ur3e_ee_rlpyt" type="start_rlpyt.py" output="screen"/>
-</launch>
