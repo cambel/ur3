@@ -1,23 +1,35 @@
 Universal Robot UR3
 ===
 
-Custom ROS packages for the UR3 Robot with a Robotiq gripper
+Custom ROS packages for the UR3 Robot with a Robotiq gripper. Tested on Ros Kinetic Ubuntu 16.04. Python 2.7 and 3.6
 
 ## Installation
 
-This will assume that you already have a catkin workspace. Go to the source directory of the workspace
+This will assume that you already have a catkin workspace 'ros_ws'. Go to the source directory of the workspace
   ```
-  $ roscd; cd ../src
+  $ cd ~/ros_ws/src
   ```
-Clone this and the gripper (robotiq) repositories
+
+Clone this repo
   ```
   $ git clone https://github.com/cambel/ur3
-  $ git clone https://github.com/cambel/robotiq
   ```
-Build using catkin_make
+
+Install ros dependencies
   ```
-  $ cd ..
-  $ catkin_make
+  $ cd ~/ros_ws
+  $ rosinstall ~/ros_ws/src /opt/ros/kinetic src/ur3/dependencies.rosinstall
+  $ sudo apt-get update
+  $ rosdep fix-permissions
+  $ rosdep update
+  $ rosdep install --from-paths src --ignore-src --rosdistro=kinetic -y
+  ```
+
+Build using catkin build
+  ```
+  $ cd ~/ros_ws/
+  $ catkin clean
+  $ catkin build
   ```
 
 ## Visualization of UR3 in RViz
