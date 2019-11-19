@@ -2,13 +2,13 @@
 <sdf version='1.6'>
   <model name='ur3_base'>
     <link name='base'>
-      <pose frame=''>0 0 0 0 -0 3.14</pose>
+      <pose frame=''>-0.15 -1.35 0.14 0 1.57070 1.57070</pose>
       <self_collide>0</self_collide>
       <kinematic>0</kinematic>
       <gravity>1</gravity>
       <inertial>
         <mass>1</mass>
-        <pose frame=''>0 0 0 0 -0 0</pose>
+        <pose frame=''>0 0 0 0 0 0</pose>
         <inertia>
           <ixx>1</ixx>
           <ixy>0</ixy>
@@ -19,9 +19,10 @@
         </inertia>
       </inertial>
       <visual name='base_visual'>
+        <transparency> 0.2 </transparency>
         <geometry>
           <mesh>
-            <uri>model://ur3_base/meshes/ur3_base.stl</uri>
+            <uri>model://ur3_base/meshes/dualbase.dae</uri>
             <scale>1 1 1</scale>
           </mesh>
         </geometry>
