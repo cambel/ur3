@@ -1,7 +1,7 @@
 Universal Robot UR3
 ===
 
-Custom ROS packages for the UR3 Robot with a Robotiq gripper. Tested on Ros Kinetic Ubuntu 16.04. Python 2.7 and 3.6
+Custom ROS packages for the UR3 Robot with a Robotiq gripper. Tested on Ros Kinetic Ubuntu 16.04. Python 2.7 and 3.6. Preferibly use Python 3.6.
 
 ## Installation
 
@@ -40,11 +40,15 @@ To visualize the model of the robot with a gripper, launch the following:
   ```
 You can then use the sliders to change the joint values and the gripper values.
 
-## Simulation in Gazebo
+## Simulation in Gazebo 7
 
 To simulate the robot launch the following:
   ```
   $ roslaunch ur3_gazebo ur3_cubes.launch
+  ```
+or using ur3e:
+  ```
+  $ roslaunch ur3_gazebo ur3e.launch
   ```
 
 By default the simulation starts paused. Unpause the simulation. You can then send commands to the
@@ -62,3 +66,11 @@ An example of sending joints values to the robot can be executed as follows:
   $ rosrun ur3_gazebo send_joints.py
   ```
 To change the values of the joints, the file `send_joints.py` must be modified.
+
+An easy way to control the robot using the keyboard can be found in the script:
+  ```
+  $ rosrun ur_control joint_position_keyboard.py
+  ```
+Press SPACE to get a list of all valid commands to control either each independent joint or the end effector position x,y,z and rotations.
+
+Another option of easy control is using `rqt`
