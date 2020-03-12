@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="effort_interface" default="false"/>
+  <arg name="peg_shape" default="cylinder"/>
+  <arg name="grasp_plugin" default="false"/>
+  <arg name="robot_name"/>
+  <arg name="init_pose"/>
+
+  <!-- Send robot urdf to param server -->
+  <param name="/$(arg robot_name)/robot_description" 
+         command="$(find xacro)/xacro --inorder '$(find ur3_description)/urdf/ur3e/ur3e_peg_gripper.urdf.xacro'
+                 use_effort_interface:=$(arg effort_interface) grasp_plugin:=$(arg grasp_plugin) peg_shape:=$(arg peg_shape)" />
+
+  <node name="spawn_gazebo_model$(arg robot_name)" pkg="gazebo_ros" type="spawn_model"
+        args="-urdf -param robot_description -model $(arg robot_name) $(arg init_pose)"
+        respawn="false" output="screen" />
+
+</launch>

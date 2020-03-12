@@ -304,6 +304,7 @@
     </xacro:if>
     <xacro:unless value="$(arg use_effort_interface)">
       <xacro:ur_arm_transmission prefix="${prefix}" joint_interface="PositionJointInterface" />
+      <!-- <xacro:ur_arm_transmission prefix="${prefix}" joint_interface="VelocityJointInterface" /> -->
     </xacro:unless>
     <xacro:ur_arm_gazebo prefix="${prefix}" />
 

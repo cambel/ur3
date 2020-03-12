@@ -11,7 +11,6 @@
   <arg name="rate"       default="125" />
   <arg name="world_name" default="$(find ur3_gazebo)/worlds/ur3e_dual.world" />
   <arg name="effort_interface" default="false"/>
-  <arg name="peg_shape" default="cylinder"/>
   <arg name="grasp_plugin" default="false"/>
   <arg name="dual" default="false"/>
 
@@ -25,8 +24,8 @@
 
   <!-- Send robot urdf to param server -->
   <param name="robot_description" 
-         command="$(find xacro)/xacro --inorder '$(find ur3_description)/urdf/ur3e/ur3e_peg_gripper.urdf.xacro'
-                 use_effort_interface:=$(arg effort_interface) grasp_plugin:=$(arg grasp_plugin) peg_shape:=$(arg peg_shape)" />
+         command="$(find xacro)/xacro --inorder '$(find ur3_description)/urdf/ur3e/ur3e_robotiq85_gripper.urdf.xacro'
+                 use_effort_interface:=$(arg effort_interface) grasp_plugin:=$(arg grasp_plugin)" />
   <!-- FOR DUAL ROBOT -->
   <group if = "$(arg dual)">
     <!-- BEGIN ROBOT 1-->

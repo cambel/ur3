@@ -2,66 +2,71 @@ import numpy as np
 from pyquaternion import Quaternion
 
 import rospy
-from geometry_msgs.msg import WrenchStamped
 from trajectory_msgs.msg import (
     JointTrajectory,
     JointTrajectoryPoint,
 )
+from geometry_msgs.msg import (Wrench)
 
-import ur_control.utils as utils
-import ur_control.spalg as spalg
-import ur_control.conversions as conversions
-import ur_control.transformations as transformations
+from ur_control import utils, spalg, conversions, transformations
 from ur_control.constants import JOINT_ORDER, JOINT_PUBLISHER_REAL, \
     JOINT_PUBLISHER_BETA, JOINT_PUBLISHER_SIM, \
     FT_SUBSCRIBER_REAL, FT_SUBSCRIBER_SIM, \
-    ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, ROBOT_UR_RTDE_DRIVER
+    ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, ROBOT_UR_RTDE_DRIVER, \
+    IKFAST, TRAC_IK
 
-import ur3_kinematics.arm as ur3_arm
-import ur3_kinematics.e_arm as ur3e_arm
+from ur_ikfast import ur_kinematics as ur_ikfast
 
 from ur_control.controllers import JointTrajectoryController, FTsensor
 from ur_pykdl import ur_kinematics
+from trac_ik_python.trac_ik import IK
 
+cprint = utils.TextColors()
 
 class Arm(object):
     """ UR3 arm controller """
 
-    def __init__(self, ft_sensor=False, driver=ROBOT_GAZEBO, ee_transform=[0, 0, 0, 0, 0, 0, 1], robot_urdf='ur3e_robot'):
-        """ Constructor
-
-            ft_sensor bool: whether or not to try to load ft sensor information
-
-            driver string: type of driver to use for real robot or simulation
-
+    def __init__(self,
+                 ft_sensor=False,
+                 driver=ROBOT_GAZEBO,
+                 ee_transform=None,
+                 robot_urdf='ur3e_robot',
+                 ik_solver=IKFAST,
+                 namespace='ur3'):
+        """ ft_sensor bool: whether or not to try to load ft sensor information
+            driver string: type of driver to use for real robot or simulation.
+                           supported: gazebo, ur_modern_driver, ur_rtde_driver (Newest)
+                           use ur_control.constants e.g. ROBOT_GAZEBO
             ee_tranform array [x,y,z,ax,ay,az,w]: optional transformation to the end-effector
-                                                  that is applied before doing any operation in task space
-
+                                                  that is applied before doing any operation in task-space
             robot_urdf string: name of the robot urdf file to be used
-
+            namespace string: nodes namespace prefix
         """
+
+        cprint.ok("ft_sensor: {}, driver: {}, ee_transform: {}, \n robot_urdf: {}".format(ft_sensor, driver, ee_transform, robot_urdf))
+
         self._joint_angle = dict()
         self._joint_velocity = dict()
         self._joint_effort = dict()
         self._current_ft = []
-
-        self.kinematics = ur_kinematics(robot_urdf, ee_link='tool0')
-
-        # IKfast libraries
-        if robot_urdf == 'ur3_robot':
-            self.arm_ikfast = ur3_arm
-        elif robot_urdf == 'ur3e_robot':
-            self.arm_ikfast = ur3e_arm
-
         self.ft_sensor = None
 
-        # Publisher of wrench
-        self.pub_ee_wrench = rospy.Publisher(
-            '/ur3/ee_ft', WrenchStamped, queue_size=10)
-
-        # We need the special end effector link for adjusting the wrench directions
+        self.ik_solver = ik_solver
         self.ee_transform = ee_transform
+        self.ns = namespace
 
+        self.ee_link = 'tool0'
+        # self.max_joint_speed = np.deg2rad([120, 120, 120, 220, 220, 220])
+        self.max_joint_speed = np.deg2rad([191,191,191,371,371,371])
+
+        self._init_ik_solver(robot_urdf)
+        self._init_controllers(driver)
+        if ft_sensor:
+            self._init_ft_sensor(driver)
+
+### private methods ###
+
+    def _init_controllers(self, driver):
         traj_publisher = None
         if driver == ROBOT_UR_MODERN_DRIVER:
             traj_publisher = JOINT_PUBLISHER_REAL
@@ -70,23 +75,50 @@ class Arm(object):
         elif driver == ROBOT_GAZEBO:
             traj_publisher = JOINT_PUBLISHER_SIM
         else:
-            raise Exception("invalid driver")
-
-        traj_publisher_flex = '/' + traj_publisher + '/command'
-
-        print(("connecting to", traj_publisher))
+            raise Exception("unsupported driver", driver)
         # Flexible trajectory (point by point)
-        self._flex_trajectory_pub = rospy.Publisher(traj_publisher_flex, JointTrajectory, queue_size=10)
-        self.joint_traj_controller = JointTrajectoryController(publisher_name=traj_publisher)
+        traj_publisher_flex = '/' + traj_publisher + '/command'
+        cprint.blue("connecting to: {}".format(traj_publisher))
+        self._flex_trajectory_pub = rospy.Publisher(traj_publisher_flex,
+                                                    JointTrajectory,
+                                                    queue_size=10)
 
-        # FT sensor data
-        if ft_sensor:
-            if driver == ROBOT_GAZEBO:
-                self.ft_sensor = FTsensor(namespace=FT_SUBSCRIBER_SIM)
-            else:
-                self.ft_sensor = FTsensor(namespace=FT_SUBSCRIBER_REAL)
-            self.wrench_offset = None
-            rospy.sleep(1)
+        self.joint_traj_controller = JointTrajectoryController(
+            publisher_name=traj_publisher)
+
+    def _init_ik_solver(self, robot_urdf):
+        self.kdl = ur_kinematics(robot_urdf, ee_link=self.ee_link)
+
+        if self.ik_solver == IKFAST:
+            # IKfast libraries
+            if robot_urdf == 'ur3_robot':
+                self.arm_ikfast = ur_ikfast.URKinematics('ur3')
+            elif robot_urdf == 'ur3e_robot':
+                self.arm_ikfast = ur_ikfast.URKinematics('ur3e')
+        elif self.ik_solver == TRAC_IK:
+            self.trac_ik = IK(base_link="base_link", tip_link=self.ee_link,
+                              timeout=0.001, epsilon=1e-5, solve_type="Speed",
+                              urdf_string=utils.load_urdf_string('ur_pykdl', robot_urdf))
+        else:
+            raise Exception("unsupported ik_solver", self.ik_solver)
+
+    def _init_ft_sensor(self, driver):
+        # Publisher of wrench
+        self.pub_ee_wrench = rospy.Publisher('/%s/ee_ft' % self.ns,
+                                             Wrench,
+                                             queue_size=50)
+
+        if driver == ROBOT_GAZEBO:
+            self.ft_sensor = FTsensor(namespace=FT_SUBSCRIBER_SIM)
+        else:
+            self.ft_sensor = FTsensor(namespace=FT_SUBSCRIBER_REAL)
+        rospy.sleep(1)
+        self.set_wrench_offset(override=False)
+
+
+    def _update_wrench_offset(self):
+        self.wrench_offset = self.get_filtered_ft().tolist()
+        rospy.set_param('/%s/ft_offset' % self.ns, self.wrench_offset)
 
     def _flexible_trajectory(self, position, time=5.0, vel=None):
         """ Publish point by point making it more flexible for real-time control """
@@ -99,7 +131,6 @@ class Arm(object):
         target.positions = position
 
         # These times determine the speed at which the robot moves:
-        # it tries to reach the specified target position in 'slowness' time.
         if vel is not None:
             target.velocities = [vel] * 6
 
@@ -110,12 +141,33 @@ class Arm(object):
 
         self._flex_trajectory_pub.publish(action_msg)
 
-    def get_ft_measurements(self):
-        " Get measurements from FT Sensor "
+    def _solve_ik(self, pose):
+        if self.ee_transform is not None:
+            inv_ee_transform = np.copy(self.ee_transform)
+            inv_ee_transform[:3] *= -1
+            pose = np.array(conversions.transform_end_effector(pose, inv_ee_transform))
+
+        if self.ik_solver == IKFAST:
+            ik = self.arm_ikfast.inverse(pose, q_guess=self.joint_angles())
+
+        elif self.ik_solver == TRAC_IK:
+            ik = self.ik_solver.get_ik(self.joint_angles(), pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6])
+            if ik is None:
+                print("IK not found")
+
+        return ik
+
+### Public methods ###
+
+    def get_filtered_ft(self):
+        """ Get measurements from FT Sensor.
+            Measurements are filtered with a low-pass filter.
+            Measurements are given in sensors orientation.
+        """
         if self.ft_sensor is None:
             raise Exception("FT Sensor not initialized")
 
-        ft_limitter = [300, 300, 300, 30, 30, 30]
+        ft_limitter = [300, 300, 300, 30, 30, 30]  # Enforce measurement limits (simulation)
         ft = self.ft_sensor.get_filtered_wrench()
         ft = [
             ft[i] if abs(ft[i]) < ft_limitter[i] else ft_limitter[i]
@@ -128,65 +180,67 @@ class Arm(object):
         if override:
             self._update_wrench_offset()
         else:
-            self.wrench_offset = rospy.get_param('/ur3/ft_offset', None)
+            self.wrench_offset = rospy.get_param('/%s/ft_offset' % self.ns, None)
             if self.wrench_offset is None:
                 self._update_wrench_offset()
 
-    def _update_wrench_offset(self):
-        self.wrench_offset = self.get_ft_measurements().tolist()
-        rospy.set_param('/ur3/ft_offset', self.wrench_offset)
-
     def get_ee_wrench(self):
-        """ Get the wrench (force/torque) in task-space """
+        """ Compute the wrench (force/torque) in task-space """
         if self.ft_sensor is None:
             return np.zeros(6)
-            
+
         wrench_force = self.ft_sensor.get_filtered_wrench()
 
         # compute force transformation?
         if self.wrench_offset is not None:
-            wrench_force = np.array(wrench_force) - np.array(self.wrench_offset)
+            wrench_force = np.array(wrench_force) - np.array(
+                self.wrench_offset)
 
-        q_actual = self.joint_angles()
+        # # # Transform of EE
+        pose = self.end_effector()
+        ee_transform = Quaternion(np.roll(pose[3:], 1)).transformation_matrix
 
-        # # Transform of EE
-        ee_transform = self.kinematics.end_effector_transform(q_actual)
-
-        # # Wrench force transformation
+        # # # Wrench force transformation
         wFtS = spalg.force_frame_transform(ee_transform)
+        wrench = np.dot(wFtS, wrench_force)
 
-        return np.dot(wFtS, wrench_force)
+        return wrench
 
     def publish_wrench(self):
-        " Publish filtered wrench "
-        wrench = self.get_ee_wrench()
-        msg = WrenchStamped()
-        # Note you need to call rospy.init_node() before this will work
-        msg.header.stamp = rospy.Time.now()
-        msg.wrench.force.x = wrench[0]
-        msg.wrench.force.y = wrench[1]
-        msg.wrench.force.z = wrench[2]
-        msg.wrench.torque.x = wrench[3]
-        msg.wrench.torque.x = wrench[4]
-        msg.wrench.torque.z = wrench[5]
-        self.pub_ee_wrench.publish(msg)
+        if self.ft_sensor is None:
+            raise Exception("FT Sensor not initialized")
 
-    def end_effector(self, q=None, ee_link='tool0', rot_type='quaternion'):
+        " Publish arm's end-effector wrench "
+        wrench = self.get_ee_wrench()
+        # Note you need to call rospy.init_node() before this will work
+        self.pub_ee_wrench.publish(conversions.to_wrench(wrench))
+
+    def end_effector(self,
+                     joint_angles=None,
+                     rot_type='quaternion'):
         """ Return End Effector Pose """
-        q = self.joint_angles() if q is None else q
-        if rot_type=='quaternion':
-            if ee_link == 'ee_link':
-                return self.arm_ikfast.forward(q, 'q')[0]
-            elif ee_link == 'tool0':
-                return self.kinematics.forward_position_kinematics(q)
+
+        joint_angles = self.joint_angles() if joint_angles is None else joint_angles
+
+        if rot_type == 'quaternion':
+            # forward kinematics
+            if self.ik_solver == IKFAST:
+                x = self.arm_ikfast.forward(joint_angles)
             else:
-                raise Exception ("end effector link not supported", rot_type)
-        elif rot_type=='euler':
-            x = self.end_effector(q, ee_link=ee_link)
+                x = self.kdl.forward_position_kinematics(joint_angles)
+
+            # apply extra transformation of end-effector
+            if self.ee_transform is not None:
+                x = np.array(conversions.transform_end_effector(x, self.ee_transform))
+            return x
+
+        elif rot_type == 'euler':
+            x = self.end_effector(joint_angles)
             euler = np.array(transformations.euler_from_quaternion(x[3:], axes='rxyz'))
-            return np.concatenate((x[:3],euler))
+            return np.concatenate((x[:3], euler))
+
         else:
-            raise Exception ("Type not supported", rot_type)
+            raise Exception("Rotation Type not supported", rot_type)
 
     def joint_angle(self, joint):
         """
@@ -228,64 +282,47 @@ class Arm(object):
         """
         return self.joint_traj_controller.get_joint_velocities()
 
+### Basic Control Methods ###
+
     def set_joint_positions(self,
                             position,
                             velocities=None,
                             accelerations=None,
                             wait=False,
                             t=5.0):
-        self.joint_traj_controller.add_point(
-            positions=position,
-            time=t,
-            velocities=velocities,
-            accelerations=accelerations)
+        self.joint_traj_controller.add_point(positions=position,
+                                             time=t,
+                                             velocities=velocities,
+                                             accelerations=accelerations)
         self.joint_traj_controller.start(delay=1., wait=wait)
         self.joint_traj_controller.clear_points()
 
     def set_joint_positions_flex(self, position, t=5.0, v=None):
-        self._flexible_trajectory(position, t, v)
+        qc = self.joint_angles()
+        deltaq = (qc - position)
+        speed = deltaq / t
+        cmd = position
+        if np.any(np.abs(speed) > (self.max_joint_speed/t)):
+            print("exceeded max speed", speed)
+            return
+        self._flexible_trajectory(cmd, t, v)
 
     def set_target_pose(self, pose, wait=False, t=5.0):
         """ Supported pose is only x y z aw ax ay az """
-        q = self.solve_ik(pose)
-        self.set_joint_positions(q, wait=wait, t=t)
+        q = self._solve_ik(pose)
+        if q is None:
+            # IK not found
+            return False
+        else:
+            self.set_joint_positions(q, wait=wait, t=t)
+            return True
 
     def set_target_pose_flex(self, pose, t=5.0):
         """ Supported pose is only x y z aw ax ay az """
-        q = self.solve_ik(pose)
-
-        self.set_joint_positions_flex(q, t=t)
-
-    def solve_ik(self, pose):
-        """ Solve IK for ur3 arm
-            pose: [x y z aw ax ay az] array
-        """
-        pose = conversions.transform_end_effector(pose, self.ee_transform)
-        pose = np.array(pose).reshape(1, -1)
-        current_q = self.joint_angles()
-
-        ik = self.arm_ikfast.inverse(pose)
-        q = self._best_ik_sol(ik, current_q)
-
-        return self.joint_angles() if q is None else q
-
-    def _best_ik_sol(self, sols, q_guess, weights=np.ones(6)):
-        """ Get best IK solution """
-        valid_sols = []
-        for sol in sols:
-            test_sol = np.ones(6) * 9999.
-            for i in range(6):
-                for add_ang in [-2. * np.pi, 0, 2. * np.pi]:
-                    test_ang = sol[i] + add_ang
-                    if (abs(test_ang) <= 2. * np.pi
-                            and abs(test_ang - q_guess[i]) <
-                            abs(test_sol[i] - q_guess[i])):
-                        test_sol[i] = test_ang
-            if np.all(test_sol != 9999.):
-                valid_sols.append(test_sol)
-        if len(valid_sols) == 0:
-            print("ik failed :(")
-            return None
-        best_sol_ind = np.argmin(
-            np.sum((weights * (valid_sols - np.array(q_guess)))**2, 1))
-        return valid_sols[best_sol_ind]
+        q = self._solve_ik(pose)
+        if q is None:
+            # IK not found
+            return False
+        else:
+            self.set_joint_positions_flex(q, t=t)
+            return True

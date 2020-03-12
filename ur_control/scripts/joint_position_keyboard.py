@@ -8,55 +8,22 @@ import rospy
 
 from ur_control.arm import Arm
 from ur_control.constants import ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, ROBOT_UR_RTDE_DRIVER
+from ur_control import transformations
 import ur_control.conversions as conversions
 
-import ur3_kinematics.e_arm as ur3_arm
+from pyquaternion import Quaternion
+from ur_ikfast import ur_kinematics
 import getch
 
 import numpy as np
-
+np.set_printoptions(linewidth=np.inf)
 np.set_printoptions(suppress=True)
-
-
-def solve_ik(pose):
-    """ Solve IK for ur3 arm 
-        pose: [x y z aw ax ay az] array
-    """
-    pose = np.array(pose).reshape(1, -1)
-    current_q = arm.joint_angles()
-
-    ik = ur3_arm.inverse(pose)
-    q = best_ik_sol(ik, current_q)
-
-    return current_q if q is None else q
-
-
-def best_ik_sol(sols, q_guess, weights=np.ones(6)):
-    """ Get best IK solution """
-    valid_sols = []
-    for sol in sols:
-        test_sol = np.ones(6) * 9999.
-        for i in range(6):
-            for add_ang in [-2. * np.pi, 0, 2. * np.pi]:
-                test_ang = sol[i] + add_ang
-                if (abs(test_ang) <= 2. * np.pi and abs(test_ang - q_guess[i])
-                        < abs(test_sol[i] - q_guess[i])):
-                    test_sol[i] = test_ang
-        if np.all(test_sol != 9999.):
-            valid_sols.append(test_sol)
-    if len(valid_sols) == 0:
-        print("ik failed :(")
-        return None
-    best_sol_ind = np.argmin(
-        np.sum((weights * (valid_sols - np.array(q_guess)))**2, 1))
-    return valid_sols[best_sol_ind]
-
+ur3e_arm = ur_kinematics.URKinematics('ur3e')
 
 def map_keyboard():
     def print_robot_state():
         print(("Joint angles:", np.round(arm.joint_angles(), 5)))
-        print(("End Effector:", np.round(arm.end_effector(rot_type='euler'), 5)))
-        print(("quaternion:", np.round(arm.end_effector()[3:], 6)))
+        print(("Pose:", np.round(arm.end_effector(), 8)))
 
     def set_j(joint_name, sign):
         global delta_q
@@ -67,45 +34,31 @@ def map_keyboard():
     def update_d(delta, increment):
         if delta == 'q':
             global delta_q
-            delta_q += increment
-            print(("delta_q", delta_q))
+            delta_q += np.deg2rad(increment)
+            print(("delta_q", np.rad2deg(delta_q)))
         if delta == 'x':
             global delta_x
             delta_x += increment
             print(("delta_x", delta_x))
 
-    def set_pose(dim, sign):
+    def set_pose_ik(dim, sign):
         global delta_x
+        global delta_q
 
-        J = np.zeros((6, 6))
-        twist = np.zeros(6)
+        x = arm.end_effector()
+        delta = np.zeros(6)
 
-        x = arm.end_effector(rot_type='euler')
-        qc = arm.joint_angles()
-
-        if dim <= 2:
-            twist[dim] += delta_x * sign
-
-        if dim > 2:
-            euler = x[3:]
-            euler_diff = np.zeros(3)
-            euler_diff[dim - 3] += delta_x * sign
-
-            T = conversions.euler_transformation_matrix(euler)
-            twist[3:] = np.dot(T, euler_diff)
-
-        J = arm.kinematics.jacobian(arm.joint_angles())
-        J_inv = np.linalg.pinv(J)
-        dqc = np.dot(J_inv, twist).tolist()[0]
-
-        qc += dqc
-
-        # Publish command
-        arm.set_joint_positions_flex(position=qc, t=0.25)
+        if dim <= 2:  # position
+            delta[dim] += delta_x * sign
+        else:  # rotation
+            delta[dim] += delta_q * sign
+        
+        x = transformations.pose_from_angular_veloticy(x, delta, dt=1.0, ee_rotation=relative_ee)
+        arm.set_target_pose_flex(pose=x, t=0.25)
 
     global delta_q
     global delta_x
-    delta_q = 0.0010
+    delta_q = np.deg2rad(1.0)
     delta_x = 0.0010
 
     bindings = {
@@ -125,22 +78,22 @@ def map_keyboard():
         'e': (set_j, [5, -1], "wrist_3_joint decrease"),
         'p': (print_robot_state, [], "right: printing"),
         # Task Space
-        'h': (set_pose, [0, 1], "x increase"),
-        'k': (set_pose, [0, -1], "x decrease"),
-        'y': (set_pose, [1, 1], "y increase"),
-        'i': (set_pose, [1, -1], "y decrease"),
-        'u': (set_pose, [2, 1], "z increase"),
-        'j': (set_pose, [2, -1], "z decrease"),
-        'n': (set_pose, [3, 1], "ax increase"),
-        'm': (set_pose, [3, -1], "ax decrease"),
-        ',': (set_pose, [4, 1], "ay increase"),
-        '.': (set_pose, [4, -1], "ay decrease"),
-        'o': (set_pose, [5, 1], "az increase"),
-        'l': (set_pose, [5, -1], "az decrease"),
+        'h': (set_pose_ik, [0, 1], "x increase"),
+        'k': (set_pose_ik, [0, -1], "x decrease"),
+        'y': (set_pose_ik, [1, 1], "y increase"),
+        'i': (set_pose_ik, [1, -1], "y decrease"),
+        'u': (set_pose_ik, [2, 1], "z increase"),
+        'j': (set_pose_ik, [2, -1], "z decrease"),
+        'n': (set_pose_ik, [3, 1], "ax increase"),
+        'm': (set_pose_ik, [3, -1], "ax decrease"),
+        ',': (set_pose_ik, [4, 1], "ay increase"),
+        '.': (set_pose_ik, [4, -1], "ay decrease"),
+        'o': (set_pose_ik, [5, 1], "az increase"),
+        'l': (set_pose_ik, [5, -1], "az decrease"),
 
         # Increase or decrease delta
-        '1': (update_d, ['q', 0.001], "delta_q increase"),
-        '2': (update_d, ['q', -0.001], "delta_q decrease"),
+        '1': (update_d, ['q', 0.25], "delta_q increase"),
+        '2': (update_d, ['q', -0.25], "delta_q decrease"),
         '6': (update_d, ['x', 0.0001], "delta_x increase"),
         '7': (update_d, ['x', -0.0001], "delta_x decrease"),
     }
@@ -149,13 +102,13 @@ def map_keyboard():
     while not done and not rospy.is_shutdown():
         c = getch.getch()
         if c:
-            #catch Esc or ctrl-c
+            # catch Esc or ctrl-c
             if c in ['\x1b', '\x03']:
                 done = True
                 rospy.signal_shutdown("Example finished.")
             elif c in bindings:
                 cmd = bindings[c]
-                #expand binding to something like "set_j(right, 's0', 0.1)"
+                # expand binding to something like "set_j(right, 's0', 0.1)"
                 cmd[0](*cmd[1])
                 print(("command: %s" % (cmd[2], )))
             else:
@@ -184,6 +137,8 @@ See help inside the example with the '?' key for key bindings.
     parser = argparse.ArgumentParser(
         formatter_class=arg_fmt, description=main.__doc__, epilog=epilog)
     parser.add_argument(
+        '--relative', action='store_true', help='Motion Relative to ee')
+    parser.add_argument(
         '--robot', action='store_true', help='for the real robot')
     parser.add_argument(
         '--beta', action='store_true', help='for the real robot. beta driver')
@@ -192,13 +147,20 @@ See help inside the example with the '?' key for key bindings.
     rospy.init_node("joint_position_keyboard")
 
     driver = ROBOT_GAZEBO
+
+    global relative_ee
+    relative_ee = args.relative
+
     if args.robot:
         driver = ROBOT_UR_MODERN_DRIVER
     elif args.beta:
         driver = ROBOT_UR_RTDE_DRIVER
 
+    extra_ee = [0, 0, 0.10, 0, 0, 0, 1]
+
     global arm
-    arm = Arm(ft_sensor=False, driver=driver)
+    arm = Arm(ft_sensor=False, driver=driver, ee_transform=extra_ee)
+    print("Extra ee", extra_ee)
 
     map_keyboard()
     print("Done.")

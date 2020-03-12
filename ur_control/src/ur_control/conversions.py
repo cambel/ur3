@@ -262,7 +262,7 @@ def euler_transformation_matrix(euler):
                   [0, np.sin(r), np.cos(r) * np.cos(p)]])
     return T
 
-def transform_end_effector(pose, extra_pose, matrix=False):
+def transform_end_effector(pose, extra_pose, rot_type='quaternion'):
     """
     Transform end effector pose
       pose: current pose [x, y, z, ax, ay, az, w]
@@ -282,8 +282,12 @@ def transform_end_effector(pose, extra_pose, matrix=False):
     n_trans = np.matmul(c_rot, extra_translation) + c_trans
     n_rot = np.matmul(c_rot, extra_rot)
 
-    if matrix:
+    if rot_type=='matrix':
         return n_trans.flatten(), n_rot
-
-    return n_trans.flatten().tolist() + np.roll(
-        pyquaternion.Quaternion(matrix=n_rot).normalised.elements, -1).tolist()
+    
+    quat_rot = np.roll(pyquaternion.Quaternion(matrix=n_rot).normalised.elements, -1)
+    if rot_type=='euler':
+      euler = np.array(tr.euler_from_quaternion(quat_rot, axes='rxyz'))
+      return np.concatenate((n_trans.flatten(), euler))
+    elif rot_type == 'quaternion':
+      return np.concatenate((n_trans.flatten(), quat_rot))

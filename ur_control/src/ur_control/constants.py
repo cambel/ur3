@@ -2,9 +2,12 @@ ROBOT_GAZEBO = "simulation"
 ROBOT_UR_MODERN_DRIVER = "ur_modern_driver"
 ROBOT_UR_RTDE_DRIVER = "ur_rtde_driver"
 
-JOINT_PUBLISHER_REAL  = 'vel_based_pos_traj_controller'
-JOINT_PUBLISHER_BETA  = 'scale_pos_traj_controller'
-JOINT_PUBLISHER_SIM  = 'arm_controller'
+IKFAST = 'ikfast'
+TRAC_IK = 'trac_ik'
+
+JOINT_PUBLISHER_REAL = 'vel_based_pos_traj_controller'
+JOINT_PUBLISHER_BETA = 'scaled_pos_traj_controller'
+JOINT_PUBLISHER_SIM = 'arm_controller'
 JOINT_SUBSCRIBER = '/arm_controller/state'
 JOINT_STATE_SUBSCRIBER = 'joint_states'
 FT_SUBSCRIBER_REAL = '/wrench'
@@ -18,5 +21,7 @@ WRIST_1_JOINT = 'wrist_1_joint'
 WRIST_2_JOINT = 'wrist_2_joint'
 WRIST_3_JOINT = 'wrist_3_joint'
 
-JOINT_ORDER = [SHOULDER_PAN_JOINT, SHOULDER_LIFT_JOINT, ELBOW_JOINT,
-               WRIST_1_JOINT, WRIST_2_JOINT, WRIST_3_JOINT]
+JOINT_ORDER = [
+    SHOULDER_PAN_JOINT, SHOULDER_LIFT_JOINT, ELBOW_JOINT, WRIST_1_JOINT,
+    WRIST_2_JOINT, WRIST_3_JOINT
+]

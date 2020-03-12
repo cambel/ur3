@@ -3,6 +3,7 @@ import rospy
 import numpy as np
 import scipy.optimize
 import ur_control.transformations as tr
+from pyquaternion import Quaternion
 
 X_AXIS = np.array([1., 0., 0.])
 Y_AXIS = np.array([0., 1., 0.])
@@ -455,3 +456,24 @@ def transform_inv(T):
   T_inv[:3,:3] = R
   T_inv[:3,3] = np.dot(-R, p)
   return T_inv
+
+def quaternions_orientation_error(Qd, Qc):
+  """
+  Calculates the orientation error between to quaternions
+  Qd is the desired orientation
+  Qc is the current orientation
+  both with respect to the same fixed frame
+
+  return vector part
+  """
+  if isinstance(Qd, Quaternion) and isinstance(Qd, Quaternion):
+    ne = Qc.scalar*Qd.scalar + np.dot(np.array(Qc.vector).T,Qd.vector)
+    ee = Qc.scalar*np.array(Qd.vector) - Qd.scalar*np.array(Qc.vector) + np.dot(skew(Qc.vector),Qd.vector)
+    ee *= np.sign(ne) # disambiguate the sign of the quaternion
+    return ee
+  else:
+    assert isinstance(Qd, (list, np.ndarray))
+    assert isinstance(Qc, (list, np.ndarray))
+    q1 = Quaternion(np.roll(Qd, 1))
+    q2 = Quaternion(np.roll(Qc, 1))
+    return quaternions_orientation_error(q1, q2)

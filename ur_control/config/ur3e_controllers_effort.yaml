@@ -23,12 +23,12 @@ arm_controller:
       wrist_2_joint: {trajectory: 0.1, goal: 0.1}
       wrist_3_joint: {trajectory: 0.1, goal: 0.1}
   gains:
-    shoulder_pan_joint:  {p: 20000, d: 10, i: 10, i_clamp: 1}
-    shoulder_lift_joint: {p: 20000, d: 10, i: 10, i_clamp: 1}
-    elbow_joint:   {p: 10000, d: 10, i: 5, i_clamp: 1}
-    wrist_1_joint: {p: 5000,  d: 1,  i: 0, i_clamp: 1}
-    wrist_2_joint: {p: 5000,  d: 1,  i: 0, i_clamp: 1}
-    wrist_3_joint: {p: 1000,  d: 1,  i: 0, i_clamp: 1}
+    shoulder_pan_joint:  {p: 100000, d: 50, i: 10, i_clamp: 1, antiwindup: true}
+    shoulder_lift_joint: {p: 100000, d: 50, i: 10, i_clamp: 1, antiwindup: true}
+    elbow_joint:   {p: 50000,  d: 20, i: 5, i_clamp: 1, antiwindup: true}
+    wrist_1_joint: {p: 10000,  d: 10, i: 1, i_clamp: 1, antiwindup: true}
+    wrist_2_joint: {p: 10000,  d: 10, i: 1, i_clamp: 1, antiwindup: true}
+    wrist_3_joint: {p: 5000,   d: 1,  i: 0, i_clamp: 1}
   stop_trajectory_duration: 0.5
   state_publish_rate:  25
   action_monitor_rate: 10

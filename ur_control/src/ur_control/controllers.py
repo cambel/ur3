@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 import actionlib
 import copy
-from . import conversions
 import collections
-from . import filters
 import rospy
-from . import utils
+from ur_control import utils, filters, conversions
 import os
 import numpy as np
 from std_msgs.msg import Float64

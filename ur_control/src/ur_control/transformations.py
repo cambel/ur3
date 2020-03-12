@@ -172,7 +172,7 @@ import warnings
 import math
 
 import numpy
-
+from pyquaternion import Quaternion
 # Documentation in HTML format can be generated with Epydoc
 __docformat__ = "restructuredtext en"
 
@@ -1224,6 +1224,15 @@ def quaternion_from_matrix(matrix):
     q *= 0.5 / math.sqrt(t * M[3, 3])
     return q
 
+def pose_quaternion_from_matrix(matrix):
+    """Return translation + quaternion(x,y,z,w)
+    """
+    if matrix.shape == (3,4):
+        matrix = numpy.concatenate((matrix, [[0, 0, 0, 1]]), axis=0)
+
+    pose = matrix[:3,3]
+    quat = quaternion_from_matrix(matrix)
+    return numpy.concatenate((pose, quat), axis=0)
 
 def quaternion_multiply(quaternion1, quaternion0):
     """Return multiplication of two quaternions.
@@ -1703,3 +1712,90 @@ def _import_module(module_name, warn=True, prefix='_py_', ignore='_'):
                     warnings.warn("No Python implementation of " + attr)
             globals()[attr] = getattr(module, attr)
         return True
+
+def pose_euler_to_quaternion(pose, delta, ee_rotation=False, axes='rxyz'):
+    """ 
+        Transform an action translation + euler [x, y, z, rx, ry, rz] into 
+        translation(optional rotated) + quaternion [x, y, z, rx, ry, rz, w]
+        pose: list initial pose translation + quaternion
+        delta: list aditional desired motion translation + euler 
+        ee_rotation: boolean whether to return the rotated translation w.r.t
+                             the end effector
+        axes: string type of axes for euler angles transformation
+    """
+    pose_cmd = pose[:]
+    delta_x = delta[:]
+    # Translation
+    if ee_rotation:
+        delta_x[2] *= -1
+        delta_x[:3] = Quaternion(numpy.roll(pose[3:], 1)).rotate(delta[:3])
+        pose_cmd[:3] += delta_x[:3]
+    else:
+        pose_cmd[:3] += delta_x[:3]
+
+    # Rotation
+    euler = euler_from_quaternion(pose[3:], axes=axes)
+    euler += delta_x[3:]
+    pose_cmd[3:] = quaternion_from_euler(euler[0], euler[1], euler[2], axes=axes)
+    
+    return pose_cmd
+
+def pose_from_angular_veloticy(pose, velocity, dt=1.0, ee_rotation=False):
+    """ 
+        Transform an action translation + euler [x, y, z, rx, ry, rz] into 
+        translation(optional rotated) + quaternion [x, y, z, rx, ry, rz, w]
+        pose: list initial pose translation + quaternion
+        velocity: list aditional desired motion translation + euler 
+        ee_rotation: boolean whether to return the rotated translation w.r.t
+                             the end effector
+    """
+    _pose = numpy.copy(pose)
+    translation = _pose[:3]
+    orientation = Quaternion(numpy.roll(_pose[3:], 1))
+    vel = numpy.copy(velocity)
+    lin_vel = vel[:3]
+    ang_vel = vel[3:]
+
+    pose_cmd = numpy.zeros_like(pose)
+    # Translation
+    if ee_rotation:
+        lin_vel[2] *= -1
+        lin_vel = orientation.rotate(lin_vel)
+        pose_cmd[:3] = translation + lin_vel*dt
+    else:
+        pose_cmd[:3] = translation + lin_vel*dt
+
+    # Rotation
+    w = Quaternion(scalar=0, vector=ang_vel)
+
+    new_orientation = (((0.5 * dt * w) + 1) * orientation)
+
+    pose_cmd[3:] = numpy.roll(new_orientation.elements, -1)
+    
+    return pose_cmd
+
+def end_effector_transform(pose):
+    """
+    pose: translation + quaternion
+
+    """
+    translation = numpy.array([pose[:3]]).reshape(3,1)
+    rotation = numpy.array(Quaternion(pose[3:]).rotation_matrix).reshape(3,3)
+
+    transform = numpy.concatenate((rotation, translation), axis=1)
+    transform = numpy.concatenate((transform, [[0,0,0,1]]))
+
+    return transform
+
+def angular_velocity_from_quaternions(from_Q, to_Q, dt):
+    """
+    Calculates the angular velocity between two quaternions for a delta time dt
+    """
+    if isinstance(from_Q, Quaternion) and isinstance(to_Q, Quaternion):
+        return (2.0 * (to_Q-from_Q)*from_Q.inverse / dt).vector
+    else:
+        assert isinstance(from_Q, (list, numpy.ndarray))
+        assert isinstance(to_Q, (list, numpy.ndarray))
+        _from_Q = Quaternion(numpy.roll(from_Q, 1))
+        _to_Q = Quaternion(numpy.roll(to_Q, 1))
+        return angular_velocity_from_quaternions(_from_Q, _to_Q, dt)
