@@ -3,6 +3,8 @@ Universal Robot UR3
 
 Custom ROS packages for the UR3 Robot with a Robotiq gripper. Tested on Ros Kinetic Ubuntu 16.04. Python 2.7 and 3.6. Preferibly use Python 3.6.
 
+For ROS Melodic Ubuntu 18.04. Two dependencies repositories has to be updated: **gazebo_ros_link_attacher** and **robotiq**. Both git repositories have a "melodic-devel" branch. Movint those 2 repositories to the melodic-devel branch makes this repository compatible with ROS Melodic.
+
 ## Installation
 
 This will assume that you already have a catkin workspace 'ros_ws'. Go to the source directory of the workspace
