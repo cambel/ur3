@@ -1,4 +1,4 @@
-Universal Robot UR3
+Universal Robot UR3/UR3e
 ===
 
 Custom ROS packages for the UR3 Robot with a Robotiq gripper. Tested on Ros Kinetic Ubuntu 16.04. Python 2.7 and 3.6. Preferibly use Python 3.6.
