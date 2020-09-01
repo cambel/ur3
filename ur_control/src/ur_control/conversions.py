@@ -2,13 +2,13 @@
 
 import numpy as np
 import ur_control.transformations as tr
+from ur_control import spalg
 # Messages
 from geometry_msgs.msg import (Point, Quaternion, Pose, Vector3, Transform,
                                Wrench)
 from sensor_msgs.msg import CameraInfo, Image, RegionOfInterest
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 import pyquaternion
-
 # OpenRAVE types <--> Numpy types
 def from_dict(transform_dict):
     """
@@ -271,12 +271,11 @@ def transform_end_effector(pose, extra_pose, rot_type='quaternion'):
               else: return translation + quaternion list
     """
     extra_translation = np.array(extra_pose[:3]).reshape(3, 1)
-    extra_rot = pyquaternion.Quaternion(np.roll(extra_pose[3:], 1)).rotation_matrix
+    extra_rot = spalg.vector_to_quaternion(extra_pose[3:]).rotation_matrix
 
     c_trans = np.array(pose[:3]).reshape(3, 1)
-    c_rot = pyquaternion.Quaternion(np.roll(
-        pose[3:],
-        1)).rotation_matrix  # BE CAREFUL!! Pose from KDL is ax ay az aw
+    c_rot = spalg.vector_to_quaternion(pose[3:]).rotation_matrix  
+    # BE CAREFUL!! Pose from KDL is ax ay az aw
     #              Pose from IKfast is aw ax ay az
 
     n_trans = np.matmul(c_rot, extra_translation) + c_trans

@@ -1723,7 +1723,7 @@ def pose_euler_to_quaternion(pose, delta, ee_rotation=False, axes='rxyz'):
                              the end effector
         axes: string type of axes for euler angles transformation
     """
-    pose_cmd = pose[:]
+    pose_cmd = numpy.copy(pose)
     delta_x = delta[:]
     # Translation
     if ee_rotation:
@@ -1766,13 +1766,24 @@ def pose_from_angular_veloticy(pose, velocity, dt=1.0, ee_rotation=False):
         pose_cmd[:3] = translation + lin_vel*dt
 
     # Rotation
-    w = Quaternion(scalar=0, vector=ang_vel)
+    new_orientation = integrateUnitQuaternionDMM(orientation, ang_vel, dt)
 
-    new_orientation = (((0.5 * dt * w) + 1) * orientation)
-
-    pose_cmd[3:] = numpy.roll(new_orientation.elements, -1)
+    pose_cmd[3:] = numpy.roll(new_orientation.normalised.elements, -1)
     
     return pose_cmd
+
+def integrateUnitQuaternionDMM(q, w, dt):
+    """ Integrate a unit quaterniong using the Direct Multiplicaiton Method"""
+    w_norm = numpy.linalg.norm(w)
+    if w_norm == 0:
+        return q
+    q_tmp = Quaternion(scalar=(numpy.cos(w_norm*dt/2.)), vector=numpy.sin(w_norm*dt/2)*w/w_norm)
+    return q_tmp*q
+
+def integrateUnitQuaternionEuler(q, w, dt):
+    """ Integrate a unit quaterniong using Euler Method"""
+    qw = Quaternion(scalar=0, vector=w)
+    return (q + 0.5*qw*dt*q).normalised
 
 def end_effector_transform(pose):
     """

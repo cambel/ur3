@@ -13,7 +13,7 @@ from ur_control.constants import JOINT_ORDER, JOINT_PUBLISHER_REAL, \
     JOINT_PUBLISHER_BETA, JOINT_PUBLISHER_SIM, \
     FT_SUBSCRIBER_REAL, FT_SUBSCRIBER_SIM, \
     ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, ROBOT_UR_RTDE_DRIVER, \
-    IKFAST, TRAC_IK
+    IKFAST, TRAC_IK, DONE, FORCE_TORQUE_EXCEEDED, SPEED_LIMIT_EXCEEDED, IK_NOT_FOUND
 
 from ur_ikfast import ur_kinematics as ur_ikfast
 
@@ -22,6 +22,7 @@ from ur_pykdl import ur_kinematics
 from trac_ik_python.trac_ik import IK
 
 cprint = utils.TextColors()
+
 
 class Arm(object):
     """ UR3 arm controller """
@@ -115,7 +116,6 @@ class Arm(object):
         rospy.sleep(1)
         self.set_wrench_offset(override=False)
 
-
     def _update_wrench_offset(self):
         self.wrench_offset = self.get_filtered_ft().tolist()
         rospy.set_param('/%s/ft_offset' % self.ns, self.wrench_offset)
@@ -184,6 +184,22 @@ class Arm(object):
             if self.wrench_offset is None:
                 self._update_wrench_offset()
 
+    def get_ee_wrench_hist(self, hist_size=24):
+        if self.ft_sensor is None:
+            raise Exception("FT Sensor not initialized")
+
+        q_hist = self.joint_traj_controller.get_joint_positions_hist()[:hist_size]
+        ft_hist = self.ft_sensor.get_filtered_wrench(hist_size=hist_size)
+
+        if self.wrench_offset is not None:
+            ft_hist = np.array(ft_hist) - np.array(
+                self.wrench_offset)
+
+        poses_hist = [self.end_effector(q) for q in q_hist]
+        wrench_hist = [spalg.convert_wrench(wft, p).tolist() for p, wft in zip(poses_hist, ft_hist)]
+        
+        return np.array(wrench_hist)
+
     def get_ee_wrench(self):
         """ Compute the wrench (force/torque) in task-space """
         if self.ft_sensor is None:
@@ -191,20 +207,15 @@ class Arm(object):
 
         wrench_force = self.ft_sensor.get_filtered_wrench()
 
-        # compute force transformation?
         if self.wrench_offset is not None:
             wrench_force = np.array(wrench_force) - np.array(
                 self.wrench_offset)
 
+        # compute force transformation?
         # # # Transform of EE
         pose = self.end_effector()
-        ee_transform = Quaternion(np.roll(pose[3:], 1)).transformation_matrix
 
-        # # # Wrench force transformation
-        wFtS = spalg.force_frame_transform(ee_transform)
-        wrench = np.dot(wFtS, wrench_force)
-
-        return wrench
+        return spalg.convert_wrench(wrench_force, pose)
 
     def publish_wrench(self):
         if self.ft_sensor is None:
@@ -294,7 +305,7 @@ class Arm(object):
                                              time=t,
                                              velocities=velocities,
                                              accelerations=accelerations)
-        self.joint_traj_controller.start(delay=1., wait=wait)
+        self.joint_traj_controller.start(delay=0.01, wait=wait)
         self.joint_traj_controller.clear_points()
 
     def set_joint_positions_flex(self, position, t=5.0, v=None):
@@ -304,25 +315,24 @@ class Arm(object):
         cmd = position
         if np.any(np.abs(speed) > (self.max_joint_speed/t)):
             print("exceeded max speed", speed)
-            return
+            return SPEED_LIMIT_EXCEEDED
         self._flexible_trajectory(cmd, t, v)
+        return DONE
 
     def set_target_pose(self, pose, wait=False, t=5.0):
         """ Supported pose is only x y z aw ax ay az """
         q = self._solve_ik(pose)
         if q is None:
             # IK not found
-            return False
+            return IK_NOT_FOUND
         else:
-            self.set_joint_positions(q, wait=wait, t=t)
-            return True
+            return self.set_joint_positions(q, wait=wait, t=t)
 
     def set_target_pose_flex(self, pose, t=5.0):
         """ Supported pose is only x y z aw ax ay az """
         q = self._solve_ik(pose)
         if q is None:
             # IK not found
-            return False
+            return IK_NOT_FOUND
         else:
-            self.set_joint_positions_flex(q, t=t)
-            return True
+            return self.set_joint_positions_flex(q, t=t)

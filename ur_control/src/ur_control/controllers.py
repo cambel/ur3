@@ -18,7 +18,6 @@ from control_msgs.msg import GripperCommandAction, GripperCommandGoal
 # Link attacher
 from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
 
-
 class GripperController(object):
   def __init__(self, namespace='', timeout=5.0, attach_plugin=False, attach_link='robot::wrist_3_link'):
     self.ns = utils.solve_namespace(namespace)
@@ -115,6 +114,7 @@ class JointControllerBase(object):
     from the same node.
     """
     self.ns = utils.solve_namespace(namespace)
+    self._jnt_positions_hist = collections.deque(maxlen=24)
     # Set-up publishers/subscribers
     self._js_sub = rospy.Subscriber('%sjoint_states' % self.ns, JointState, self.joint_states_cb, queue_size=1)
     rospy.logdebug('Waiting for [%sjoint_states] topic' % self.ns)
@@ -152,7 +152,14 @@ class JointControllerBase(object):
     """
     return np.array(self._current_jnt_positions)
   
-  
+  def get_joint_positions_hist(self):
+    """
+    Returns the current joint positions of the UR robot.
+    @rtype: numpy.ndarray
+    @return: Current joint positions of the UR robot.
+    """
+    return list(self._jnt_positions_hist)
+    
   def get_joint_velocities(self):
     """
     Returns the current joint velocities of the UR robot.
@@ -181,6 +188,7 @@ class JointControllerBase(object):
         position.append(msg.position[idx])
     if set(name) == set(valid_joint_names):
       self._current_jnt_positions = np.array(position)
+      self._jnt_positions_hist.append(self._current_jnt_positions)
       self._current_jnt_velocities = np.array(velocity)
       self._current_jnt_efforts = np.array(effort)
       self._joint_names = list(name)
@@ -421,7 +429,6 @@ class JointTrajectoryController(JointControllerBase):
     return self._client.wait_for_result(timeout=rospy.Duration(timeout))
 
 class FTsensor(object):
-  queue_len = 10
   
   def __init__(self, namespace='', timeout=3.0):
     ns = utils.solve_namespace(namespace)
@@ -447,9 +454,13 @@ class FTsensor(object):
     self.add_wrench_observation(conversions.from_wrench(self.raw_msg.wrench))
   
   #function to filter out high frequency signal  
-  def get_filtered_wrench(self):
+  def get_filtered_wrench(self, hist_size=1):
     if len(self.wrench_queue) < self.wrench_window:
       return None    
     wrench_filtered = self.wrench_filter(np.array(self.wrench_queue))
-    return wrench_filtered[-1,:]
+    if hist_size == 1:
+      return wrench_filtered[-hist_size,:]
+    else:
+      return wrench_filtered[-hist_size:,:]
+
     

@@ -474,6 +474,23 @@ def quaternions_orientation_error(Qd, Qc):
   else:
     assert isinstance(Qd, (list, np.ndarray))
     assert isinstance(Qc, (list, np.ndarray))
-    q1 = Quaternion(np.roll(Qd, 1))
-    q2 = Quaternion(np.roll(Qc, 1))
+    q1 = vector_to_quaternion(Qd)
+    q2 = vector_to_quaternion(Qc)
     return quaternions_orientation_error(q1, q2)
+
+def vector_to_quaternion(vector):
+  return Quaternion(np.roll(vector, 1))
+
+def translation_rotation_error(to_pose, from_pose):
+    position_error = to_pose[:3] - from_pose[:3]
+    orientation_error = quaternions_orientation_error(to_pose[3:], from_pose[3:])
+    return np.concatenate((position_error, orientation_error))
+
+def convert_wrench(wrench_force, pose):
+    ee_transform = vector_to_quaternion(pose[3:]).transformation_matrix
+
+    # # # Wrench force transformation
+    wFtS = force_frame_transform(ee_transform)
+    wrench = np.dot(wFtS, wrench_force)
+
+    return wrench
