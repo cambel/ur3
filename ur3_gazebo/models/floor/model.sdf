@@ -7,7 +7,7 @@
         <geometry>
           <plane>
             <normal>0 0 1</normal>
-            <size>5 5</size>
+            <size>10 10</size>
           </plane>
         </geometry>
         <surface>
@@ -27,13 +27,13 @@
         <geometry>
           <plane>
             <normal>0 0 1</normal>
-            <size>5 5</size>
+            <size>100 100</size>
           </plane>
         </geometry>
         <material>
           <script>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-            <name>Gazebo/Grey</name>
+            <uri>file://floor/materials/scripts/checkboard.material</uri>
+            <name>CheckerTexture</name>
           </script>
         </material>
       </visual>

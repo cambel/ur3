@@ -3,6 +3,8 @@ PROJECT(ur3_gazebo)
 
 FIND_PACKAGE(catkin REQUIRED)
 
+catkin_python_setup()
+
 catkin_package()
 include_directories()
 
