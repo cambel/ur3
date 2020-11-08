@@ -7,7 +7,7 @@ import argparse
 import rospy
 
 from ur_control.arm import Arm
-from ur_control.constants import ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, ROBOT_UR_RTDE_DRIVER
+from ur_control.constants import ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, ROBOT_UR_RTDE_DRIVER, ROBOT_GAZEBO_DUAL_RIGHT, ROBOT_GAZEBO_DUAL_LEFT
 from ur_control import transformations
 import ur_control.conversions as conversions
 
@@ -22,8 +22,10 @@ ur3e_arm = ur_kinematics.URKinematics('ur3e')
 
 def map_keyboard():
     def print_robot_state():
-        print(("Joint angles:", np.round(arm.joint_angles(), 5)))
-        print(("Pose:", np.round(arm.end_effector(), 8)))
+        print("Joint angles:", np.round(arm.joint_angles(), 4))
+        print("EE Pose:", np.round(arm.end_effector(), 5))
+        if arm.gripper:
+            print("Gripper position:", np.round(arm.gripper.get_position(), 4))
 
     def set_j(joint_name, sign):
         global delta_q
@@ -47,19 +49,33 @@ def map_keyboard():
 
         x = arm.end_effector()
         delta = np.zeros(6)
+        
+        n = 500
+        dt =  0.25/float(n)
 
         if dim <= 2:  # position
-            delta[dim] += delta_x * sign
+            delta[dim] += delta_x * sign / 0.25
         else:  # rotation
-            delta[dim] += delta_q * sign
+            delta[dim] += delta_q * sign / 0.25
         
-        x = transformations.pose_from_angular_veloticy(x, delta, dt=1.0, ee_rotation=relative_ee)
+        for _ in range(n): 
+            x = transformations.pose_from_angular_veloticy(x, delta, dt=dt, ee_rotation=relative_ee)
+
         arm.set_target_pose_flex(pose=x, t=0.25)
+
+    def open_gripper():
+        arm.gripper.open()
+    def close_gripper():
+        arm.gripper.close()
+    def move_gripper(delta):
+        cpose = arm.gripper.get_position()
+        cpose += delta
+        arm.gripper.command(cpose)
 
     global delta_q
     global delta_x
     delta_q = np.deg2rad(1.0)
-    delta_x = 0.0010
+    delta_x = 0.001
 
     bindings = {
         #'shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_joint', 'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint'
@@ -96,6 +112,12 @@ def map_keyboard():
         '2': (update_d, ['q', -0.25], "delta_q decrease"),
         '6': (update_d, ['x', 0.0001], "delta_x increase"),
         '7': (update_d, ['x', -0.0001], "delta_x decrease"),
+
+        # Gripper
+        '5': (move_gripper, [0.002], "open a bit gripper"),
+        't': (open_gripper, [], "open gripper"),
+        'g': (close_gripper, [], "close gripper"),
+        'b': (move_gripper, [-0.002], "close a bit gripper"),        
     }
     done = False
     print("Controlling joints. Press ? for help, Esc to quit.")
@@ -141,7 +163,13 @@ See help inside the example with the '?' key for key bindings.
     parser.add_argument(
         '--robot', action='store_true', help='for the real robot')
     parser.add_argument(
-        '--beta', action='store_true', help='for the real robot. beta driver')
+        '--old', action='store_true', help='for the real robot. old-driver driver')
+    parser.add_argument(
+        '--right', action='store_true', help='for the sim dual robot. right arm driver')
+    parser.add_argument(
+        '--left', action='store_true', help='for the sim dual robot. left arm driver')
+    parser.add_argument(
+        '--gripper', action='store_true', help='enable gripper commands')
     args = parser.parse_args(rospy.myargv()[1:])
 
     rospy.init_node("joint_position_keyboard")
@@ -152,14 +180,20 @@ See help inside the example with the '?' key for key bindings.
     relative_ee = args.relative
 
     if args.robot:
-        driver = ROBOT_UR_MODERN_DRIVER
-    elif args.beta:
         driver = ROBOT_UR_RTDE_DRIVER
+    elif args.old:
+        driver = ROBOT_UR_MODERN_DRIVER
+    elif args.left:
+        driver = ROBOT_GAZEBO_DUAL_LEFT
+    elif args.right:
+        driver = ROBOT_GAZEBO_DUAL_RIGHT
+    
+    use_gripper = args.gripper  
 
-    extra_ee = [0, 0, 0.10, 0, 0, 0, 1]
+    extra_ee = [0, 0, 0.05, 0, 0, 0, 1]
 
     global arm
-    arm = Arm(ft_sensor=False, driver=driver, ee_transform=extra_ee)
+    arm = Arm(ft_sensor=False, driver=driver, ee_transform=extra_ee, gripper=use_gripper)
     print("Extra ee", extra_ee)
 
     map_keyboard()

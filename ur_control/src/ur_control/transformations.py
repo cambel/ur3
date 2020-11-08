@@ -1785,17 +1785,19 @@ def integrateUnitQuaternionEuler(q, w, dt):
     qw = Quaternion(scalar=0, vector=w)
     return (q + 0.5*qw*dt*q).normalised
 
-def end_effector_transform(pose):
+def pose_to_transform(pose):
     """
-    pose: translation + quaternion
+    pose: translation + quaternion[x, y, z, w]
+
+    Note: the rest of this package use convention [x, y, z, w] but pyquaternion uses [w, x, y, z]
+    so we roll the quaternion before transform 
 
     """
     translation = numpy.array([pose[:3]]).reshape(3,1)
-    rotation = numpy.array(Quaternion(pose[3:]).rotation_matrix).reshape(3,3)
+    rotation = numpy.array(Quaternion(numpy.roll(pose[3:],1)).rotation_matrix).reshape(3,3)
 
     transform = numpy.concatenate((rotation, translation), axis=1)
     transform = numpy.concatenate((transform, [[0,0,0,1]]))
-
     return transform
 
 def angular_velocity_from_quaternions(from_Q, to_Q, dt):

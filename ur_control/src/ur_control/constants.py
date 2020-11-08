@@ -1,4 +1,6 @@
 ROBOT_GAZEBO = "simulation"
+ROBOT_GAZEBO_DUAL_RIGHT = "sim_dual_right"
+ROBOT_GAZEBO_DUAL_LEFT = "sim_dual_left"
 ROBOT_UR_MODERN_DRIVER = "ur_modern_driver"
 ROBOT_UR_RTDE_DRIVER = "ur_rtde_driver"
 
@@ -6,8 +8,11 @@ IKFAST = 'ikfast'
 TRAC_IK = 'trac_ik'
 
 JOINT_PUBLISHER_REAL = 'vel_based_pos_traj_controller'
-JOINT_PUBLISHER_BETA = 'scaled_pos_traj_controller'
+JOINT_PUBLISHER_BETA = 'scaled_pos_joint_traj_controller'
 JOINT_PUBLISHER_SIM = 'arm_controller'
+JOINT_PUBLISHER_SIM_DUAL_RIGHT = 'rightarm/'
+JOINT_PUBLISHER_SIM_DUAL_LEFT = 'leftarm/'
+
 JOINT_SUBSCRIBER = '/arm_controller/state'
 JOINT_STATE_SUBSCRIBER = 'joint_states'
 FT_SUBSCRIBER_REAL = '/wrench'

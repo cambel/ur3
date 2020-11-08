@@ -6,7 +6,7 @@
     
     <gui>
       <camera name='user_camera'>
-        <pose frame=''>1.14644 -0.745531 1.20353 0 0.334 2.284</pose>
+        <pose frame=''>1.28552 1.43709 1.77307 0 0.43 -1.99519</pose>
         <view_controller>orbit</view_controller>
         <projection_type>perspective</projection_type>
       </camera>
@@ -36,7 +36,7 @@
 
     <!-- A ground plane -->
     <include>
-      <uri>model://ground_plane</uri>
+      <uri>model://floor</uri>
       <pose>0 0 0 0 0 0</pose>
     </include>
 
@@ -264,7 +264,7 @@
     <model name="cube1">
       <pose>0.4 -0.2 0.775 0 0 0</pose>
       <link name="link">
-        <pose>0 0 0.025 0 0 0</pose>
+        <pose>0 0 0.02 0 0 0</pose>
         <inertial>
           <mass>0.0565</mass>
           <inertia>
@@ -279,7 +279,7 @@
         <collision name="collision">
           <geometry>
             <box>
-              <size>0.05 0.05 0.05</size>
+              <size>0.04 0.04 0.04</size>
             </box>
           </geometry>
           <surface>
@@ -305,7 +305,7 @@
         <visual name="visual">
           <geometry>
             <box>
-              <size>0.05 0.05 0.05</size>
+              <size>0.04 0.04 0.04</size>
             </box>
           </geometry>
           <material>
@@ -321,7 +321,7 @@
     <model name="cube2">
       <pose>0.4 0 0.775 0 0 0</pose>
       <link name="link">
-        <pose>0 0 0.025 0 0 0</pose>
+        <pose>0 0 0.02 0 0 0</pose>
         <inertial>
           <mass>0.0565</mass>
           <inertia>
@@ -336,7 +336,7 @@
         <collision name="collision">
           <geometry>
             <box>
-              <size>0.05 0.05 0.05</size>
+              <size>0.04 0.04 0.04</size>
             </box>
           </geometry>
           <surface>
@@ -362,7 +362,7 @@
         <visual name="visual">
           <geometry>
             <box>
-              <size>0.05 0.05 0.05</size>
+              <size>0.04 0.04 0.04</size>
             </box>
           </geometry>
           <material>
@@ -378,7 +378,7 @@
     <model name="cube3">
       <pose>0.4 0.2 0.775 0 0 0</pose>
       <link name="link">
-        <pose>0 0 0.025 0 0 0</pose>
+        <pose>0 0 0.02 0 0 0</pose>
         <inertial>
           <mass>0.0565</mass>
           <inertia>
@@ -393,7 +393,7 @@
         <collision name="collision">
           <geometry>
             <box>
-              <size>0.05 0.05 0.05</size>
+              <size>0.04 0.04 0.04</size>
             </box>
           </geometry>
           <surface>
@@ -419,7 +419,7 @@
         <visual name="visual">
           <geometry>
             <box>
-              <size>0.05 0.05 0.05</size>
+              <size>0.04 0.04 0.04</size>
             </box>
           </geometry>
           <material>

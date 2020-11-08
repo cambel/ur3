@@ -2,9 +2,11 @@
 <robot name="ur3" xmlns:xacro="http://ros.org/wiki/xacro">
 
   <xacro:arg name="grasp_plugin" default="false" />
+  <xacro:arg name="use_effort_interface" default="false" />
+  <xacro:arg name="aruco_marker" default="false" />
 
   <xacro:include filename="$(find ur3_description)/urdf/ur3e/ur3e_joint_limited_robot.urdf.xacro" />
-  <xacro:include filename="$(find robotiq_description)/urdf/robotiq_85_gripper.urdf.xacro" />
+  <xacro:include filename="$(find robotiq_description)/urdf/robotiq_hande_gripper.urdf.xacro" />
   
   <!-- Robotiq Coupler -->
   <!--  + Height added by the coupler: 8mm -->
@@ -40,19 +42,36 @@
     <material>Gazebo/FlatBlack</material>
   </gazebo>
 
-  <!-- Equivalent to the OpenRAVE manipulator denso_robotiq_85_gripper -->
-  <link name="ur3_robotiq_85_gripper" />
+  <!-- Equivalent to the OpenRAVE manipulator denso_robotiq_hande_gripper -->
+  <link name="ur3_robotiq_hande_gripper" />
   <joint name="manipulator_dummy_joint" type="fixed">
     <origin xyz="0 0 0.1441" rpy="0 0 0" />
     <parent link="robotiq_coupler"/>
-    <child link="ur3_robotiq_85_gripper"/>
+    <child link="ur3_robotiq_hande_gripper"/>
   </joint>
     
-  <!-- Attach the robotiq 85 gripper -->
-  <xacro:robotiq_85_gripper prefix="" parent="robotiq_coupler" >
-    <origin xyz="0 0 0.004" rpy="0 ${-pi/2} ${pi}"/>
-  </xacro:robotiq_85_gripper> 
-  
+  <!-- Attach the robotiq hand-e gripper -->
+  <xacro:robotiq_hande_gripper prefix="" parent="robotiq_coupler" >
+    <origin xyz="0 0 0.004" rpy="0 0 ${pi/2}"/>
+  </xacro:robotiq_hande_gripper> 
+
+  <group if = "$(arg aruco_marker)">
+    <link name="aruco_marker">
+        <visual>
+          <geometry>
+            <box size="0.1 0.1 0.01"/>
+          </geometry>
+        </visual>
+    </link>
+    <joint name="aruco_dummy_joint" type="fixed">
+      <origin xyz="0 0 0.20" rpy="0 ${pi/2} ${pi/2}" />
+      <parent link="robotiq_coupler"/>
+      <child link="aruco_marker"/>
+    </joint>
+    <gazebo reference="aruco_marker">
+      <material>CB/Apriltag36_11_00000</material>
+    </gazebo>
+  </group>
   <!-- Gazebo FT sensor plugin -->
   <gazebo reference="wrist_3_link-tool0_fixed_joint">
     <provideFeedback>true</provideFeedback>
@@ -67,17 +86,17 @@
   </gazebo>
   
   <!-- Gazebo grasping plugin 
-      grasp_plugin False = gazebo_gripper 
       grasp_plugin True = custom gazebo_grasp_fix
+      grasp_plugin False = gazebo_gripper 
   -->
   <xacro:if value="$(arg grasp_plugin)">
     <gazebo>
       <plugin name="gazebo_grasp_fix" filename="libgazebo_grasp_fix.so">
             <arm>
-              <arm_name>robotiq_85</arm_name>
+              <arm_name>robotiq_hande</arm_name>
               <palm_link>tool0</palm_link>
-              <gripper_link>robotiq_85_left_finger_tip_link</gripper_link>
-              <gripper_link>robotiq_85_right_finger_tip_link</gripper_link>
+              <gripper_link>hande_right_finger</gripper_link>
+              <gripper_link>hande_left_finger</gripper_link>
             </arm>
           <forces_angle_tolerance>100</forces_angle_tolerance>
           <update_rate>100</update_rate>
@@ -97,9 +116,9 @@
           <detach_steps>2</detach_steps>    
           <min_contact_count>3</min_contact_count>
         </grasp_check>
-        <gripper_link>robotiq_85_left_finger_tip_link</gripper_link>
-        <gripper_link>robotiq_85_right_finger_tip_link</gripper_link>
-        <palm_link>robotiq_85_base_link</palm_link>
+        <gripper_link>hande_right_finger</gripper_link>
+        <gripper_link>hande_left_finger</gripper_link>
+        <palm_link>hand_e_link</palm_link>
       </gripper>
     </gazebo> 
   </xacro:unless>

@@ -164,6 +164,17 @@ def to_pose(T):
     quat = Quaternion(*tr.quaternion_from_matrix(T))
     return Pose(pos, quat)
 
+def to_pose_msg(pose):
+    """
+  Converts a homogeneous transformation (4x4) into a C{geometry_msgs/Pose} ROS message.
+  @type  T: np.array
+  @param T: The homogeneous transformation
+  @rtype: geometry_msgs/Pose
+  @return: The resulting ROS message
+  """
+    pos = Point(*pose[:3])
+    quat = to_quaternion(pose[3:])
+    return Pose(pos, quat)
 
 def to_roi(top_left, bottom_right):
     msg = RegionOfInterest()

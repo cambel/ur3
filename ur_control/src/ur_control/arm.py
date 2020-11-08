@@ -13,11 +13,12 @@ from ur_control.constants import JOINT_ORDER, JOINT_PUBLISHER_REAL, \
     JOINT_PUBLISHER_BETA, JOINT_PUBLISHER_SIM, \
     FT_SUBSCRIBER_REAL, FT_SUBSCRIBER_SIM, \
     ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, ROBOT_UR_RTDE_DRIVER, \
+    ROBOT_GAZEBO_DUAL_LEFT, ROBOT_GAZEBO_DUAL_RIGHT, JOINT_PUBLISHER_SIM_DUAL_LEFT, JOINT_PUBLISHER_SIM_DUAL_RIGHT, \
     IKFAST, TRAC_IK, DONE, FORCE_TORQUE_EXCEEDED, SPEED_LIMIT_EXCEEDED, IK_NOT_FOUND
 
 from ur_ikfast import ur_kinematics as ur_ikfast
 
-from ur_control.controllers import JointTrajectoryController, FTsensor
+from ur_control.controllers import JointTrajectoryController, FTsensor, GripperController
 from ur_pykdl import ur_kinematics
 from trac_ik_python.trac_ik import IK
 
@@ -33,7 +34,8 @@ class Arm(object):
                  ee_transform=None,
                  robot_urdf='ur3e_robot',
                  ik_solver=IKFAST,
-                 namespace='ur3'):
+                 namespace='ur3',
+                 gripper=False):
         """ ft_sensor bool: whether or not to try to load ft sensor information
             driver string: type of driver to use for real robot or simulation.
                            supported: gazebo, ur_modern_driver, ur_rtde_driver (Newest)
@@ -42,6 +44,7 @@ class Arm(object):
                                                   that is applied before doing any operation in task-space
             robot_urdf string: name of the robot urdf file to be used
             namespace string: nodes namespace prefix
+            gripper bool: enable gripper control
         """
 
         cprint.ok("ft_sensor: {}, driver: {}, ee_transform: {}, \n robot_urdf: {}".format(ft_sensor, driver, ee_transform, robot_urdf))
@@ -57,35 +60,48 @@ class Arm(object):
         self.ns = namespace
 
         self.ee_link = 'tool0'
-        # self.max_joint_speed = np.deg2rad([120, 120, 120, 220, 220, 220])
-        self.max_joint_speed = np.deg2rad([191,191,191,371,371,371])
+        self.max_joint_speed = np.deg2rad([100, 100, 100, 200, 200, 200])
+        # self.max_joint_speed = np.deg2rad([191, 191, 191, 371, 371, 371])
 
         self._init_ik_solver(robot_urdf)
-        self._init_controllers(driver)
+        self._init_controllers(driver, gripper)
         if ft_sensor:
             self._init_ft_sensor(driver)
 
 ### private methods ###
 
-    def _init_controllers(self, driver):
+    def _init_controllers(self, driver, gripper):
         traj_publisher = None
+        namespace = ''
         if driver == ROBOT_UR_MODERN_DRIVER:
             traj_publisher = JOINT_PUBLISHER_REAL
         elif driver == ROBOT_UR_RTDE_DRIVER:
             traj_publisher = JOINT_PUBLISHER_BETA
         elif driver == ROBOT_GAZEBO:
             traj_publisher = JOINT_PUBLISHER_SIM
+        elif driver == ROBOT_GAZEBO_DUAL_LEFT:
+            traj_publisher = JOINT_PUBLISHER_SIM
+            namespace = JOINT_PUBLISHER_SIM_DUAL_LEFT
+        elif driver == ROBOT_GAZEBO_DUAL_RIGHT:
+            traj_publisher = JOINT_PUBLISHER_SIM
+            namespace = JOINT_PUBLISHER_SIM_DUAL_RIGHT
         else:
             raise Exception("unsupported driver", driver)
         # Flexible trajectory (point by point)
-        traj_publisher_flex = '/' + traj_publisher + '/command'
+
+        traj_publisher_flex = '/' + namespace + traj_publisher + '/command'
+        print(traj_publisher_flex)
         cprint.blue("connecting to: {}".format(traj_publisher))
         self._flex_trajectory_pub = rospy.Publisher(traj_publisher_flex,
                                                     JointTrajectory,
                                                     queue_size=10)
 
         self.joint_traj_controller = JointTrajectoryController(
-            publisher_name=traj_publisher)
+            publisher_name=traj_publisher, namespace=namespace)
+
+        self.gripper = None
+        if gripper:
+            self.gripper = GripperController(namespace=namespace, timeout=2.0)
 
     def _init_ik_solver(self, robot_urdf):
         self.kdl = ur_kinematics(robot_urdf, ee_link=self.ee_link)

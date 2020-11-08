@@ -24,19 +24,20 @@
 
   <!-- Send robot urdf to param server -->
   <param name="robot_description" 
-         command="$(find xacro)/xacro --inorder '$(find ur3_description)/urdf/ur3e/ur3e_robotiq85_gripper.urdf.xacro'
+         command="$(find xacro)/xacro --inorder '$(find ur3_description)/urdf/ur3e/ur3e_robotiq_hande_gripper.urdf.xacro'
                  use_effort_interface:=$(arg effort_interface) grasp_plugin:=$(arg grasp_plugin)" />
   <!-- FOR DUAL ROBOT -->
   <group if = "$(arg dual)">
     <!-- BEGIN ROBOT 1-->
     <include file="$(find ur_control)/launch/ur3e_controllers.launch">
+      <arg name="gripper_robotiq_hande" value="true" />
       <arg name="effort_interface" value="$(arg effort_interface)"/>
       <arg name="robot_name" value="leftarm"/>
     </include>
     <group ns="leftarm">
       <param name="tf_prefix" value="leftarm_tf" />
       <include file="$(find ur3_gazebo)/launch/single_ur3e.launch" >
-        <arg name="init_pose" value="-x 0.066369 -y 0.359556 -z 1.325140 -R 1.5707 -Y -1.5707
+        <arg name="init_pose" value="-x 0.066369 -y -0.330 -z 1.325140 -R 1.5707 -Y -1.5707
                 -J shoulder_pan_joint -3.1416
                 -J shoulder_lift_joint -1.5707
                 -J elbow_joint 0
@@ -51,13 +52,14 @@
 
       <!-- BEGIN ROBOT 2-->
     <include file="$(find ur_control)/launch/ur3e_controllers.launch">
+      <arg name="gripper_robotiq_hande" value="true" />
       <arg name="effort_interface" value="$(arg effort_interface)"/>
       <arg name="robot_name" value="rightarm"/>
     </include>
     <group ns="rightarm">
       <param name="tf_prefix" value="rightarm_tf" />
       <include file="$(find ur3_gazebo)/launch/single_ur3e.launch" >
-        <arg name="init_pose" value="-x 0.066369 -y -0.330 -z 1.325140 -R 1.5707 -Y -1.5707
+        <arg name="init_pose" value="-x 0.066369 -y 0.359556 -z 1.325140 -R 1.5707 -Y -1.5707
                 -J shoulder_pan_joint -3.1416
                 -J shoulder_lift_joint -1.5707
                 -J elbow_joint 0
@@ -72,6 +74,7 @@
   </group>
   <group unless = "$(arg dual)">
     <include file="$(find ur_control)/launch/ur3e_controllers.launch">
+      <arg name="gripper_robotiq_hande" value="true" />
         <arg name="effort_interface" value="$(arg effort_interface)"/>
     </include>
     <!-- Spawn robot in gazebo (and move it upwards):
@@ -80,7 +83,7 @@
     -->
     <node name="spawn_gazebo_model" pkg="gazebo_ros" type="spawn_model"
           args="-urdf -param robot_description -model robot 
-                -x 0.066369 -y -0.330 -z 1.325140 -R 1.5707 -Y -1.5707
+                -x 0.066369 -y 0.359556 -z 1.325140 -R 1.5707 -Y -1.5707
                 -J shoulder_pan_joint -3.1416
                 -J shoulder_lift_joint -1.5707
                 -J elbow_joint 0
@@ -89,6 +92,7 @@
                 -J wrist_3_joint 0.0
                 "
           output="screen" />
+    <include file="$(find ur3_gazebo)/launch/camera.launch"/>
   </group>
 
 </launch>

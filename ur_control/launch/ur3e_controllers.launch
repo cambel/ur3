@@ -1,9 +1,13 @@
 <?xml version="1.0"?>
 <launch>
   <!-- Launch file parameters -->
-  <arg name="debug"     default="true" />
-  <arg name="effort_interface"     default="false" />
-  <arg name="robot_name"     default="" />
+  <arg name="debug"                  default="true" />
+  <arg name="effort_interface"       default="false" />
+  <arg name="robot_name"             default="" />
+  <arg name="gripper_robotiq_85"     default="false" />
+  <arg name="gripper_robotiq_hande"  default="false" />
+  <arg if="$(eval gripper_robotiq_85 or gripper_robotiq_hande)"  name="gripper_controller" value="gripper_controller"/>
+  <arg unless="$(eval gripper_robotiq_85 or gripper_robotiq_hande)"  name="gripper_controller" value=""/>
 
   <arg if=      "$(arg debug)"  name="DEBUG" value="screen"/>
   <arg unless = "$(arg debug)"  name="DEBUG" value="log"/>
@@ -12,12 +16,18 @@
   <rosparam unless = "$(arg effort_interface)" file="$(find ur_control)/config/ur3e_controllers.yaml" command="load" ns="$(arg robot_name)"/>
   <rosparam if =     "$(arg effort_interface)" file="$(find ur_control)/config/ur3e_controllers_effort.yaml" command="load" ns="$(arg robot_name)"/>
 
-  <!-- <arg name="stopped_controllers" default="pos_based_pos_traj_controller joint_group_vel_controller vel_based_pos_traj_controller"/> -->
+  <group if="$(arg gripper_robotiq_85)">
+    <rosparam file="$(find ur_control)/config/gripper_85_controller.yaml" command="load" />
+  </group>
+  <group if="$(arg gripper_robotiq_hande)">
+    <rosparam file="$(find robotiq_control)/config/gripper_hande_controller.yaml" command="load" />
+  </group>
+  <!-- stuff that will only be evaluated if foo is true -->
 
   <!-- Load controllers -->
   <node name="robot_controllers_$(arg robot_name)" pkg="controller_manager" type="spawner" respawn="false"
         output="$(arg DEBUG)"
-        args="--namespace=$(arg robot_name) joint_state_controller arm_controller"/>
+        args="--namespace=$(arg robot_name) joint_state_controller arm_controller $(arg gripper_controller)"/>
 
   <!-- TF -->
   <node pkg="robot_state_publisher" type="robot_state_publisher" name="state_publisher_$(arg robot_name)"> 

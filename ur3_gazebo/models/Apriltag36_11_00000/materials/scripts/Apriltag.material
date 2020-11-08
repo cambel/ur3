@@ -1,0 +1,17 @@
+material Apriltag36_11_00000
+{
+  technique
+  {
+    pass
+    {
+      lighting off
+      texture_unit
+      {
+        texture tag36_11_00000.png
+        filtering none none none
+        scale 1.0 1.0
+      }
+    }
+  }
+}
+
