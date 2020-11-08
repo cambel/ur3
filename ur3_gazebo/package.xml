@@ -13,8 +13,10 @@
   <buildtool_depend>catkin</buildtool_depend>
   <exec_depend>ur3_description</exec_depend>
   <exec_depend>robotiq_gazebo</exec_depend>
+  <exec_depend>gazebo</exec_depend>
 
   <export>
+      <gazebo gazebo_media_path="${prefix}" />
   </export>
 
 </package>

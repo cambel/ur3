@@ -23,10 +23,10 @@ def _observation_callback(message):
 def main():
 
     rospy.init_node('send_joints')
-    pub = rospy.Publisher('/arm_controller/command',
+    pub = rospy.Publisher('/position_trajectory_controller/command',
                           JointTrajectory,
                           queue_size=10)
-    sub = rospy.Subscriber('/arm_controller/state',
+    sub = rospy.Subscriber('/position_trajectory_controller/state',
                            JointTrajectoryControllerState,
                            _observation_callback, queue_size=10)
     # Create the topic message
