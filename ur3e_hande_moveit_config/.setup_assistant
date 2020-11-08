@@ -1,6 +1,6 @@
 moveit_setup_assistant_config:
   URDF:
-    package: ur3e_gripper_moveit_config
+    package: ur3e_hande_moveit_config
     relative_path: config/ur3e_hande.urdf
     xacro_args: ""
   SRDF:
