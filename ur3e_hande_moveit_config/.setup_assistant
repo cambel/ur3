@@ -1,0 +1,11 @@
+moveit_setup_assistant_config:
+  URDF:
+    package: ur3e_gripper_moveit_config
+    relative_path: config/ur3e_hande.urdf
+    xacro_args: ""
+  SRDF:
+    relative_path: config/ur3.srdf
+  CONFIG:
+    author_name: Cristian Beltran
+    author_email: cristianbehe@gmail.com
+    generated_timestamp: 1604476652

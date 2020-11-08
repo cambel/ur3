@@ -6,3 +6,7 @@
     local-name: gazebo_ros_link_attacher
     uri: https://github.com/pal-robotics/gazebo_ros_link_attacher.git
     version: master
+- git:  
+    local-name: robotiq_urcap_control
+    uri: https://github.com/cambel/ros_robotiq_urcap_control.git
+    version: master
