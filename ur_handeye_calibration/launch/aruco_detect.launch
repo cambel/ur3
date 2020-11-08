@@ -1,0 +1,25 @@
+<launch>
+    <arg name="marker_size" default="0.08" doc="Size of the ArUco marker used, in meters" />
+    <arg name="marker_id" default="0" doc="The ID of the ArUco marker used" />
+
+    <include file ="$(find aruco_detect)/launch/aruco_detect.launch">
+  		<arg name="camera" default="/camera/color"/> <!-- which mode of camera is used-->
+  		<arg name="image" default="image_raw"/>
+      <arg name="transport" default="raw"/>
+  	</include>
+
+    <!-- start ArUco -->
+    <node name="aruco_tracker" pkg="aruco_ros" type="single">
+        <remap from="/camera_info" to="/camera/color/camera_info" />
+        <remap from="/image" to="/camera/color/image_raw" />
+        <param name="image_is_rectified" value="True"/>
+        <param name="marker_size"        value="$(arg marker_size)"/>
+        <param name="marker_id"          value="$(arg marker_id)"/>
+        <param name="reference_frame"    value="camera"/>
+        <param name="camera_frame"       value="camera"/>
+        <!-- <param name="reference_frame"    value="camera_link"/> -->
+        <!-- <param name="camera_frame"       value="camera_rgb_optical_frame"/> -->
+        <param name="marker_frame"       value="camera_marker" />
+    </node>
+
+</launch>

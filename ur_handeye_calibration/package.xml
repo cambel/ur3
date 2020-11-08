@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<package>
+  <name>ur_handeye_calibration</name>
+  <version>0.1.0</version>
+  <description>The ur_handeye_calibration package</description>
+
+  <maintainer email="beltran@hlab.sys.es.osaka-u.ac.jp">Cristian Beltran</maintainer>
+
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  
+</package>

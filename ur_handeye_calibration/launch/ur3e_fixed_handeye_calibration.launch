@@ -1,0 +1,28 @@
+<?xml version="1.0" ?>
+<launch>
+    <!-- The input reference frames -->
+    <arg name="ur_calibration_ns" default="/" />
+
+    <arg name="robot_base_frame" default="base_link" />
+    <arg name="robot_effector_frame" default="tool0" />
+    <arg name="tracking_base_frame" default="camera" />
+    <arg name="tracking_marker_frame" default="tag_0" />
+
+    <arg name="online" default="false"/>
+
+    <node name="handeye_server" pkg="handeye" type="handeye_server.py"/>
+
+    <group ns="$(arg ur_calibration_ns)">
+        <param name="robot_base_frame" value="$(arg robot_base_frame)" />
+        <param name="robot_effector_frame" value="$(arg robot_effector_frame)" />
+        <param name="tracking_base_frame" value="$(arg tracking_base_frame)" />
+        <param name="tracking_marker_frame" value="$(arg tracking_marker_frame)" />
+        <param name="online" value="$(arg online)" />
+
+        <node name="ur_handeye_calibration_capturer"
+            pkg="ur_handeye_calibration"
+            type="calibrator.py"
+            output="screen" >
+        </node>
+    </group>
+</launch>

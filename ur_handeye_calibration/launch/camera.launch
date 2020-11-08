@@ -1,0 +1,10 @@
+<launch>
+    <param name="/realsense2_camera/robot_description" 
+           command="$(find xacro)/xacro --inorder '$(find ur3_description)/urdf/realsense_rs435.urdf.xacro'" />
+    
+    <node name="spawn_gazebo_model_realsense2_camera" pkg="gazebo_ros" type="spawn_model"
+          args="-urdf -param realsense2_camera/robot_description 
+                -model realsense2_camera 
+                -x -0.5 -y 0.0 -z 1.80 
+                -P 1.57079632679 -Y 1.57079632679" respawn="false" output="screen" />
+</launch>
