@@ -37,7 +37,7 @@
     <group ns="leftarm">
       <param name="tf_prefix" value="leftarm_tf" />
       <include file="$(find ur3_gazebo)/launch/single_ur3e.launch" >
-        <arg name="init_pose" value="-x 0.066369 -y 0.359556 -z 1.325140 -R 1.5707 -Y -1.5707
+        <arg name="init_pose" value="-x 0.066369 -y -0.330 -z 1.325140 -R 1.5707 -Y -1.5707
                 -J shoulder_pan_joint -3.1416
                 -J shoulder_lift_joint -1.5707
                 -J elbow_joint 0
@@ -58,7 +58,7 @@
     <group ns="rightarm">
       <param name="tf_prefix" value="rightarm_tf" />
       <include file="$(find ur3_gazebo)/launch/single_ur3e.launch" >
-        <arg name="init_pose" value="-x 0.066369 -y -0.330 -z 1.325140 -R 1.5707 -Y -1.5707
+        <arg name="init_pose" value="-x 0.066369 -y 0.359556 -z 1.325140 -R 1.5707 -Y -1.5707
                 -J shoulder_pan_joint -3.1416
                 -J shoulder_lift_joint -1.5707
                 -J elbow_joint 0
@@ -84,6 +84,6 @@
                 -x 0.066369 -y -0.330 -z 1.325140 -R 1.5707 -Y -1.5707
                 "
           output="screen" />
+    <include file="$(find ur3_gazebo)/launch/camera.launch"/>
   </group>
-
 </launch>

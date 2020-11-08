@@ -1,0 +1,74 @@
+<?xml version="1.0"?>
+<robot name="realsense2_camera" xmlns:xacro="http://ros.org/wiki/xacro">
+    <xacro:arg name="use_nominal_extrinsics" default="true"/>
+    <xacro:arg name="add_plug" default="true"/>
+    <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
+
+    <link name="world" />
+    <link name="global_camera">
+        <inertial>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <mass value="0.0001"/>
+        <inertia ixx="1e-08" ixy="0" ixz="0" iyy="1e-08" iyz="0" izz="1e-08"/>
+        </inertial>
+    </link>
+    <xacro:sensor_d435 parent="global_camera" use_nominal_extrinsics="$(arg use_nominal_extrinsics)">
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </xacro:sensor_d435>
+
+    <joint name="global_camera" type="fixed">
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <parent link="world"/>
+        <child link="global_camera"/>
+    </joint>
+
+    <!-- camera -->
+    <gazebo reference="global_camera">
+        <sensor name="global_camera" type="depth">
+            <update_rate>20</update_rate>
+            <camera name="global_camera">
+                <horizontal_fov>1.047</horizontal_fov>
+                <image>
+                    <width>640</width>
+                    <height>480</height>
+                    <format>RGB_INT8</format>
+                </image>
+                <clip>
+                    <near>0.1</near>
+                    <far>100</far>
+                </clip>
+                <noise>
+                    <type>gaussian</type>
+                    <mean>0.0</mean>
+                    <stddev>0.007</stddev>
+                </noise>
+                <visualize>1</visualize>
+            </camera>
+            <plugin name="camera_controller" filename="libgazebo_ros_openni_kinect.so">
+                <baseline>0.2</baseline>
+                <alwaysOn>true</alwaysOn>
+                <updateRate>60.0</updateRate>
+                <cameraName>global_camera</cameraName>
+                <imageTopicName>/camera/color/image_raw</imageTopicName>
+                <cameraInfoTopicName>/camera/color/camera_info</cameraInfoTopicName>
+                <depthImageTopicName>/camera/depth/image_raw</depthImageTopicName>
+                <depthImageInfoTopicName>/camera/depth/camera_info</depthImageInfoTopicName>
+                <pointCloudTopicName>/camera/depth/points</pointCloudTopicName>
+                <frameName>global_camera</frameName>
+                <pointCloudCutoff>0.5</pointCloudCutoff>
+                <pointCloudCutoffMax>3.0</pointCloudCutoffMax>
+                <distortionK1>0.00000001</distortionK1>
+                <distortionK2>0.00000001</distortionK2>
+                <distortionK3>0.00000001</distortionK3>
+                <distortionT1>0.00000001</distortionT1>
+                <distortionT2>0.00000001</distortionT2>
+                <CxPrime>0</CxPrime>
+                <Cx>0</Cx>
+                <Cy>0</Cy>
+                <focalLength>0</focalLength>
+                <hackBaseline>0</hackBaseline>
+            </plugin>
+        </sensor>
+    </gazebo>
+
+</robot>

@@ -12,7 +12,7 @@
                  use_effort_interface:=$(arg effort_interface) grasp_plugin:=$(arg grasp_plugin) peg_shape:=$(arg peg_shape)" />
 
   <node name="spawn_gazebo_model$(arg robot_name)" pkg="gazebo_ros" type="spawn_model"
-        args="-urdf -param robot_description -model $(arg robot_name) $(arg init_pose)"
+        args="-urdf -param $(arg robot_name)/robot_description -model $(arg robot_name) $(arg init_pose)"
         respawn="false" output="screen" />
 
 </launch>
