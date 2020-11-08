@@ -1,7 +1,6 @@
 Universal Robot UR3/UR3e
 ===
-<img src="https://github.com/cambel/ur3/blob/master/wiki/ur3e.gif?raw=true" alt="UR3e & Robotiq Hand-e" width="250">
-<img src="https://github.com/cambel/ur3/blob/master/wiki/ur3.gif?raw=true" alt="UR3 & Robotiq 85" width="250">
+<img src="https://github.com/cambel/ur3/blob/master/wiki/ur3e.gif?raw=true" alt="UR3e & Robotiq Hand-e" width="250"><img src="https://github.com/cambel/ur3/blob/master/wiki/ur3.gif?raw=true" alt="UR3 & Robotiq 85" width="250">
 
 
 Custom ROS packages for the UR3 Robot with a gripper Robotiq 85 and the UR3e robot with a gripper Robotiq Hand-e. 
