@@ -21,7 +21,7 @@ def main():
     if args.robot:
         driver = ROBOT_UR_RTDE_DRIVER
 
-    arm = Arm(ft_sensor=True, driver=driver, relative_to_ee=False)
+    arm = Arm(ft_sensor=True, driver=driver)
     rospy.sleep(0.5)
     arm.set_wrench_offset(override=args.offset)
 
