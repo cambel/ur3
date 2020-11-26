@@ -31,6 +31,6 @@
 
   <!-- TF -->
   <node pkg="robot_state_publisher" type="robot_state_publisher" name="state_publisher_$(arg robot_name)"> 
-    <param name="publish_frequency"  type="double" value="50" />
+    <param name="publish_frequency"  type="double" value="500" />
   </node>
 </launch>

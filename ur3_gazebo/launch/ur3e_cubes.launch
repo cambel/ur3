@@ -14,7 +14,6 @@
   <arg name="grasp_plugin" default="false"/>
 
   <param if="$(arg grasp_plugin)" name="grasp_plugin" value="true"/>
-  <param name="gripper_type" value="hand-e"/>
 
   <!-- Start up simulated world -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">

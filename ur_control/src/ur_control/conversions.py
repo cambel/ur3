@@ -166,9 +166,9 @@ def to_pose(T):
 
 def to_pose_msg(pose):
     """
-  Converts a homogeneous transformation (4x4) into a C{geometry_msgs/Pose} ROS message.
-  @type  T: np.array
-  @param T: The homogeneous transformation
+  Converts a 1x7 list into a C{geometry_msgs/Pose} ROS message.
+  @type  pose: np.array
+  @param pose: position, quaternion
   @rtype: geometry_msgs/Pose
   @return: The resulting ROS message
   """
@@ -282,10 +282,10 @@ def transform_end_effector(pose, extra_pose, rot_type='quaternion'):
               else: return translation + quaternion list
     """
     extra_translation = np.array(extra_pose[:3]).reshape(3, 1)
-    extra_rot = spalg.vector_to_quaternion(extra_pose[3:]).rotation_matrix
+    extra_rot = tr.vector_to_pyquaternion(extra_pose[3:]).rotation_matrix
 
     c_trans = np.array(pose[:3]).reshape(3, 1)
-    c_rot = spalg.vector_to_quaternion(pose[3:]).rotation_matrix  
+    c_rot = tr.vector_to_pyquaternion(pose[3:]).rotation_matrix  
     # BE CAREFUL!! Pose from KDL is ax ay az aw
     #              Pose from IKfast is aw ax ay az
 

@@ -1,6 +1,6 @@
 <launch>
     <param name="/realsense2_camera/robot_description" 
-           command="$(find xacro)/xacro --inorder '$(find ur3_description)/urdf/realsense_rs435.urdf.xacro'" />
+           command="$(find xacro)/xacro --inorder '$(find ur3_description)/urdf/camera/realsense_rs435.urdf.xacro'" />
     
     <node name="spawn_gazebo_model_realsense2_camera" pkg="gazebo_ros" type="spawn_model"
           args="-urdf -param realsense2_camera/robot_description 

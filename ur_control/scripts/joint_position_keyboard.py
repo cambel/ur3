@@ -22,8 +22,8 @@ ur3e_arm = ur_kinematics.URKinematics('ur3e')
 
 def map_keyboard():
     def print_robot_state():
-        print("Joint angles:", np.round(arm.joint_angles(), 4))
-        print("EE Pose:", np.round(arm.end_effector(), 5))
+        print("Joint angles:", np.round(arm.joint_angles(), 4).tolist())
+        print("EE Pose:", np.round(arm.end_effector(), 5).tolist())
         if arm.gripper:
             print("Gripper position:", np.round(arm.gripper.get_position(), 4))
 
@@ -190,7 +190,7 @@ See help inside the example with the '?' key for key bindings.
     
     use_gripper = args.gripper  
 
-    extra_ee = [0, 0, 0.05, 0, 0, 0, 1]
+    extra_ee = [0, 0, 0.21, 0, 0, 0, 1]
 
     global arm
     arm = Arm(ft_sensor=False, driver=driver, ee_transform=extra_ee, gripper=use_gripper)

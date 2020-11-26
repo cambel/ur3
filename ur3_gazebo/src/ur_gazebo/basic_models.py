@@ -22,6 +22,75 @@ SPHERE = '<?xml version="1.0" ?> \
   </model> \
 </sdf>'
 
+SPHERE_COLLISION = '<?xml version="1.0" ?> \
+<sdf version="1.5"> \
+  <model name="{}"> \
+    <static>true</static> \
+    <link name="link"> \
+      <pose>0 0 0 0 0 0</pose> \
+      <visual name="visual"> \
+        <transparency> 0.5 </transparency> \
+        <geometry> \
+          <sphere> \
+            <radius>{}</radius> \
+          </sphere> \
+        </geometry> \
+        <material> \
+          <script> \
+            <uri>file://media/materials/scripts/gazebo.material</uri> \
+            <name>Gazebo/{}</name> \
+          </script> \
+        </material> \
+      </visual> \
+      <collision name="collision"> \
+        <pose frame=''>0 0 0 0 0 0</pose> \
+        <laser_retro>0</laser_retro> \
+        <max_contacts>10</max_contacts> \
+        <geometry> \
+          <sphere> \
+            <radius>{}</radius> \
+          </sphere> \
+        </geometry> \
+        <surface> \
+          <friction> \
+            <ode> \
+              <mu>1</mu> \
+              <mu2>1</mu2> \
+              <fdir1>0 0 0</fdir1> \
+              <slip1>0.1</slip1> \
+              <slip2>0.1</slip2> \
+            </ode> \
+            <torsional> \
+              <coefficient>1</coefficient> \
+              <patch_radius>0</patch_radius> \
+              <surface_radius>0</surface_radius> \
+              <use_patch_radius>1</use_patch_radius> \
+              <ode> \
+                <slip>0</slip> \
+              </ode> \
+            </torsional> \
+          </friction> \
+          <bounce> \
+            <restitution_coefficient>0</restitution_coefficient> \
+            <threshold>1e+06</threshold> \
+          </bounce> \
+          <contact> \
+            <collide_without_contact>0</collide_without_contact> \
+            <collide_without_contact_bitmask>1</collide_without_contact_bitmask> \
+            <collide_bitmask>1</collide_bitmask> \
+            <ode> \
+              <kp>{}</kp> \
+              <kd>1</kd> \
+              <max_vel>0.01</max_vel> \
+              <min_depth>0</min_depth> \
+            </ode> \
+          </contact> \
+        </surface> \
+      </collision> \
+    </link> \
+  </model> \
+</sdf>'
+
 BOX = '<?xml version="1.0" ?> \
 <sdf version="1.5"> \
   <model name="%s"> \
@@ -29,6 +98,7 @@ BOX = '<?xml version="1.0" ?> \
     <link name="link"> \
       <pose>0 0 0 0 0 0</pose> \
       <visual name="visual"> \
+        <transparency> 0.2 </transparency> \
         <geometry> \
           <box> \
             <size>%s %s %s</size> \
@@ -78,7 +148,7 @@ BOX = '<?xml version="1.0" ?> \
             <collide_without_contact_bitmask>1</collide_without_contact_bitmask> \
             <collide_bitmask>1</collide_bitmask> \
             <ode> \
-              <kp>1e8</kp> \
+              <kp>1e5</kp> \
               <kd>1</kd> \
               <max_vel>0.01</max_vel> \
               <min_depth>0</min_depth> \

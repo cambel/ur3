@@ -167,7 +167,6 @@ True
 """
 
 
-
 import warnings
 import math
 
@@ -303,8 +302,8 @@ def rotation_matrix(angle, direction, point=None):
                      (0.0,  0.0,  cosa)), dtype=numpy.float64)
     R += numpy.outer(direction, direction) * (1.0 - cosa)
     direction *= sina
-    R += numpy.array((( 0.0,         -direction[2],  direction[1]),
-                      ( direction[2], 0.0,          -direction[0]),
+    R += numpy.array(((0.0,         -direction[2],  direction[1]),
+                      (direction[2], 0.0,          -direction[0]),
                       (-direction[1], direction[0],  0.0)),
                      dtype=numpy.float64)
     M = numpy.identity(4)
@@ -775,7 +774,7 @@ def decompose_matrix(matrix):
         angles[0] = math.atan2(row[1, 2], row[2, 2])
         angles[2] = math.atan2(row[0, 1], row[0, 0])
     else:
-        #angles[0] = math.atan2(row[1, 0], row[1, 1])
+        # angles[0] = math.atan2(row[1, 0], row[1, 1])
         angles[0] = math.atan2(-row[2, 1], row[1, 1])
         angles[2] = 0.0
 
@@ -856,10 +855,10 @@ def orthogonalization_matrix(lengths, angles):
     cosa, cosb, cosg = numpy.cos(angles)
     co = (cosa * cosb - cosg) / (sina * sinb)
     return numpy.array((
-        ( a*sinb*math.sqrt(1.0-co*co),  0.0,    0.0, 0.0),
+        (a*sinb*math.sqrt(1.0-co*co),  0.0,    0.0, 0.0),
         (-a*sinb*co,                    b*sina, 0.0, 0.0),
-        ( a*cosb,                       b*cosa, c,   0.0),
-        ( 0.0,                          0.0,    0.0, 1.0)),
+        (a*cosb,                       b*cosa, c,   0.0),
+        (0.0,                          0.0,    0.0, 1.0)),
         dtype=numpy.float64)
 
 
@@ -946,8 +945,8 @@ def superimposition_matrix(v0, v1, scaling=False, usesvd=True):
         # quaternion: eigenvector corresponding to most positive eigenvalue
         l, V = numpy.linalg.eig(N)
         q = V[:, numpy.argmax(l)]
-        q /= vector_norm(q) # unit quaternion
-        q = numpy.roll(q, -1) # move w component to end
+        q /= vector_norm(q)  # unit quaternion
+        q = numpy.roll(q, -1)  # move w component to end
         # homogeneous transformation matrix
         M = quaternion_matrix(q)
 
@@ -1061,19 +1060,19 @@ def euler_from_matrix(matrix, axes='sxyz'):
     if repetition:
         sy = math.sqrt(M[i, j]*M[i, j] + M[i, k]*M[i, k])
         if sy > _EPS:
-            ax = math.atan2( M[i, j],  M[i, k])
-            ay = math.atan2( sy,       M[i, i])
-            az = math.atan2( M[j, i], -M[k, i])
+            ax = math.atan2(M[i, j],  M[i, k])
+            ay = math.atan2(sy,       M[i, i])
+            az = math.atan2(M[j, i], -M[k, i])
         else:
             ax = math.atan2(-M[j, k],  M[j, j])
-            ay = math.atan2( sy,       M[i, i])
+            ay = math.atan2(sy,       M[i, i])
             az = 0.0
     else:
         cy = math.sqrt(M[i, i]*M[i, i] + M[j, i]*M[j, i])
         if cy > _EPS:
-            ax = math.atan2( M[k, j],  M[k, k])
+            ax = math.atan2(M[k, j],  M[k, k])
             ay = math.atan2(-M[k, i],  cy)
-            az = math.atan2( M[j, i],  M[i, i])
+            az = math.atan2(M[j, i],  M[i, i])
         else:
             ax = math.atan2(-M[j, k],  M[j, j])
             ay = math.atan2(-M[k, i],  cy)
@@ -1187,10 +1186,10 @@ def quaternion_matrix(quaternion):
     q = numpy.outer(q, q)
     return numpy.array((
         (1.0-q[1, 1]-q[2, 2],     q[0, 1]-q[2, 3],     q[0, 2]+q[1, 3], 0.0),
-        (    q[0, 1]+q[2, 3], 1.0-q[0, 0]-q[2, 2],     q[1, 2]-q[0, 3], 0.0),
-        (    q[0, 2]-q[1, 3],     q[1, 2]+q[0, 3], 1.0-q[0, 0]-q[1, 1], 0.0),
-        (                0.0,                 0.0,                 0.0, 1.0)
-        ), dtype=numpy.float64)
+        (q[0, 1]+q[2, 3], 1.0-q[0, 0]-q[2, 2],     q[1, 2]-q[0, 3], 0.0),
+        (q[0, 2]-q[1, 3],     q[1, 2]+q[0, 3], 1.0-q[0, 0]-q[1, 1], 0.0),
+        (0.0,                 0.0,                 0.0, 1.0)
+    ), dtype=numpy.float64)
 
 
 def quaternion_from_matrix(matrix):
@@ -1224,15 +1223,17 @@ def quaternion_from_matrix(matrix):
     q *= 0.5 / math.sqrt(t * M[3, 3])
     return q
 
+
 def pose_quaternion_from_matrix(matrix):
     """Return translation + quaternion(x,y,z,w)
     """
-    if matrix.shape == (3,4):
+    if matrix.shape == (3, 4):
         matrix = numpy.concatenate((matrix, [[0, 0, 0, 1]]), axis=0)
 
-    pose = matrix[:3,3]
+    pose = matrix[:3, 3]
     quat = quaternion_from_matrix(matrix)
     return numpy.concatenate((pose, quat), axis=0)
+
 
 def quaternion_multiply(quaternion1, quaternion0):
     """Return multiplication of two quaternions.
@@ -1245,9 +1246,9 @@ def quaternion_multiply(quaternion1, quaternion0):
     x0, y0, z0, w0 = quaternion0
     x1, y1, z1, w1 = quaternion1
     return numpy.array((
-         x1*w0 + y1*z0 - z1*y0 + w1*x0,
+        x1*w0 + y1*z0 - z1*y0 + w1*x0,
         -x1*z0 + y1*w0 + z1*x0 + w1*y0,
-         x1*y0 - y1*x0 + z1*w0 + w1*z0,
+        x1*y0 - y1*x0 + z1*w0 + w1*z0,
         -x1*x0 - y1*y0 - z1*z0 + w1*w0), dtype=numpy.float64)
 
 
@@ -1485,7 +1486,7 @@ def arcball_map_to_sphere(point, center, radius):
                      0.0), dtype=numpy.float64)
     n = v[0]*v[0] + v[1]*v[1]
     if n > 1.0:
-        v /= math.sqrt(n) # position outside of sphere
+        v /= math.sqrt(n)  # position outside of sphere
     else:
         v[2] = math.sqrt(1.0 - n)
     return v
@@ -1495,7 +1496,7 @@ def arcball_constrain_to_axis(point, axis):
     """Return sphere point perpendicular to axis."""
     v = numpy.array(point, dtype=numpy.float64, copy=True)
     a = numpy.array(axis, dtype=numpy.float64, copy=True)
-    v -= a * numpy.dot(a, v) # on plane
+    v -= a * numpy.dot(a, v)  # on plane
     n = vector_norm(v)
     if n > _EPS:
         if v[2] < 0.0:
@@ -1540,6 +1541,7 @@ _AXES2TUPLE = {
 _TUPLE2AXES = dict((v, k) for k, v in list(_AXES2TUPLE.items()))
 
 # helper functions
+
 
 def vector_norm(data, axis=None, out=None):
     """Return length, i.e. eucledian norm, of ndarray along axis.
@@ -1713,12 +1715,13 @@ def _import_module(module_name, warn=True, prefix='_py_', ignore='_'):
             globals()[attr] = getattr(module, attr)
         return True
 
+
 def pose_euler_to_quaternion(pose, delta, ee_rotation=False, axes='rxyz'):
-    """ 
-        Transform an action translation + euler [x, y, z, rx, ry, rz] into 
+    """
+        Transform an action translation + euler [x, y, z, rx, ry, rz] into
         translation(optional rotated) + quaternion [x, y, z, rx, ry, rz, w]
         pose: list initial pose translation + quaternion
-        delta: list aditional desired motion translation + euler 
+        delta: list aditional desired motion translation + euler
         ee_rotation: boolean whether to return the rotated translation w.r.t
                              the end effector
         axes: string type of axes for euler angles transformation
@@ -1737,15 +1740,16 @@ def pose_euler_to_quaternion(pose, delta, ee_rotation=False, axes='rxyz'):
     euler = euler_from_quaternion(pose[3:], axes=axes)
     euler += delta_x[3:]
     pose_cmd[3:] = quaternion_from_euler(euler[0], euler[1], euler[2], axes=axes)
-    
+
     return pose_cmd
 
+
 def pose_from_angular_veloticy(pose, velocity, dt=1.0, ee_rotation=False):
-    """ 
-        Transform an action translation + euler [x, y, z, rx, ry, rz] into 
+    """
+        Transform an action translation + euler [x, y, z, rx, ry, rz] into
         translation(optional rotated) + quaternion [x, y, z, rx, ry, rz, w]
         pose: list initial pose translation + quaternion
-        velocity: list aditional desired motion translation + euler 
+        velocity: list aditional desired motion translation + euler
         ee_rotation: boolean whether to return the rotated translation w.r.t
                              the end effector
     """
@@ -1769,8 +1773,9 @@ def pose_from_angular_veloticy(pose, velocity, dt=1.0, ee_rotation=False):
     new_orientation = integrateUnitQuaternionDMM(orientation, ang_vel, dt)
 
     pose_cmd[3:] = numpy.roll(new_orientation.normalised.elements, -1)
-    
+
     return pose_cmd
+
 
 def integrateUnitQuaternionDMM(q, w, dt):
     """ Integrate a unit quaterniong using the Direct Multiplicaiton Method"""
@@ -1780,25 +1785,28 @@ def integrateUnitQuaternionDMM(q, w, dt):
     q_tmp = Quaternion(scalar=(numpy.cos(w_norm*dt/2.)), vector=numpy.sin(w_norm*dt/2)*w/w_norm)
     return q_tmp*q
 
+
 def integrateUnitQuaternionEuler(q, w, dt):
     """ Integrate a unit quaterniong using Euler Method"""
     qw = Quaternion(scalar=0, vector=w)
     return (q + 0.5*qw*dt*q).normalised
+
 
 def pose_to_transform(pose):
     """
     pose: translation + quaternion[x, y, z, w]
 
     Note: the rest of this package use convention [x, y, z, w] but pyquaternion uses [w, x, y, z]
-    so we roll the quaternion before transform 
+    so we roll the quaternion before transform
 
     """
-    translation = numpy.array([pose[:3]]).reshape(3,1)
-    rotation = numpy.array(Quaternion(numpy.roll(pose[3:],1)).rotation_matrix).reshape(3,3)
+    translation = numpy.array([pose[:3]]).reshape(3, 1)
+    rotation = numpy.array(Quaternion(numpy.roll(pose[3:], 1)).rotation_matrix).reshape(3, 3)
 
     transform = numpy.concatenate((rotation, translation), axis=1)
-    transform = numpy.concatenate((transform, [[0,0,0,1]]))
+    transform = numpy.concatenate((transform, [[0, 0, 0, 1]]))
     return transform
+
 
 def angular_velocity_from_quaternions(from_Q, to_Q, dt):
     """
@@ -1812,3 +1820,11 @@ def angular_velocity_from_quaternions(from_Q, to_Q, dt):
         _from_Q = Quaternion(numpy.roll(from_Q, 1))
         _to_Q = Quaternion(numpy.roll(to_Q, 1))
         return angular_velocity_from_quaternions(_from_Q, _to_Q, dt)
+
+
+def vector_to_pyquaternion(vector):
+    return Quaternion(numpy.roll(vector, 1))
+
+
+def vector_from_pyquaternion(quat):
+    return numpy.roll(quat.elements, -1)

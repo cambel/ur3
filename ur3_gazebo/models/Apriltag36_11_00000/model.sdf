@@ -11,9 +11,7 @@
         </geometry>
            <material>
           <script>
-            <!-- <uri>model://Apriltag36_11_00001/materials/scripts</uri>
-            <uri>model://Apriltag36_11_00001/materials/textures</uri> -->
-            <name>Apriltag36_11_00001</name>
+            <name>CB/Apriltag36_11_00000</name>
           </script>
         </material>
       </visual>

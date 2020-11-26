@@ -7,7 +7,7 @@
       <self_collide>0</self_collide>
       <kinematic>0</kinematic>
       <gravity>0</gravity>
-      <visual name='visual1'>
+      <visual name='visual_z'>
         <pose frame=''>0 0 0.005 0 0 0</pose>
         <geometry>
           <cylinder>
@@ -18,13 +18,13 @@
         <material>
           <script>
             <uri>file://media/materials/scripts/gazebo.material</uri>
-            <name>Gazebo/Red</name>
+            <name>Gazebo/Blue</name>
           </script>
         </material>
         <transparency>0.5</transparency>
       </visual>
-            <visual name='visual2'>
-        <pose frame=''>0 -0.005 0 1.5707 0 0</pose>
+            <visual name='visual_y'>
+        <pose frame=''>0 0.005 0 1.5707 0 0</pose>
         <geometry>
           <cylinder>
             <length>0.01</length>
@@ -39,8 +39,8 @@
         </material>
         <transparency>0.5</transparency>
       </visual>
-            <visual name='visual3'>
-        <pose frame=''>-0.005 0 0 0 1.5707 0</pose>
+            <visual name='visual_x'>
+        <pose frame=''>0.005 0 0 0 1.5707 0</pose>
         <geometry>
           <cylinder>
             <length>0.01</length>
@@ -50,7 +50,7 @@
         <material>
           <script>
             <uri>file://media/materials/scripts/gazebo.material</uri>
-            <name>Gazebo/Blue</name>
+            <name>Gazebo/Red</name>
           </script>
         </material>
         <transparency>0.5</transparency>

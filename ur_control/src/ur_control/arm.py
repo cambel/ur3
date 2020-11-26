@@ -124,7 +124,9 @@ class Arm(object):
         self.pub_ee_wrench = rospy.Publisher('/%s/ee_ft' % self.ns,
                                              Wrench,
                                              queue_size=50)
-
+        self.pub_raw_ft = rospy.Publisher('/%s/filtered_ft' % self.ns,
+                                             Wrench,
+                                             queue_size=50)
         if driver == ROBOT_GAZEBO:
             self.ft_sensor = FTsensor(namespace=FT_SUBSCRIBER_SIM)
         else:
@@ -167,7 +169,7 @@ class Arm(object):
             ik = self.arm_ikfast.inverse(pose, q_guess=self.joint_angles())
 
         elif self.ik_solver == TRAC_IK:
-            ik = self.ik_solver.get_ik(self.joint_angles(), pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6])
+            ik = self.trac_ik.get_ik(self.joint_angles(), pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6])
             if ik is None:
                 print("IK not found")
 
@@ -241,6 +243,19 @@ class Arm(object):
         wrench = self.get_ee_wrench()
         # Note you need to call rospy.init_node() before this will work
         self.pub_ee_wrench.publish(conversions.to_wrench(wrench))
+
+    def publish_ft_raw(self):
+        if self.ft_sensor is None:
+            raise Exception("FT Sensor not initialized")
+
+        " Publish arm's end-effector wrench "
+        wrench_force = self.ft_sensor.get_filtered_wrench()
+
+        if self.wrench_offset is not None:
+            wrench_force = np.array(wrench_force) - np.array(
+                self.wrench_offset)
+        # Note you need to call rospy.init_node() before this will work
+        self.pub_raw_ft.publish(conversions.to_wrench(wrench_force))
 
     def end_effector(self,
                      joint_angles=None,

@@ -1,0 +1,6 @@
+<launch>
+    <node pkg="tf2_ros" 
+          type="static_transform_publisher" 
+          name="world_broadcaster" 
+          args="0.35954 -1.3251 -0.30621 0.5 -0.5 -0.5 -0.5 base_link sim_world" />
+</launch>
