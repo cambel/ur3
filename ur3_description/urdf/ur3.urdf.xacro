@@ -78,11 +78,11 @@
           <color rgba="0.7 0.7 0.7 1.0"/>
         </material>
       </visual>
-      <!-- <collision>
+      <collision>
         <geometry>
           <mesh filename="package://ur_description/meshes/ur3/collision/base.stl"/>
         </geometry>
-      </collision> -->
+      </collision>
       <xacro:cylinder_inertial radius="0.075" length="0.038" mass="${base_mass}">
         <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
       </xacro:cylinder_inertial>
@@ -99,7 +99,7 @@
       <xacro:if value="${joint_limited}">
         <limit lower="${shoulder_pan_lower_limit}" upper="${shoulder_pan_upper_limit}" effort="330.0" velocity="2.16"/>
       </xacro:if>
-      <dynamics damping="0.5" friction="0.0"/>
+      <dynamics damping="0.0" friction="0.0"/>
     </joint>
 
     <link name="${prefix}shoulder_link">
@@ -132,7 +132,7 @@
       <xacro:if value="${joint_limited}">
         <limit lower="${shoulder_lift_lower_limit}" upper="${shoulder_lift_upper_limit}" effort="330.0" velocity="2.16"/>
       </xacro:if>
-      <dynamics damping="0.5" friction="0.0"/>
+      <dynamics damping="0.0" friction="0.0"/>
     </joint>
 
     <link name="${prefix}upper_arm_link">
@@ -165,7 +165,7 @@
       <xacro:if value="${joint_limited}">
         <limit lower="${elbow_joint_lower_limit}" upper="${elbow_joint_upper_limit}" effort="150.0" velocity="3.15"/>
       </xacro:if>
-      <dynamics damping="0.5" friction="0.0"/>
+      <dynamics damping="0.0" friction="0.0"/>
     </joint>
 
     <link name="${prefix}forearm_link">
@@ -198,7 +198,7 @@
       <xacro:if value="${joint_limited}">
         <limit lower="${wrist_1_lower_limit}" upper="${wrist_1_upper_limit}" effort="54.0" velocity="3.2"/>
       </xacro:if>
-      <dynamics damping="0.5" friction="0.0"/>
+      <dynamics damping="0.0" friction="0.0"/>
     </joint>
 
     <link name="${prefix}wrist_1_link">
@@ -231,7 +231,7 @@
       <xacro:if value="${joint_limited}">
         <limit lower="${wrist_2_lower_limit}" upper="${wrist_2_upper_limit}" effort="54.0" velocity="3.2"/>
       </xacro:if>
-      <dynamics damping="0.5" friction="0.0"/>
+      <dynamics damping="0.0" friction="0.0"/>
     </joint>
 
     <link name="${prefix}wrist_2_link">
@@ -264,7 +264,7 @@
       <xacro:if value="${joint_limited}">
         <limit lower="${wrist_3_lower_limit}" upper="${wrist_3_upper_limit}" effort="54.0" velocity="3.2"/>
       </xacro:if>
-      <dynamics damping="0.5" friction="0.0"/>
+      <dynamics damping="0.0" friction="0.0"/>
     </joint>
 
     <link name="${prefix}wrist_3_link">
@@ -289,7 +289,7 @@
     <joint name="${prefix}ee_fixed_joint" type="fixed">
       <parent link="${prefix}wrist_3_link" />
       <child link = "${prefix}ee_link" />
-      <origin xyz="0.0 ${wrist_3_length} 0.0" rpy="0.0 0.0 0.0" />
+      <origin xyz="0.0 ${wrist_3_length} 0.0" rpy="0.0 0.0 ${pi/2.0}" />
     </joint>
 
     <link name="${prefix}ee_link">

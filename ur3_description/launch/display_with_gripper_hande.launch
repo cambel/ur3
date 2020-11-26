@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-  <arg name="gui" default="True" />
+  <arg name="gui" default="true" />
 
   <param name="robot_description" command="$(find xacro)/xacro --inorder $(find ur3_description)/urdf/ur3e/ur3e_robotiq_hande_gripper.urdf.xacro" />
   
