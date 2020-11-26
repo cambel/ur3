@@ -4,7 +4,7 @@
   <xacro:arg name="grasp_plugin" default="false" />
   <xacro:arg name="peg_shape" default="cylinder" />
 
-  <xacro:include filename="$(find ur3_description)/urdf/ur3e/ur3e_joint_limited_robot.urdf.xacro" />
+  <xacro:include filename="$(find ur3_description)/urdf/ur3_joint_limited_robot.urdf.xacro" />
   
   <link name="robotiq_coupler">
     <visual>

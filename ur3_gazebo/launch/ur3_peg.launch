@@ -12,8 +12,9 @@
   <arg name="world_name" default="$(find ur3_gazebo)/worlds/cubes_task.world" />
   <arg name="effort_interface" default="false"/>
   <arg name="grasp_plugin" default="false"/>
+  <arg name="peg_shape" default="cube"/>
 
-  <param if="$(arg grasp_plugin)" name="grasp_plugin" value="true"/>
+  <param if="$(arg grasp_plugin)" name="grasp_plugin" value="false"/>
   
   <!-- Start up simulated world -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -24,14 +25,13 @@
   </include>
 
   <include file="$(find ur_control)/launch/ur3_controllers.launch">
-       <arg name="gripper_robotiq_85" value="true" />
       <arg name="effort_interface" value="$(arg effort_interface)"/>
   </include>
   <!-- Send robot urdf to param server -->
   <param name="robot_description" 
          command="$(find xacro)/xacro --inorder 
-                  '$(find ur3_description)/urdf/ur3_robotiq85_gripper.urdf.xacro'
-                  use_effort_interface:=$(arg effort_interface)  grasp_plugin:=$(arg grasp_plugin)" />
+                  '$(find ur3_description)/urdf/ur3_peg_gripper.urdf.xacro'
+                  use_effort_interface:=$(arg effort_interface)  grasp_plugin:=$(arg grasp_plugin) peg_shape:=$(arg peg_shape)" />
   <!-- Spawn robot in gazebo (and move it upwards):
        better initial values should be -2.355 and 1.57 but the robot does
        something strange when unpausing it

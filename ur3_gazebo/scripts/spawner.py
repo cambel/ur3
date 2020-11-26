@@ -24,7 +24,7 @@ def place_target():
 
 
 def place_ball():
-    sphere = SPHERE_COLLISION.format("ball", "0.1", "Yellow", "0.1", 1e5)
+    sphere = SPHERE_COLLISION.format("ball", "0.1", "Yellow", "0.1", 2e5)
     model_names = ["ball"]
     objpose = [[0.608678,  0.0,  (0.25939 + 0.685)], [0, 0, 0]]
     #  0.25939 + 0.685
