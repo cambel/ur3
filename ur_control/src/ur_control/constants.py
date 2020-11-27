@@ -16,6 +16,7 @@ JOINT_PUBLISHER_SIM_DUAL_LEFT = 'leftarm/'
 JOINT_SUBSCRIBER = '/arm_controller/state'
 JOINT_STATE_SUBSCRIBER = 'joint_states'
 FT_SUBSCRIBER_REAL = '/wrench'
+FT300_SUBSCRIBER_REAL = '/ft300/wrench'
 FT_SUBSCRIBER_SIM = '/ft_sensor/raw'
 
 # Set constants for joints
