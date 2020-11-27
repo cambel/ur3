@@ -11,7 +11,7 @@ from geometry_msgs.msg import (Wrench)
 from ur_control import utils, spalg, conversions, transformations
 from ur_control.constants import JOINT_ORDER, JOINT_PUBLISHER_REAL, \
     JOINT_PUBLISHER_BETA, JOINT_PUBLISHER_SIM, \
-    FT_SUBSCRIBER_REAL, FT_SUBSCRIBER_SIM, \
+    FT_SUBSCRIBER_REAL, FT_SUBSCRIBER_SIM, FT300_SUBSCRIBER_REAL, \
     ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, ROBOT_UR_RTDE_DRIVER, \
     ROBOT_GAZEBO_DUAL_LEFT, ROBOT_GAZEBO_DUAL_RIGHT, JOINT_PUBLISHER_SIM_DUAL_LEFT, JOINT_PUBLISHER_SIM_DUAL_RIGHT, \
     IKFAST, TRAC_IK, DONE, FORCE_TORQUE_EXCEEDED, SPEED_LIMIT_EXCEEDED, IK_NOT_FOUND
@@ -35,7 +35,8 @@ class Arm(object):
                  robot_urdf='ur3e_robot',
                  ik_solver=IKFAST,
                  namespace='ur3',
-                 gripper=False):
+                 gripper=False,
+                 ft300=False):
         """ ft_sensor bool: whether or not to try to load ft sensor information
             driver string: type of driver to use for real robot or simulation.
                            supported: gazebo, ur_modern_driver, ur_rtde_driver (Newest)
@@ -54,6 +55,7 @@ class Arm(object):
         self._joint_effort = dict()
         self._current_ft = []
         self.ft_sensor = None
+        self.ft300 = ft300
 
         self.ik_solver = ik_solver
         self.ee_transform = ee_transform
@@ -130,7 +132,10 @@ class Arm(object):
         if driver == ROBOT_GAZEBO:
             self.ft_sensor = FTsensor(namespace=FT_SUBSCRIBER_SIM)
         else:
-            self.ft_sensor = FTsensor(namespace=FT_SUBSCRIBER_REAL)
+            if self.ft300:
+                self.ft_sensor = FTsensor(namespace=FT300_SUBSCRIBER_REAL)
+            else:
+                self.ft_sensor = FTsensor(namespace=FT_SUBSCRIBER_REAL)
         rospy.sleep(1)
         self.set_wrench_offset(override=False)
 
@@ -367,3 +372,4 @@ class Arm(object):
             return IK_NOT_FOUND
         else:
             return self.set_joint_positions_flex(q, t=t)
+
