@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 from ur_control import utils, spalg, transformations, traj_utils
 from ur_control.constants import ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, ROBOT_UR_RTDE_DRIVER
-from ur_control.impedance_control import AdmittanceModel
-from ur_control.compliant_controller import CompliantController
+from ur_control.arm import Arm
 import argparse
 import rospy
 import timeit
@@ -233,7 +232,7 @@ def main():
         tcp_z = 0.21
 
     global arm
-    arm = CompliantController(
+    arm = Arm(
         ft_sensor=True,  # get Force/Torque data or not
         driver=ROBOT_GAZEBO,  # which controller (sim?, robot?)
         ee_transform=[0., 0., tcp_z, 0, 0., 0., 1.],  # transformation for the tip of the robot
