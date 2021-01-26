@@ -104,6 +104,15 @@ Build using catkin build
   $ catkin build
   ```
 
+Additinally install the ur_ikfast
+```
+$ git clone https://github.com/cambel/ur_ikfast.git
+$ cd ur_ikfast
+$ pip install -e .
+```
+It takes a few minutes to compile the ikfast libraries.
+
+
 ## Examples
 
 ### Visualization of UR3 in RViz
