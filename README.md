@@ -74,11 +74,16 @@ This will assume that you already have a catkin workspace 'ros_ws'. Go to the so
   $ cd ~/ros_ws/src
   ```
 
-Clone this repo
+Clone this repo and the dependencies
   ```
   $ git clone https://github.com/cambel/ur3
+  $ git clone https://bitbucket.org/traclabs/trac_ik.git
   ```
-
+Optional dependencies for control of the real robot with the Universal_Robots_ROS_Driver
+```
+$ git clone https://github.com/UniversalRobots/Universal_Robots_ROS_Driver.git universal_robots_ros_driver \
+$ git clone -b calibration_devel https://github.com/fmauch/universal_robot.git universal_robot
+```
 Install ros dependencies
   ```
   $ cd ~/ros_ws
