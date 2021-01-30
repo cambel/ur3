@@ -504,7 +504,7 @@
       <offset>0.0</offset>
     </plugin>
   </gazebo>
-  <link name="aruco_marker">
+  <!-- <link name="aruco_marker">
     <visual>
       <geometry>
         <box size="0.1 0.1 0.01"/>
@@ -515,10 +515,10 @@
     <origin rpy="0 1.57079632679 1.57079632679" xyz="0 0 0.20"/>
     <parent link="robotiq_coupler"/>
     <child link="aruco_marker"/>
-  </joint>
-  <gazebo reference="aruco_marker">
+  </joint> -->
+  <!-- <gazebo reference="aruco_marker">
     <material>CB/Apriltag36_11_00000</material>
-  </gazebo>
+  </gazebo> -->
   <!-- Gazebo FT sensor plugin -->
   <gazebo reference="wrist_3_link-tool0_fixed_joint">
     <provideFeedback>true</provideFeedback>

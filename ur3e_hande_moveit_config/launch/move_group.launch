@@ -21,6 +21,7 @@
 
   <arg name="capabilities" default=""/>
   <arg name="disable_capabilities" default=""/>
+  <arg name="namespace" default=""/>
   <!-- load these non-default MoveGroup capabilities (space seperated) -->
   <!--
   <arg name="capabilities" value="
@@ -37,11 +38,9 @@
                 " />
   -->
 
-  <arg name="load_robot_description" default="true" />
-  <!-- load URDF, SRDF and joint_limits configuration -->
-  <include file="$(find ur3e_hande_moveit_config)/launch/planning_context.launch">
-    <arg name="load_robot_description" value="$(arg load_robot_description)" />
-  </include>
+  <group ns="move_group">
+    <rosparam command="load" file="$(find ur3e_hande_moveit_config)/config/kinematics.yaml"/>
+  </group>
 
   <!-- Planning Functionality -->
   <include ns="move_group" file="$(find ur3e_hande_moveit_config)/launch/planning_pipeline.launch.xml">
