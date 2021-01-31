@@ -190,6 +190,13 @@ RUN apt-get update && apt-get install -y \
     ros-$ROS_DISTRO-rqt-multiplot \
     && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && apt-get install -y \
+    ros-melodic-moveit \
+    ros-melodic-moveit-runtime \
+    ros-melodic-moveit-python \
+    ros-melodic-moveit-resources \
+    && rm -rf /var/lib/apt/lists/*
+
 # Fix the MoveIt Rviz controllers *use ur3e_load_moveit_planner.launch on ur3_gripper_moveit_config pkg*
 ADD ur3e_move_group.launch /root/ros_ws/src/universal_robot/ur3_e_moveit_config/launch/move_group.launch
 ADD ur3_e_moveit_execution.launch /root/ros_ws/src/universal_robot/ur3_e_moveit_config/launch/ur3_e_moveit_planning_execution.launch
@@ -197,6 +204,17 @@ ADD ur3_e_moveit_execution.launch /root/ros_ws/src/universal_robot/ur3_e_moveit_
 # Workaround for python3 + tf2
 RUN pip install --extra-index-url https://rospypi.github.io/simple/ tf2_ros --ignore-installed
 RUN pip install --upgrade pip
+
+RUN /bin/bash -c "cd ~/ros_ws/src/robotiq \
+                  && git pull \
+                  && cd ../ros_ur3 \
+                  && git pull"
+
+# Compiling ros workspace
+RUN /bin/bash -c "source /opt/ros/$ROS_DISTRO/setup.bash \
+               && cd ~/ros_ws/ \
+               && rm -rf build \
+               && catkin build -DPYTHON_EXECUTABLE=/usr/bin/python3 -DPYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.6m.so -DPYTHON_VERSION=3"
 
 ENV NVIDIA_VISIBLE_DEVICES ${NVIDIA_VISIBLE_DEVICES:-all}
 ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
@@ -211,5 +229,6 @@ RUN echo 'source /usr/share/gazebo/setup.sh' >> ~/.bashrc
 RUN echo 'export PYTHONPATH=/root/orocos_kinematics_dynamics/python_orocos_kdl/build:$PYTHONPATH' >> ~/.bashrc
 RUN echo 'export GAZEBO_RESOURCE_PATH=$GAZEBO_RESOURCE_PATH:~/ros_ws/src/ros-universal-robots/ur3_gazebo/models/' >> ~/.bashrc
 RUN echo "alias ur3e_dual_sim='roslaunch ur3_gazebo ur3e_dual_gripper.launch pause:=0'" >> ~/.bashrc
-RUN echo "alias ur3e_sim='roslaunch ur3_gazebo ur3e_dual.launch'" >> ~/.bashrc
-RUN echo 'function ur3_robot { roslaunch ur_robot_driver ur3e_bringup.launch robot_ip:="$1" kinematics_config:=/root/dev/tools/my_robot_calibration-${2:-"left"}.yaml; }'  >> ~/.bashrc
+RUN echo "alias ur3e_sim='roslaunch ur3_gazebo ur3e_cubes.launch'" >> ~/.bashrc
+RUN echo 'function ur3e_robot { roslaunch ur_robot_driver ur3e_bringup.launch robot_ip:="$1" kinematics_config:=/root/dev/tools/my_robot_calibration.yaml; }'  >> ~/.bashrc
+RUN echo 'function ur3_robot { roslaunch ur_robot_driver ur3_bringup.launch robot_ip:="$1" kinematics_config:=/root/dev/tools/my_robot_calibration.yaml; }'  >> ~/.bashrc
