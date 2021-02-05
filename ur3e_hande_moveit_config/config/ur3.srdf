@@ -9,16 +9,16 @@
     <!--JOINTS: When a joint is specified, the child link of that joint (which will always exist) is automatically included-->
     <!--CHAINS: When a chain is specified, all the links along the chain (including endpoints) are included in the group. Additionally, all the joints that are parents to included links are also included. This means that joints along the chain and the parent joint of the base link are included in the group-->
     <!--SUBGROUPS: Groups can also be formed by referencing to already defined group names-->
-    <group name="manipulator">
-        <chain base_link="base_link" tip_link="hand_e_link" />
+    <group name="arm">
+        <chain base_link="base_link" tip_link="ur3_robotiq_hande_gripper" />
     </group>
-    <group name="endeffector">
-        <link name="hand_e_link" />
+    <group name="gripper">
+        <link name="ur3_robotiq_hande_gripper" />
     </group>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
-    <end_effector name="moveit_ee" parent_link="hand_e_link" group="endeffector" parent_group="manipulator" />
+    <end_effector name="arm_ee" parent_link="ur3_robotiq_hande_gripper" group="gripper" parent_group="arm" />
     <!--VIRTUAL JOINT: Purpose: this element defines a virtual joint between a robot link and an external frame of reference (considered fixed with respect to the robot)-->
-    <virtual_joint name="fixed_base" type="fixed" parent_frame="world" child_link="base_link" />
+    <virtual_joint name="fixed_base" type="fixed" parent_frame="base_link" child_link="world" />
     <!--PASSIVE JOINT: Purpose: this element is used to mark joints that are not actuated-->
     <passive_joint name="hande_left_finger_joint" />
     <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->

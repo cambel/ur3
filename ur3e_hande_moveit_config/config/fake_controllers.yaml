@@ -1,5 +1,5 @@
 controller_list:
-  - name: fake_manipulator_controller
+  - name: fake_arm_controller
     joints:
       - shoulder_pan_joint
       - shoulder_lift_joint
@@ -7,6 +7,9 @@ controller_list:
       - wrist_1_joint
       - wrist_2_joint
       - wrist_3_joint
+  - name: fake_gripper_controller
+    joints:
+      []
 initial:  # Define initial robot poses.
-#  - group: manipulator
+#  - group: arm
 #    pose: home

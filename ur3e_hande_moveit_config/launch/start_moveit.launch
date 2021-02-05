@@ -32,25 +32,26 @@
   </include> -->
 
   <remap from="/follow_joint_trajectory" to="/arm_controller/follow_joint_trajectory"/>
+  <!-- <include file="$(find ur3e_hande_moveit_config)/launch/ros_controllers.launch"/> -->
+
 
   <!-- Load the URDF, SRDF and other .yaml configuration files on the param server -->
   <include file="$(find ur3e_hande_moveit_config)/launch/planning_context.launch">
-    <arg name="load_robot_description" value="true"/>
+    <arg name="load_robot_description" value="false"/>
     <arg name="robot_description" value="robot_description"/>
-    <arg name="urdf_file" value="ur3e_hande"/>
   </include>
 
   <!-- If needed, broadcast static tf for robot root -->
   <!-- <include file="$(find ur3e_hande_moveit_config)/launch/gazebo_static_tf.launch"/> -->
 
   <!-- We do not have a robot connected, so publish fake joint states -->
-  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+  <!-- <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
     <param name="use_gui" value="$(arg use_gui)"/>
     <rosparam param="source_list" subst_value="True">[/joint_states]</rosparam>
-  </node>
+  </node> -->
 
   <!-- Given the published joint states, publish tf for the robot links -->
-  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="true" output="screen" />
+  <!-- <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="true" output="screen" /> -->
 
   <!-- Run the main MoveIt! executable without trajectory execution (we do not have controllers configured by default) -->
   <!-- <group ns=""> -->

@@ -1,11 +1,11 @@
 moveit_setup_assistant_config:
   URDF:
-    package: ur3e_hande_moveit_config
-    relative_path: config/ur3e_hande.urdf
+    package: ur3_description
+    relative_path: urdf/ur3e/ur3e_robotiq_hande_gripper.urdf.xacro
     xacro_args: ""
   SRDF:
     relative_path: config/ur3.srdf
   CONFIG:
     author_name: Cristian Beltran
     author_email: cristianbehe@gmail.com
-    generated_timestamp: 1604476652
+    generated_timestamp: 1612513610

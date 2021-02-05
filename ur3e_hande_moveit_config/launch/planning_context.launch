@@ -4,13 +4,9 @@
 
   <!-- The name of the parameter under which the URDF is loaded -->
   <arg name="robot_description" default="robot_description"/>
-  <arg name="urdf_file" default="ur3e_hande"/>
 
   <!-- Load universal robot description format (URDF) -->
-  <!-- <param if="$(arg load_robot_description)" name="$(arg robot_description)" textfile="$(find ur3e_hande_moveit_config)/config/$(arg urdf_file).urdf"/> -->
-  <group if="$(arg load_robot_description)">
-    <param name="$(arg robot_description)" command="$(find xacro)/xacro '$(find ur3_description)/urdf/ur3e/ur3e_robotiq_hande_gripper.urdf.xacro'" />
-  </group>
+  <param if="$(arg load_robot_description)" name="$(arg robot_description)" command="xacro  '$(find ur3_description)/urdf/ur3e/ur3e_robotiq_hande_gripper.urdf.xacro'"/>
 
   <!-- The semantic description that corresponds to the URDF -->
   <param name="$(arg robot_description)_semantic" textfile="$(find ur3e_hande_moveit_config)/config/ur3.srdf" />
