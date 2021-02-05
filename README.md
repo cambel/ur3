@@ -61,3 +61,19 @@ Press SPACE to get a list of all valid commands to control either each independe
 To have access to the gripper controller include the option `--gripper`
 
 Another option of easy control is using `rqt`
+
+## MoveIt
+To test the MoveIt configuration with the UR3/UR3e start one of the gazebo environments, such as:
+```
+roslaunch ur3_gazebo ur3e_cubes.launch
+```
+
+Then load the MoveIt configuration
+```
+roslaunch ur3e_hande_moveit_config start_moveit.launch
+```
+
+Then execute the tutorial
+```
+rosrun ur_control moveit_tutorial.py --tutorial
+```
