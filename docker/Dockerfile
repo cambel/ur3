@@ -94,7 +94,7 @@ RUN apt-get update && apt-get install -q -y \
     libgazebo9-dev \
     && rm -rf /var/lib/apt/lists/*
 
-ADD orocos_kinematics_dynamics /root/orocos_kinematics_dynamics
+ADD orocos_kinematics_dynamics.tar.xz /root/
 
 # Install SIP 4.19.8
 ADD sip-4.19.8.tar.gz /root/
