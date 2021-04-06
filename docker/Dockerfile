@@ -210,11 +210,23 @@ RUN /bin/bash -c "cd ~/ros_ws/src/robotiq \
                   && cd ../ros_ur3 \
                   && git pull"
 
+# Intalling MoveIt Task Constructor (MTC)
+RUN /bin/bash -c "source /opt/ros/$ROS_DISTRO/setup.bash \
+               && cd ~/ros_ws/ \
+               && wstool init \
+               && wstool merge https://raw.githubusercontent.com/ros-planning/moveit_task_constructor/master/.rosinstall \
+               && wstool update \
+               && rosdep install --from-paths . --ignore-src --rosdistro $ROS_DISTRO"
+
 # Compiling ros workspace
 RUN /bin/bash -c "source /opt/ros/$ROS_DISTRO/setup.bash \
                && cd ~/ros_ws/ \
                && rm -rf build \
                && catkin build -DPYTHON_EXECUTABLE=/usr/bin/python3 -DPYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.6m.so -DPYTHON_VERSION=3"
+
+# clean
+RUN pip cache purge
+RUN rm -rf /var/lib/apt/lists/*
 
 ENV NVIDIA_VISIBLE_DEVICES ${NVIDIA_VISIBLE_DEVICES:-all}
 ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
