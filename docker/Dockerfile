@@ -190,16 +190,28 @@ RUN apt-get update && apt-get install -y \
     ros-$ROS_DISTRO-rqt-multiplot \
     && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install -y \
-    ros-melodic-moveit \
-    ros-melodic-moveit-runtime \
-    ros-melodic-moveit-python \
-    ros-melodic-moveit-resources \
-    && rm -rf /var/lib/apt/lists/*
 
-# Fix the MoveIt Rviz controllers *use ur3e_load_moveit_planner.launch on ur3_gripper_moveit_config pkg*
-ADD ur3e_move_group.launch /root/ros_ws/src/universal_robot/ur3_e_moveit_config/launch/move_group.launch
-ADD ur3_e_moveit_execution.launch /root/ros_ws/src/universal_robot/ur3_e_moveit_config/launch/ur3_e_moveit_planning_execution.launch
+RUN apt update && apt install -y clang-format-10 ccache
+RUN echo 'export PATH=/usr/lib/ccache:$PATH' >> $HOME/.bashrc
+
+ENV PATH=/usr/lib/ccache:$PATH
+
+# Intalling MoveIt && MoveIt! Task Constructor (MTC)
+RUN /bin/bash -c "cd ~/ && mkdir 3rdparty_ws \
+               && cd 3rdparty_ws \
+               && source /opt/ros/$ROS_DISTRO/setup.bash \
+               && wstool init src \
+               && wstool merge -t src https://raw.githubusercontent.com/ros-planning/moveit_task_constructor/master/.rosinstall \
+               && wstool merge -t src https://raw.githubusercontent.com/ros-planning/moveit/master/moveit.rosinstall \
+               && wstool update -t src \
+               && apt update && rosdep install -y --from-paths src --ignore-src --rosdistro ${ROS_DISTRO} \
+               && catkin config --extend /opt/ros/${ROS_DISTRO} --cmake-args -DCMAKE_BUILD_TYPE=Release \
+               && catkin config --blacklist moveit_chomp_optimizer_adapter moveit_planners_chomp chomp_motion_planner \
+                  moveit_ros_benchmarks  moveit_controller_manager_example moveit_ros_warehouse"
+
+RUN /bin/bash -c "cd ~/3rdparty_ws/src \
+                  && source /opt/ros/$ROS_DISTRO/setup.bash \
+                  && catkin build"
 
 # Workaround for python3 + tf2
 RUN pip install --extra-index-url https://rospypi.github.io/simple/ tf2_ros --ignore-installed
@@ -210,18 +222,11 @@ RUN /bin/bash -c "cd ~/ros_ws/src/robotiq \
                   && cd ../ros_ur3 \
                   && git pull"
 
-# Intalling MoveIt Task Constructor (MTC)
-RUN /bin/bash -c "source /opt/ros/$ROS_DISTRO/setup.bash \
-               && cd ~/ros_ws/ \
-               && wstool init \
-               && wstool merge https://raw.githubusercontent.com/ros-planning/moveit_task_constructor/master/.rosinstall \
-               && wstool update \
-               && rosdep install --from-paths . --ignore-src --rosdistro $ROS_DISTRO"
-
 # Compiling ros workspace
 RUN /bin/bash -c "source /opt/ros/$ROS_DISTRO/setup.bash \
+               && source ~/3rdparty_ws/devel/setup.bash \
                && cd ~/ros_ws/ \
-               && rm -rf build \
+               && catkin clean --yes && catkin config \
                && catkin build -DPYTHON_EXECUTABLE=/usr/bin/python3 -DPYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.6m.so -DPYTHON_VERSION=3"
 
 # clean
@@ -235,6 +240,7 @@ ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPA
 EXPOSE 11345
 
 RUN echo 'source /opt/ros/$ROS_DISTRO/setup.bash' >> ~/.bashrc
+RUN echo 'source ~/3rdparty_ws/devel/setup.bash' >> ~/.bashrc
 RUN echo 'source ~/ros_ws/devel/setup.bash' >> ~/.bashrc
 
 RUN echo 'source /usr/share/gazebo/setup.sh' >> ~/.bashrc
