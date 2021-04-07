@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- Load panda demo with MTC's execution capability -->
+  <include file="$(find ur3e_hande_moveit_config)/launch/demo.launch">
+    <arg name="use_rviz" value="false"/>
+  </include>
+  <param name="move_group/capabilities" value="move_group/ExecuteTaskSolutionCapability" />
+
+  <!-- Run rviz with prepared config -->
+  <include file="$(find ur3e_hande_moveit_config)/launch/moveit_rviz.launch">
+    <arg name="rviz_config" value="$(find ur_mtc_demo)/config/mtc.rviz" />
+  </include>
+</launch>
