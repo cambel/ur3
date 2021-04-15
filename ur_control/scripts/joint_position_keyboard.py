@@ -168,19 +168,21 @@ See help inside the example with the '?' key for key bindings.
 
     ns = ''
     joints_prefix = None
-    
+    robot_urdf = "ur3e_robot"
     if args.namespace:
         ns = args.namespace
         joints_prefix = args.namespace + "_"
+        robot_urdf = args.namespace
     
     use_gripper = args.gripper  
 
-    extra_ee = [0, 0, 0.1871, 0, 0, 0, 1]
+    extra_ee = [0, 0, 0.0, 0, 0, 0, 1]
 
     global arm
     arm = Arm(ft_sensor=False, ee_transform=extra_ee, 
               gripper=use_gripper, namespace=ns, 
-              joint_names_prefix=joints_prefix)
+              joint_names_prefix=joints_prefix, 
+              robot_urdf=robot_urdf)
     print("Extra ee", extra_ee)
 
     map_keyboard()

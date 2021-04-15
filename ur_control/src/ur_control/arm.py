@@ -10,7 +10,8 @@ from geometry_msgs.msg import (Wrench)
 
 from ur_control import utils, spalg, conversions, transformations
 from ur_control.constants import JOINT_ORDER, JOINT_PUBLISHER_ROBOT, FT_SUBSCRIBER, IKFAST, TRAC_IK, \
-    DONE, FORCE_TORQUE_EXCEEDED, SPEED_LIMIT_EXCEEDED, IK_NOT_FOUND, get_arm_joint_names
+    DONE, FORCE_TORQUE_EXCEEDED, SPEED_LIMIT_EXCEEDED, IK_NOT_FOUND, get_arm_joint_names, \
+    BASE_LINK, EE_LINK
 
 # from ur_ikfast import ur_kinematics as ur_ikfast
 
@@ -54,8 +55,10 @@ class Arm(object):
         self.ee_transform = ee_transform
         assert namespace is not None, "namespace cannot be None"
         self.ns = namespace
+        self.joint_names_prefix = joint_names_prefix
 
-        self.ee_link = 'tool0'
+        self.base_link = BASE_LINK if joint_names_prefix is None else joint_names_prefix + BASE_LINK
+        self.ee_link = EE_LINK if joint_names_prefix is None else joint_names_prefix + EE_LINK
         self.max_joint_speed = np.deg2rad([100, 100, 100, 200, 200, 200])
         # self.max_joint_speed = np.deg2rad([191, 191, 191, 371, 371, 371])
 
@@ -88,8 +91,8 @@ class Arm(object):
             self.gripper = GripperController(namespace=self.ns, timeout=2.0)
 
     def _init_ik_solver(self, robot_urdf):
-        self.kdl = ur_kinematics(robot_urdf, ee_link=self.ee_link)
-
+        self.kdl = ur_kinematics(robot_urdf, base_link=self.base_link, ee_link=self.ee_link, prefix=self.joint_names_prefix)
+        
         if self.ik_solver == IKFAST:
             # IKfast libraries
             if robot_urdf == 'ur3_robot':
@@ -97,8 +100,11 @@ class Arm(object):
             elif robot_urdf == 'ur3e_robot':
                 self.arm_ikfast = ur_ikfast.URKinematics('ur3e')
         elif self.ik_solver == TRAC_IK:
-            self.trac_ik = IK(base_link="base_link", tip_link=self.ee_link,
+            try:
+                self.trac_ik = IK(base_link=self.base_link, tip_link=self.ee_link,
                               timeout=0.001, epsilon=1e-5, solve_type="Distance")
+            except Exception as e:
+                rospy.logerr("Could not instantiate TRAC_IK" + str(e))
         else:
             raise Exception("unsupported ik_solver", self.ik_solver)
 

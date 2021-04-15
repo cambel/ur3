@@ -15,6 +15,9 @@ WRIST_1_JOINT = 'wrist_1_joint'
 WRIST_2_JOINT = 'wrist_2_joint'
 WRIST_3_JOINT = 'wrist_3_joint'
 
+BASE_LINK = 'base_link'
+EE_LINK = 'wrist_3_link'
+
 JOINT_ORDER = [
     SHOULDER_PAN_JOINT, SHOULDER_LIFT_JOINT, ELBOW_JOINT, WRIST_1_JOINT,
     WRIST_2_JOINT, WRIST_3_JOINT

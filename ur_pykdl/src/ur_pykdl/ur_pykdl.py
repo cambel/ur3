@@ -33,8 +33,6 @@ import PyKDL
 import rospy
 import rospkg
 
-# import ur_interface  ## TODO
-
 from ur_kdl.kdl_parser import kdl_tree_from_urdf_model
 from urdf_parser_py.urdf import URDF
 from pyquaternion import Quaternion
@@ -71,22 +69,21 @@ class ur_kinematics(object):
     """
     UR Kinematics with PyKDL
     """
-    def __init__(self, robot, ee_link=None):
+    def __init__(self, robot, base_link=None, ee_link=None, prefix=None):
         rospack = rospkg.RosPack()
         pykdl_dir = rospack.get_path('ur_pykdl')
         TREE_PATH = pykdl_dir + '/urdf/' + robot + '.urdf'
         self._ur = URDF.from_xml_file(TREE_PATH)
         self._kdl_tree = kdl_tree_from_urdf_model(self._ur)
-        self._base_link = BASE_LINK
+        self._base_link = BASE_LINK if base_link is None else base_link
 
-        ee_link = EE_LINK if ee_link is None else ee_link
-        self._tip_link = ee_link
+        self._tip_link = EE_LINK if ee_link is None else ee_link
         self._tip_frame = PyKDL.Frame()
         self._arm_chain = self._kdl_tree.getChain(self._base_link,
                                                   self._tip_link)
 
         # UR Interface Limb Instances
-        self._joint_names = JOINT_ORDER
+        self._joint_names = JOINT_ORDER if prefix is None else [prefix + joint for joint in JOINT_ORDER]
         self._num_jnts = len(self._joint_names)
 
         # KDL Solvers
@@ -99,6 +96,7 @@ class ur_kinematics(object):
         self._jac_kdl = PyKDL.ChainJntToJacSolver(self._arm_chain)
         self._dyn_kdl = PyKDL.ChainDynParam(self._arm_chain,
                                             PyKDL.Vector.Zero())
+
 
     def print_robot_description(self):
         nf_joints = 0
