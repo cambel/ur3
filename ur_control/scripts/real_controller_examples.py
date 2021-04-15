@@ -51,17 +51,23 @@ def move_endeffector(wait=True):
 
 def move_gripper():
     # very different than simulation
-    from robotiq_urcap_control.msg import Robotiq2FGripper_robot_input as inputMsg
-    from robotiq_urcap_control.msg import Robotiq2FGripper_robot_output as outputMsg
-    from robotiq_urcap_control.robotiq_urcap_control import RobotiqGripper
+    # from robotiq_urcap_control.msg import Robotiq2FGripper_robot_input as inputMsg
+    # from robotiq_urcap_control.msg import Robotiq2FGripper_robot_output as outputMsg
+    # from robotiq_urcap_control.robotiq_urcap_control import RobotiqGripper
+    from robotiq_msgs.msg import CModelCommand, CModelStatus
+    from robotiq_control.cmodel_urcap import RobotiqCModelURCap
+
     print("Connecting to gripper")
     robot_ip = rospy.get_param("/ur_hardware_interface/robot_ip")
-    gripper = RobotiqGripper(robot_ip=robot_ip)
+    gripper = RobotiqCModelURCap(robot_ip=robot_ip)
+    # gripper = RobotiqGripper(robot_ip=robot_ip)
     # The Gripper status is published on the topic named 'Robotiq2FGripperRobotInput'
-    pub = rospy.Publisher('Robotiq2FGripperRobotInput', inputMsg, queue_size=1)
+    pub = rospy.Publisher('Robotiq2FGripperRobotInput', CModelStatus, queue_size=1)
+    # pub = rospy.Publisher('Robotiq2FGripperRobotInput', inputMsg, queue_size=1)
 
     # The Gripper command is received from the topic named 'Robotiq2FGripperRobotOutput'
-    rospy.Subscriber('Robotiq2FGripperRobotOutput', outputMsg, gripper.send_command)
+    rospy.Subscriber('Robotiq2FGripperRobotOutput', CModelCommand, gripper.send_command)
+    # rospy.Subscriber('Robotiq2FGripperRobotOutput', outputMsg, gripper.send_command)
 
     gripper.connect()
     gripper.activate()
