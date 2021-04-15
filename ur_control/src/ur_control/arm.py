@@ -9,14 +9,10 @@ from trajectory_msgs.msg import (
 from geometry_msgs.msg import (Wrench)
 
 from ur_control import utils, spalg, conversions, transformations
-from ur_control.constants import JOINT_ORDER, JOINT_PUBLISHER_REAL, \
-    JOINT_PUBLISHER_BETA, JOINT_PUBLISHER_SIM, \
-    FT_SUBSCRIBER_REAL, FT_SUBSCRIBER_SIM, FT300_SUBSCRIBER_REAL, \
-    ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, ROBOT_UR_RTDE_DRIVER, \
-    ROBOT_GAZEBO_DUAL_LEFT, ROBOT_GAZEBO_DUAL_RIGHT, JOINT_PUBLISHER_SIM_DUAL_LEFT, JOINT_PUBLISHER_SIM_DUAL_RIGHT, \
-    IKFAST, TRAC_IK, DONE, FORCE_TORQUE_EXCEEDED, SPEED_LIMIT_EXCEEDED, IK_NOT_FOUND
+from ur_control.constants import JOINT_ORDER, JOINT_PUBLISHER_ROBOT, FT_SUBSCRIBER, IKFAST, TRAC_IK, \
+    DONE, FORCE_TORQUE_EXCEEDED, SPEED_LIMIT_EXCEEDED, IK_NOT_FOUND, get_arm_joint_names
 
-from ur_ikfast import ur_kinematics as ur_ikfast
+# from ur_ikfast import ur_kinematics as ur_ikfast
 
 from ur_control.controllers import JointTrajectoryController, FTsensor, GripperController
 from ur_pykdl import ur_kinematics
@@ -30,17 +26,14 @@ class Arm(object):
 
     def __init__(self,
                  ft_sensor=False,
-                 driver=ROBOT_GAZEBO,
                  ee_transform=None,
                  robot_urdf='ur3e_robot',
-                 ik_solver=IKFAST,
-                 namespace='ur3',
+                 ik_solver=TRAC_IK,
+                 namespace='',
                  gripper=False,
-                 ft300=False):
+                 joint_names_prefix=None,
+                 ft_topic=None):
         """ ft_sensor bool: whether or not to try to load ft sensor information
-            driver string: type of driver to use for real robot or simulation.
-                           supported: gazebo, ur_modern_driver, ur_rtde_driver (Newest)
-                           use ur_control.constants e.g. ROBOT_GAZEBO
             ee_tranform array [x,y,z,ax,ay,az,w]: optional transformation to the end-effector
                                                   that is applied before doing any operation in task-space
             robot_urdf string: name of the robot urdf file to be used
@@ -48,17 +41,18 @@ class Arm(object):
             gripper bool: enable gripper control
         """
 
-        cprint.ok("ft_sensor: {}, driver: {}, ee_transform: {}, \n robot_urdf: {}".format(ft_sensor, driver, ee_transform, robot_urdf))
+        cprint.ok("ft_sensor: {}, ee_transform: {}, \n robot_urdf: {}".format(ft_sensor, ee_transform, robot_urdf))
 
         self._joint_angle = dict()
         self._joint_velocity = dict()
         self._joint_effort = dict()
         self._current_ft = []
         self.ft_sensor = None
-        self.ft300 = ft300
+        self.ft_topic = ft_topic if ft_topic is not None else FT_SUBSCRIBER
 
         self.ik_solver = ik_solver
         self.ee_transform = ee_transform
+        assert namespace is not None, "namespace cannot be None"
         self.ns = namespace
 
         self.ee_link = 'tool0'
@@ -66,44 +60,32 @@ class Arm(object):
         # self.max_joint_speed = np.deg2rad([191, 191, 191, 371, 371, 371])
 
         self._init_ik_solver(robot_urdf)
-        self._init_controllers(driver, gripper)
+        self._init_controllers(gripper, joint_names_prefix)
         if ft_sensor:
-            self._init_ft_sensor(driver)
+            self._init_ft_sensor()
 
 ### private methods ###
 
-    def _init_controllers(self, driver, gripper):
-        traj_publisher = None
-        namespace = ''
-        if driver == ROBOT_UR_MODERN_DRIVER:
-            traj_publisher = JOINT_PUBLISHER_REAL
-        elif driver == ROBOT_UR_RTDE_DRIVER:
-            traj_publisher = JOINT_PUBLISHER_BETA
-        elif driver == ROBOT_GAZEBO:
-            traj_publisher = JOINT_PUBLISHER_SIM
-        elif driver == ROBOT_GAZEBO_DUAL_LEFT:
-            traj_publisher = JOINT_PUBLISHER_SIM
-            namespace = JOINT_PUBLISHER_SIM_DUAL_LEFT
-        elif driver == ROBOT_GAZEBO_DUAL_RIGHT:
-            traj_publisher = JOINT_PUBLISHER_SIM
-            namespace = JOINT_PUBLISHER_SIM_DUAL_RIGHT
-        else:
-            raise Exception("unsupported driver", driver)
+    def _init_controllers(self, gripper, joint_names_prefix=None):
+        traj_publisher = JOINT_PUBLISHER_ROBOT
+        self.joint_names = None if joint_names_prefix is None else get_arm_joint_names(joint_names_prefix)
+
         # Flexible trajectory (point by point)
 
-        traj_publisher_flex = '/' + namespace + traj_publisher + '/command'
-        print(traj_publisher_flex)
-        cprint.blue("connecting to: {}".format(traj_publisher))
+        traj_publisher_flex = self.ns + '/' + traj_publisher + '/command'
+
+        cprint.blue("connecting to: {}".format(traj_publisher_flex))
+
         self._flex_trajectory_pub = rospy.Publisher(traj_publisher_flex,
                                                     JointTrajectory,
                                                     queue_size=10)
 
         self.joint_traj_controller = JointTrajectoryController(
-            publisher_name=traj_publisher, namespace=namespace)
+            publisher_name=traj_publisher, namespace=self.ns, joint_names=self.joint_names)
 
         self.gripper = None
         if gripper:
-            self.gripper = GripperController(namespace=namespace, timeout=2.0)
+            self.gripper = GripperController(namespace=self.ns, timeout=2.0)
 
     def _init_ik_solver(self, robot_urdf):
         self.kdl = ur_kinematics(robot_urdf, ee_link=self.ee_link)
@@ -116,38 +98,30 @@ class Arm(object):
                 self.arm_ikfast = ur_ikfast.URKinematics('ur3e')
         elif self.ik_solver == TRAC_IK:
             self.trac_ik = IK(base_link="base_link", tip_link=self.ee_link,
-                              timeout=0.001, epsilon=1e-5, solve_type="Speed",
-                              urdf_string=utils.load_urdf_string('ur_pykdl', robot_urdf))
+                              timeout=0.001, epsilon=1e-5, solve_type="Distance")
         else:
             raise Exception("unsupported ik_solver", self.ik_solver)
 
-    def _init_ft_sensor(self, driver):
+    def _init_ft_sensor(self):
         # Publisher of wrench
-        self.pub_ee_wrench = rospy.Publisher('/%s/ee_ft' % self.ns,
+        namespace = '' if self.ns is None else self.ns
+        self.pub_ee_wrench = rospy.Publisher('%s/%s/filtered' % (namespace, self.ft_topic),
                                              Wrench,
                                              queue_size=50)
-        self.pub_raw_ft = rospy.Publisher('/%s/filtered_ft' % self.ns,
-                                             Wrench,
-                                             queue_size=50)
-        if driver == ROBOT_GAZEBO:
-            self.ft_sensor = FTsensor(namespace=FT_SUBSCRIBER_SIM)
-        else:
-            if self.ft300:
-                self.ft_sensor = FTsensor(namespace=FT300_SUBSCRIBER_REAL)
-            else:
-                self.ft_sensor = FTsensor(namespace=FT_SUBSCRIBER_REAL)
-        rospy.sleep(1)
+
+        self.ft_sensor = FTsensor(namespace='%s/%s' % (namespace, self.ft_topic))
         self.set_wrench_offset(override=False)
 
     def _update_wrench_offset(self):
+        namespace = '' if self.ns is None else self.ns
         self.wrench_offset = self.get_filtered_ft().tolist()
-        rospy.set_param('/%s/ft_offset' % self.ns, self.wrench_offset)
+        rospy.set_param('/%s/ft_offset' % namespace, self.wrench_offset)
 
     def _flexible_trajectory(self, position, time=5.0, vel=None):
         """ Publish point by point making it more flexible for real-time control """
         # Set up a trajectory message to publish.
         action_msg = JointTrajectory()
-        action_msg.joint_names = JOINT_ORDER
+        action_msg.joint_names = JOINT_ORDER if self.joint_names is None else self.joint_names
 
         # Create a point to tell the robot to move to.
         target = JointTrajectoryPoint()
@@ -203,7 +177,8 @@ class Arm(object):
         if override:
             self._update_wrench_offset()
         else:
-            self.wrench_offset = rospy.get_param('/%s/ft_offset' % self.ns, None)
+            namespace = 'ur3' if self.ns is None else self.ns
+            self.wrench_offset = rospy.get_param('/%s/ft_offset' % namespace, None)
             if self.wrench_offset is None:
                 self._update_wrench_offset()
 
@@ -215,12 +190,11 @@ class Arm(object):
         ft_hist = self.ft_sensor.get_filtered_wrench(hist_size=hist_size)
 
         if self.wrench_offset is not None:
-            ft_hist = np.array(ft_hist) - np.array(
-                self.wrench_offset)
+            ft_hist = np.array(ft_hist) - np.array(self.wrench_offset)
 
         poses_hist = [self.end_effector(q) for q in q_hist]
         wrench_hist = [spalg.convert_wrench(wft, p).tolist() for p, wft in zip(poses_hist, ft_hist)]
-        
+
         return np.array(wrench_hist)
 
     def get_ee_wrench(self):
@@ -231,8 +205,7 @@ class Arm(object):
         wrench_force = self.ft_sensor.get_filtered_wrench()
 
         if self.wrench_offset is not None:
-            wrench_force = np.array(wrench_force) - np.array(
-                self.wrench_offset)
+            wrench_force = np.array(wrench_force) - np.array(self.wrench_offset)
 
         # compute force transformation?
         # # # Transform of EE
@@ -248,19 +221,6 @@ class Arm(object):
         wrench = self.get_ee_wrench()
         # Note you need to call rospy.init_node() before this will work
         self.pub_ee_wrench.publish(conversions.to_wrench(wrench))
-
-    def publish_ft_raw(self):
-        if self.ft_sensor is None:
-            raise Exception("FT Sensor not initialized")
-
-        " Publish arm's end-effector wrench "
-        wrench_force = self.ft_sensor.get_filtered_wrench()
-
-        if self.wrench_offset is not None:
-            wrench_force = np.array(wrench_force) - np.array(
-                self.wrench_offset)
-        # Note you need to call rospy.init_node() before this will work
-        self.pub_raw_ft.publish(conversions.to_wrench(wrench_force))
 
     def end_effector(self,
                      joint_angles=None,
@@ -372,4 +332,3 @@ class Arm(object):
             return IK_NOT_FOUND
         else:
             return self.set_joint_positions_flex(q, t=t)
-

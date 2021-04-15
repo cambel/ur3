@@ -4,7 +4,7 @@ joint_state_controller:
   type: joint_state_controller/JointStateController
 
 # Effort based controller
-arm_controller:
+scaled_pos_joint_traj_controller:
   type: effort_controllers/JointTrajectoryController
   joints:
      - shoulder_pan_joint

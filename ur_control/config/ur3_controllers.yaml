@@ -3,7 +3,7 @@ joint_state_controller:
   publish_rate: 125
   type: joint_state_controller/JointStateController
 
-arm_controller:
+scaled_pos_joint_traj_controller:
   type: position_controllers/JointTrajectoryController
   joints:
      - shoulder_pan_joint

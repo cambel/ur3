@@ -12,7 +12,7 @@ import rospy
 
 from ur_control.arm import Arm
 from ur_control.mouse_6d import Mouse6D
-from ur_control.constants import ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, ROBOT_UR_RTDE_DRIVER
+from ur_control.constants import ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, UNIVERSAL_ROBOTS_ROS_DRIVER
 from ur_control import transformations
 
 from pyquaternion import Quaternion
@@ -81,7 +81,7 @@ def main():
     if args.robot:
         driver = ROBOT_UR_MODERN_DRIVER
     elif args.beta:
-        driver = ROBOT_UR_RTDE_DRIVER
+        driver = UNIVERSAL_ROBOTS_ROS_DRIVER
 
     global arm
     arm = Arm(ft_sensor=False, driver=driver)

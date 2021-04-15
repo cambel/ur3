@@ -7,18 +7,13 @@ import argparse
 import rospy
 
 from ur_control.arm import Arm
-from ur_control.constants import ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, ROBOT_UR_RTDE_DRIVER, ROBOT_GAZEBO_DUAL_RIGHT, ROBOT_GAZEBO_DUAL_LEFT
 from ur_control import transformations
-import ur_control.conversions as conversions
 
-from pyquaternion import Quaternion
-from ur_ikfast import ur_kinematics
 import getch
 
 import numpy as np
 np.set_printoptions(linewidth=np.inf)
 np.set_printoptions(suppress=True)
-ur3e_arm = ur_kinematics.URKinematics('ur3e')
 
 def map_keyboard():
     def print_robot_state():
@@ -143,7 +138,7 @@ def map_keyboard():
 
 
 def main():
-    """RSDK Joint Position Example: Keyboard Control
+    """Joint Position Example: Keyboard Control
 
     Use your dev machine's keyboard to control joint positions.
 
@@ -161,39 +156,31 @@ See help inside the example with the '?' key for key bindings.
     parser.add_argument(
         '--relative', action='store_true', help='Motion Relative to ee')
     parser.add_argument(
-        '--robot', action='store_true', help='for the real robot')
-    parser.add_argument(
-        '--old', action='store_true', help='for the real robot. old-driver driver')
-    parser.add_argument(
-        '--right', action='store_true', help='for the sim dual robot. right arm driver')
-    parser.add_argument(
-        '--left', action='store_true', help='for the sim dual robot. left arm driver')
+        '--namespace', type=str, help='Namespace of arm', default=None)
     parser.add_argument(
         '--gripper', action='store_true', help='enable gripper commands')
     args = parser.parse_args(rospy.myargv()[1:])
 
-    rospy.init_node("joint_position_keyboard")
-
-    driver = ROBOT_GAZEBO
+    rospy.init_node("joint_position_keyboard", log_level=rospy.INFO)
 
     global relative_ee
     relative_ee = args.relative
 
-    if args.robot:
-        driver = ROBOT_UR_RTDE_DRIVER
-    elif args.old:
-        driver = ROBOT_UR_MODERN_DRIVER
-    elif args.left:
-        driver = ROBOT_GAZEBO_DUAL_LEFT
-    elif args.right:
-        driver = ROBOT_GAZEBO_DUAL_RIGHT
+    ns = ''
+    joints_prefix = None
+    
+    if args.namespace:
+        ns = args.namespace
+        joints_prefix = args.namespace + "_"
     
     use_gripper = args.gripper  
 
-    extra_ee = [0, 0, 0.21, 0, 0, 0, 1]
+    extra_ee = [0, 0, 0.1871, 0, 0, 0, 1]
 
     global arm
-    arm = Arm(ft_sensor=False, driver=driver, ee_transform=extra_ee, gripper=use_gripper)
+    arm = Arm(ft_sensor=False, ee_transform=extra_ee, 
+              gripper=use_gripper, namespace=ns, 
+              joint_names_prefix=joints_prefix)
     print("Extra ee", extra_ee)
 
     map_keyboard()

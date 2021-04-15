@@ -513,18 +513,19 @@ def convert_wrench(wrench_force, pose):
 
     return wrench
 
-def face_towards(target_position, current_position, up_vector=[0, 0, 1]):
+def face_towards(target_position, current_pose, up_vector=[0, 0, 1]):
     """
         Compute orientation to "face towards" a point in space 
         given the current position and the initial vector representing "up"
         default is z as is the outward direction from the end-effector
     """
-    direction = tr.unit_vector(target_position-current_position)
+    cposition = current_pose[:3]
+    direction = tr.unit_vector(target_position-cposition)
 
     cmd_rot = look_rotation(direction, up=up_vector)
     target_quat = tr.vector_from_pyquaternion(cmd_rot)
 
-    return np.concatenate([current_position, target_quat])
+    return np.concatenate([cposition, target_quat])
 
 
 def look_rotation(forward, up=[0, 0, 1]):

@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 from ur_control import utils, spalg, transformations
-from ur_control.constants import ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, ROBOT_UR_RTDE_DRIVER
-from ur_control.arm import Arm
+from ur_control.constants import ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, UNIVERSAL_ROBOTS_ROS_DRIVER
+from ur_control.impedance_control import AdmittanceModel
+from ur_control.compliant_controller import CompliantController
 import argparse
 import rospy
 import timeit
@@ -12,13 +13,13 @@ np.set_printoptions(linewidth=np.inf)
 
 def move_joints(wait=True):
     # desired joint configuration 'q'
-    q = [2.37191, -1.88688, -1.82035,  0.4766,  2.31206,  3.18758]
+    q = [-1.1592, -0.7574, 1.7715, -2.5935, 1.5664, 0.0]
 
     # go to desired joint configuration
     # in t time (seconds)
     # wait is for waiting to finish the motion before executing
     # anything else or ignore and continue with whatever is next
-    arm.set_joint_positions(position=q, wait=wait, t=0.5)
+    arm.set_joint_positions(position=q, wait=wait, t=5.0)
 
 
 def follow_trajectory():
@@ -86,18 +87,33 @@ def main():
                         help='Rotation slerp')
     parser.add_argument('--relative', action='store_true', help='relative to end-effector')
     parser.add_argument('--rotation_pd', action='store_true', help='relative to end-effector')
+    parser.add_argument(
+        '--right', action='store_true', help='for the sim dual robot. right arm driver')
+    parser.add_argument(
+        '--left', action='store_true', help='for the sim dual robot. left arm driver')
 
     args = parser.parse_args()
 
     rospy.init_node('ur3e_script_control')
 
+    ns = None
+    joints_prefix = None
+    driver = UNIVERSAL_ROBOTS_ROS_DRIVER
+    
+    if args.left:
+        ns = "left_arm"
+        joints_prefix = "leftarm_"
+    elif args.right:
+        ns = "right_arm"
+        joints_prefix = "rightarm_"
+    
+    use_gripper = args.gripper  
+
+    extra_ee = [0, 0, 0.1871, 0, 0, 0, 1]
+
     global arm
-    arm = Arm(
-        ft_sensor=True,  # get Force/Torque data or not
-        driver=ROBOT_UR_RTDE_DRIVER,  # which controller (sim?, robot?)
-        ee_transform=[0., 0., 0.21, 0, 0., 0., 1.],  # transformation for the tip of the robot
-        gripper=True,  # Enable gripper
-    )
+    arm = CompliantController(ft_sensor=False, driver=driver, ee_transform=extra_ee, 
+              gripper=use_gripper, namespace=ns, joint_names_prefix=joints_prefix)
 
     real_start_time = timeit.default_timer()
     ros_start_time = rospy.get_time()
