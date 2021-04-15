@@ -241,7 +241,7 @@
         <child link="b_bot_tool0"/>
     </joint>
     <joint name="b_bot_robotiq_140_base_joint" type="fixed">
-        <parent link="a_bot_tool0"/>
+        <parent link="b_bot_tool0"/>
         <child link="b_bot_robotiq_140_base_link"/>
         <origin rpy="0.0 0.0 0.0" xyz="0 0 0"/>
     </joint>

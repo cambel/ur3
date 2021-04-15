@@ -88,7 +88,7 @@ class Arm(object):
 
         self.gripper = None
         if gripper:
-            self.gripper = GripperController(namespace=self.ns, timeout=2.0)
+            self.gripper = GripperController(namespace=self.ns, prefix=self.joint_names_prefix, timeout=2.0)
 
     def _init_ik_solver(self, robot_urdf):
         self.kdl = ur_kinematics(robot_urdf, base_link=self.base_link, ee_link=self.ee_link, prefix=self.joint_names_prefix)
@@ -102,7 +102,8 @@ class Arm(object):
         elif self.ik_solver == TRAC_IK:
             try:
                 self.trac_ik = IK(base_link=self.base_link, tip_link=self.ee_link,
-                              timeout=0.001, epsilon=1e-5, solve_type="Distance")
+                              timeout=0.001, epsilon=1e-5, solve_type="Distance", 
+                              urdf_string=utils.load_urdf_string('ur_pykdl', robot_urdf))
             except Exception as e:
                 rospy.logerr("Could not instantiate TRAC_IK" + str(e))
         else:
@@ -111,6 +112,7 @@ class Arm(object):
     def _init_ft_sensor(self):
         # Publisher of wrench
         namespace = '' if self.ns is None else self.ns
+        print("publish filtered wrench:", '%s/%s/filtered' % (namespace, self.ft_topic))
         self.pub_ee_wrench = rospy.Publisher('%s/%s/filtered' % (namespace, self.ft_topic),
                                              Wrench,
                                              queue_size=50)

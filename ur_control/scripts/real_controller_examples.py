@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 from ur_control import utils, spalg, transformations
-from ur_control.constants import ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, UNIVERSAL_ROBOTS_ROS_DRIVER
 from ur_control.impedance_control import AdmittanceModel
 from ur_control.compliant_controller import CompliantController
 import argparse
@@ -88,32 +87,32 @@ def main():
     parser.add_argument('--relative', action='store_true', help='relative to end-effector')
     parser.add_argument('--rotation_pd', action='store_true', help='relative to end-effector')
     parser.add_argument(
-        '--right', action='store_true', help='for the sim dual robot. right arm driver')
+        '--namespace', type=str, help='Namespace of arm', default=None)
     parser.add_argument(
-        '--left', action='store_true', help='for the sim dual robot. left arm driver')
+        '--gripper', action='store_true', help='enable gripper commands')
 
     args = parser.parse_args()
 
     rospy.init_node('ur3e_script_control')
 
-    ns = None
+    ns = ''
     joints_prefix = None
-    driver = UNIVERSAL_ROBOTS_ROS_DRIVER
-    
-    if args.left:
-        ns = "left_arm"
-        joints_prefix = "leftarm_"
-    elif args.right:
-        ns = "right_arm"
-        joints_prefix = "rightarm_"
+    robot_urdf = "ur3e_robot"
+    if args.namespace:
+        ns = args.namespace
+        joints_prefix = args.namespace + "_"
+        robot_urdf = args.namespace
     
     use_gripper = args.gripper  
 
-    extra_ee = [0, 0, 0.1871, 0, 0, 0, 1]
+    extra_ee = [0, 0, 0.0, 0, 0, 0, 1]
 
     global arm
-    arm = CompliantController(ft_sensor=False, driver=driver, ee_transform=extra_ee, 
-              gripper=use_gripper, namespace=ns, joint_names_prefix=joints_prefix)
+    arm = CompliantController(ft_sensor=False, ee_transform=extra_ee, 
+              gripper=use_gripper, namespace=ns, 
+              joint_names_prefix=joints_prefix, 
+              robot_urdf=robot_urdf)
+    print("Extra ee", extra_ee)
 
     real_start_time = timeit.default_timer()
     ros_start_time = rospy.get_time()

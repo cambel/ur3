@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 from ur_control import utils, spalg, transformations, traj_utils
-from ur_control.constants import ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, UNIVERSAL_ROBOTS_ROS_DRIVER
-from ur_control.impedance_control import AdmittanceModel
+from ur_control.hybrid_controller import ForcePositionController
 from ur_control.compliant_controller import CompliantController
 import argparse
 import rospy
@@ -14,8 +13,8 @@ np.set_printoptions(linewidth=np.inf)
 
 def move_joints(wait=True):
     # desired joint configuration 'q'
-    q = [2.37191, -1.88688, -1.82035,  0.4766,  2.31206,  3.18758]
-
+    # q = [2.37191, -1.88688, -1.82035,  0.4766,  2.31206,  3.18758]
+    q = [1.0884, -1.4911, 1.9667, -2.0092, -1.5708, -0.4378]
     # go to desired joint configuration
     # in t time (seconds)
     # wait is for waiting to finish the motion before executing
@@ -148,6 +147,36 @@ def face_towards_target():
     cmd = spalg.face_towards(target_position, cpose)
     arm.set_target_pose(cmd, wait=True, t=1)
 
+def force_control():
+    arm.set_wrench_offset(True)
+    alpha = [1.,1.,0.0,1.,1.,1.]
+    robot_control_dt = 0.002
+
+    timeout = 20.0
+
+    Kp = np.array([0.01]*6)
+    Kp_pos = Kp
+    Kd_pos = Kp * 0.1
+    position_pd = utils.PID(Kp=Kp_pos, Kd=Kd_pos)
+
+    # Force PID gains
+    Kp = np.array([0.05]*6)
+    Kp_force = Kp
+    Kd_force = Kp * 0.1
+    Ki_force = Kp * 0.01
+    force_pd = utils.PID(Kp=Kp_force, Kd=Kd_force, Ki=Ki_force)
+    pf_model = ForcePositionController(position_pd=position_pd, force_pd=force_pd, alpha=np.diag(alpha), dt=robot_control_dt)
+
+    max_force_torque = np.array([50.,50.,50.,5.,5.,5.])
+
+    target_position = arm.end_effector()
+    target_force = np.array([0.,0.,0.,0.,0.,0.])
+
+    pf_model.set_goals(target_position, target_force)
+
+    res = arm.set_hybrid_control(pf_model, max_force_torque=max_force_torque, timeout=timeout)
+    print(res)
+
 def main():
     """ Main function to be run. """
     parser = argparse.ArgumentParser(description='Test force control')
@@ -159,6 +188,8 @@ def main():
                         help='move to a desired end-effector position')
     parser.add_argument('-g', '--gripper', action='store_true',
                         help='Move gripper')
+    parser.add_argument('-f', '--force', action='store_true',
+                        help='Force control demo')
     parser.add_argument('--grasp_naive', action='store_true',
                         help='Test simple grasping (cube_tasks world)')
     parser.add_argument('--grasp_plugin', action='store_true',
@@ -167,22 +198,34 @@ def main():
                         help='Circular rotation around a target pose')
     parser.add_argument('--face', action='store_true',
                         help='Face towards a target vector')
-
+    parser.add_argument(
+        '--namespace', type=str, help='Namespace of arm', default=None)
     args = parser.parse_args()
 
     rospy.init_node('ur3e_script_control')
 
-    tcp_z = 0.21  # where to consider the tool center point wrt end-effector
+    tcp_z = 0.0  # where to consider the tool center point wrt end-effector
     if args.face:
-        tcp_z = 0.21
+        tcp_z = 0.0
+
+    ns = ''
+    joints_prefix = None
+    robot_urdf = "ur3e_robot"
+    if args.namespace:
+        ns = args.namespace
+        joints_prefix = args.namespace + "_"
+        robot_urdf = args.namespace
+    
+    use_gripper = args.gripper  
+
+    extra_ee = [0, 0, tcp_z, 0, 0, 0, 1]
 
     global arm
-    arm = CompliantController(
-        ft_sensor=True,  # get Force/Torque data or not
-        driver=ROBOT_GAZEBO,  # which controller (sim?, robot?)
-        ee_transform=[0., 0., tcp_z, 0, 0., 0., 1.],  # transformation for the tip of the robot
-        gripper=True,  # Enable gripper
-    )
+    arm = CompliantController(ft_sensor=True, ee_transform=extra_ee, 
+              gripper=use_gripper, namespace=ns, 
+              joint_names_prefix=joints_prefix, 
+              robot_urdf=robot_urdf)
+    print("Extra ee", extra_ee)
 
     real_start_time = timeit.default_timer()
     ros_start_time = rospy.get_time()
@@ -203,6 +246,8 @@ def main():
         circular_trajectory()
     if args.face:
         face_towards_target()
+    if args.force:
+        force_control()
 
     print("real time", round(timeit.default_timer() - real_start_time, 3))
     print("ros time", round(rospy.get_time() - ros_start_time, 3))

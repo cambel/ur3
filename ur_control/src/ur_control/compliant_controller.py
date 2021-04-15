@@ -30,40 +30,7 @@ class CompliantController(Arm):
         js_rate = utils.read_parameter('/joint_state_controller/publish_rate', 500.0)
         self.rate = rospy.Rate(js_rate)
 
-    def set_impedance_control(self, target_pose, target_force, model, max_force_torque, timeout=0.2, action=None):
-        """ Move the robot according to a impedance model """
-        # Timeout for motion
-        initime = rospy.get_time()
-        xb = self.end_effector()
-        while not rospy.is_shutdown() \
-                and (rospy.get_time() - initime) < timeout:
-
-            f = self.get_ee_wrench()
-            if np.any(np.abs(f) > max_force_torque):
-                rospy.logerr('Maximum force/torque exceeded {}'.format(np.round(f, 3)))
-                self.set_target_pose_flex(pose=xb, t=model.dt)
-                return FORCE_TORQUE_EXCEEDED
-
-            xb = self.end_effector()
-            error = spalg.translation_rotation_error(target_pose, xb)
-            step = model.p_controller.update(error=error, dt=model.dt)
-
-            if action is not None:
-                step += action
-
-            delta_x = model.control(f - target_force) / model.dt
-            delta_x = step + delta_x
-
-            xc = transformations.pose_from_angular_veloticy(xb, delta_x, dt=model.dt, ee_rotation=self.relative_to_ee)
-
-            result = self.set_target_pose_flex(pose=xc, t=model.dt)
-            if result != DONE:
-                return result
-
-            self.rate.sleep()
-        return DONE
-
-    def set_hybrid_control(self, model, max_force_torque, timeout=5.0, action=None):
+    def set_hybrid_control(self, model, max_force_torque, timeout=5.0):
         """ Move the robot according to a hybrid controller model"""
         # Timeout for motion
         initime = rospy.get_time()
@@ -85,17 +52,13 @@ class CompliantController(Arm):
             # Current position in task-space
             xb = self.end_effector()
 
-            if len(action) == 6:
-                dxf = model.control_position_orientation(Fb, xb, action)  # angular velocity
-            elif len(action) == 3:
-                dxf = model.control_position(Fb[:3], xb[:3], action)  # angular velocity
-                dxf = np.concatenate([dxf, np.zeros(3)])
+            dxf = model.control_position_orientation(Fb, xb)  # angular velocity
 
             xc = transformations.pose_from_angular_veloticy(xb, dxf, dt=model.dt, ee_rotation=self.relative_to_ee)
 
             result = self.set_target_pose_flex(pose=xc, t=model.dt)
-            if result != DONE:
-                return result
+            # if result != DONE:
+            #     return result
 
             self.rate.sleep()
         return DONE

@@ -48,7 +48,7 @@ class ForcePositionController(object):
         self.error_data = list()
         self.update_data = list()
 
-    def control_position(self, fc, xv, action=0):
+    def control_position(self, fc, xv):
         """ Obtains the next action from the hybrid controller
             fc: list, current wrench
             xv: list, virtual trajectory tranlsation + euler
@@ -61,14 +61,13 @@ class ForcePositionController(object):
         # Position PD compensator
         xe = self.xr - xv
         dxf_pos = self.position_pd.update(error=xe, dt=self.dt)
-        dxf_pos += action
 
         # Sum step from force and step from position PDs
         dxf_pos = np.dot(self.alpha, dxf_pos)
         dxf_force = np.dot((np.identity(3) - self.alpha), dxf_force)
         return dxf_pos + dxf_force
 
-    def control_position_orientation(self, fc, xv, action=0):
+    def control_position_orientation(self, fc, xv):
         """ Obtains the next action from the hybrid controller
             fc: list, current wrench
             xv: list, virtual trajectory translation + quaternion
@@ -81,7 +80,6 @@ class ForcePositionController(object):
         # Position PD compensator
         error = spalg.translation_rotation_error(self.xr, xv)
         dxf_pos = self.position_pd.update(error=error, dt=self.dt)
-        dxf_pos += action
 
         # self.error_data.append([error, Fe])
         # self.update_data.append([dxf_pos, dxf_force])

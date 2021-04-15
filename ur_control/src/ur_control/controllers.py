@@ -22,9 +22,9 @@ from control_msgs.msg import GripperCommandAction, GripperCommandGoal
 class GripperController(object):
     def __init__(self, namespace='', prefix='', timeout=5.0, attach_link='robot::wrist_3_link'):
         self.ns = utils.solve_namespace(namespace)
-        self.prefix = prefix
-        node_name = prefix + "gripper_controller"
-        self.gripper_type = str(rospy.get_param(self.ns + "/" + node_name + "/gripper_type"))
+        self.prefix = prefix 
+        node_name = "gripper_controller"
+        self.gripper_type = str(rospy.get_param(self.ns + node_name + "/gripper_type"))
         
         if self.gripper_type == "hand-e":
             self._max_gap = 0.025 * 2.0
@@ -35,7 +35,24 @@ class GripperController(object):
             self._to_open = self._max_gap
             self._to_close = 0.0
 
-        self._js_sub = rospy.Subscriber('%sjoint_states' % self.ns, JointState, self.joint_states_cb, queue_size=1)
+        self._js_sub = rospy.Subscriber('joint_states', JointState, self.joint_states_cb, queue_size=1)
+
+        retry = False
+        rospy.logdebug('Waiting for [%sjoint_states] topic' % self.ns)
+        start_time = rospy.get_time()
+        while not hasattr(self, '_joint_names'):
+            if (rospy.get_time() - start_time) > timeout and not retry:
+                # Re-try with namespace
+                self._js_sub = rospy.Subscriber('%sjoint_states' % self.ns, JointState, self.joint_states_cb, queue_size=1)
+                start_time = rospy.get_time()
+                retry = True
+                continue
+            elif (rospy.get_time() - start_time) > timeout and retry:
+                rospy.logerr('Timed out waiting for joint_states topic')
+                return
+            rospy.sleep(0.01)
+            if rospy.is_shutdown():
+                return
 
         attach_plugin = rospy.get_param("grasp_plugin", default=False)
         if attach_plugin:
@@ -163,7 +180,7 @@ class GripperController(object):
             valid_joint_names = [self.prefix + 'robotiq_85_left_knuckle_joint']
         else:
             return
-
+        
         position = []
         velocity = []
         effort = []
