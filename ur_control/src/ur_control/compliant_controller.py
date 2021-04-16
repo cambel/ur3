@@ -11,7 +11,7 @@ import numpy as np
 
 from ur_control.arm import Arm
 from ur_control import transformations, spalg, utils
-from ur_control.constants import DONE, FORCE_TORQUE_EXCEEDED, SPEED_LIMIT_EXCEEDED
+from ur_control.constants import DONE, FORCE_TORQUE_EXCEEDED, SPEED_LIMIT_EXCEEDED, STOP_ON_TARGET_FORCE
 
 
 class CompliantController(Arm):
@@ -30,7 +30,7 @@ class CompliantController(Arm):
         js_rate = utils.read_parameter('/joint_state_controller/publish_rate', 500.0)
         self.rate = rospy.Rate(js_rate)
 
-    def set_hybrid_control(self, model, max_force_torque, timeout=5.0):
+    def set_hybrid_control(self, model, max_force_torque, timeout=5.0, stop_on_target_force=False):
         """ Move the robot according to a hybrid controller model"""
         # Timeout for motion
         initime = rospy.get_time()
@@ -48,6 +48,11 @@ class CompliantController(Arm):
                 rospy.logerr('Maximum force/torque exceeded {}'.format(np.round(Wb, 3)))
                 self.set_target_pose_flex(pose=xb, t=model.dt)
                 return FORCE_TORQUE_EXCEEDED
+
+            if stop_on_target_force and np.any(np.abs(Fb)[model.target_force != 0] > model.target_force[model.target_force != 0]):
+                rospy.loginfo('Target force/torque reached {}'.format(np.round(Wb, 3)) + ' Stopping!')
+                self.set_target_pose_flex(pose=xb, t=model.dt)
+                return STOP_ON_TARGET_FORCE
 
             # Current position in task-space
             xb = self.end_effector()

@@ -14,7 +14,8 @@ np.set_printoptions(linewidth=np.inf)
 def move_joints(wait=True):
     # desired joint configuration 'q'
     # q = [2.37191, -1.88688, -1.82035,  0.4766,  2.31206,  3.18758]
-    q = [1.0884, -1.4911, 1.9667, -2.0092, -1.5708, -0.4378]
+    # q = [1.5701, -1.1818, 1.3377, -1.7245, -1.5711, -0.0016]
+    q = [1.7078, -1.5267, 2.0624, -2.1325, -1.6114, 1.7185] #b_bot
     # go to desired joint configuration
     # in t time (seconds)
     # wait is for waiting to finish the motion before executing
@@ -147,14 +148,24 @@ def face_towards_target():
     cmd = spalg.face_towards(target_position, cpose)
     arm.set_target_pose(cmd, wait=True, t=1)
 
-def force_control():
-    arm.set_wrench_offset(True)
-    alpha = [1.,1.,0.0,1.,1.,1.]
+def full_force_control(target_force=None, target_position=None, selection_matrix=[1.,1.,1.,1.,1.,1.], ee_transform=[0,0,0,0,0,0,1], relative_to_ee=False, timeout=10.0,):
+    """ 
+      Use with caution!! 
+      target_force: list[6], target force for each direction x,y,z,ax,ay,az
+      target_position: list[7], target position for each direction x,y,z + quaternion
+      selection_matrix: list[6], define which direction is controlled by position(1.0) or force(0.0)
+      ee_transform: list[7], additional transformation of the end-effector (e.g to match tool or special orientation) x,y,z + quaternion
+      relative_to_ee: bool, whether to use the base_link of the robot as frame or the ee_link (+ ee_transform)
+      timeout: float, duration in seconds of the force control
+    """   
+    arm.set_wrench_offset(True) # offset the force sensor
+    arm.relative_to_ee = relative_to_ee
+    arm.ee_transform = ee_transform
+
+    # TODO(cambel): Define a config file for the force-control parameters
     robot_control_dt = 0.002
 
-    timeout = 20.0
-
-    Kp = np.array([0.01]*6)
+    Kp = np.array([0.001]*6)
     Kp_pos = Kp
     Kd_pos = Kp * 0.1
     position_pd = utils.PID(Kp=Kp_pos, Kd=Kd_pos)
@@ -165,17 +176,29 @@ def force_control():
     Kd_force = Kp * 0.1
     Ki_force = Kp * 0.01
     force_pd = utils.PID(Kp=Kp_force, Kd=Kd_force, Ki=Ki_force)
-    pf_model = ForcePositionController(position_pd=position_pd, force_pd=force_pd, alpha=np.diag(alpha), dt=robot_control_dt)
+    pf_model = ForcePositionController(position_pd=position_pd, force_pd=force_pd, alpha=np.diag(selection_matrix), dt=robot_control_dt)
 
-    max_force_torque = np.array([50.,50.,50.,5.,5.,5.])
+    max_force_torque = np.array([500.,500.,500.,5.,5.,5.])
 
-    target_position = arm.end_effector()
-    target_force = np.array([0.,0.,0.,0.,0.,0.])
+    target_position = arm.end_effector() if target_position is None else np.array(target_position)
+    target_force = np.array([0.,0.,0.,0.,0.,0.]) if target_force is None else target_force
 
     pf_model.set_goals(target_position, target_force)
 
-    res = arm.set_hybrid_control(pf_model, max_force_torque=max_force_torque, timeout=timeout)
-    print(res)
+    print("STARTING Force Control with target_force:", target_force,"timeout", timeout)
+    res = arm.set_hybrid_control(pf_model, max_force_torque=max_force_torque, timeout=timeout, stop_on_target_force=False)
+    rospy.loginfo("Force control finished with: %s" % res) # debug
+
+def force_control():
+    arm.set_wrench_offset(True)
+
+    timeout = 20.0
+    
+    selection_matrix = [1.,1.,0.0,1.,1.,1.]
+    target_position = arm.end_effector()
+    target_force = np.array([0.,0., 10.,0.,0.,0.])
+
+    full_force_control(target_force, target_position, selection_matrix, timeout=timeout)
 
 def main():
     """ Main function to be run. """
@@ -211,10 +234,12 @@ def main():
     ns = ''
     joints_prefix = None
     robot_urdf = "ur3e_robot"
+    rospackage = None
     if args.namespace:
         ns = args.namespace
         joints_prefix = args.namespace + "_"
         robot_urdf = args.namespace
+        rospackage = "o2ac_scene_description"
     
     use_gripper = args.gripper  
 
@@ -224,7 +249,7 @@ def main():
     arm = CompliantController(ft_sensor=True, ee_transform=extra_ee, 
               gripper=use_gripper, namespace=ns, 
               joint_names_prefix=joints_prefix, 
-              robot_urdf=robot_urdf)
+              robot_urdf=robot_urdf, robot_urdf_package=rospackage)
     print("Extra ee", extra_ee)
 
     real_start_time = timeit.default_timer()

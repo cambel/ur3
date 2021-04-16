@@ -173,6 +173,7 @@ See help inside the example with the '?' key for key bindings.
         ns = args.namespace
         joints_prefix = args.namespace + "_"
         robot_urdf = args.namespace
+        rospackage = "o2ac_scene_description"
     
     use_gripper = args.gripper  
 
@@ -182,7 +183,8 @@ See help inside the example with the '?' key for key bindings.
     arm = Arm(ft_sensor=False, ee_transform=extra_ee, 
               gripper=use_gripper, namespace=ns, 
               joint_names_prefix=joints_prefix, 
-              robot_urdf=robot_urdf)
+              robot_urdf=robot_urdf, robot_urdf_package=rospackage)
+
     print("Extra ee", extra_ee)
 
     map_keyboard()

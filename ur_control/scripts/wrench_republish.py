@@ -23,6 +23,7 @@ def main():
         ns = args.namespace
         joints_prefix = args.namespace + "_"
         robot_urdf = args.namespace
+        rospackage = "o2ac_scene_description"
     
     extra_ee = [0, 0, 0.0, 0, 0, 0, 1]
 
@@ -30,7 +31,7 @@ def main():
     arm = CompliantController(ft_sensor=True, ee_transform=extra_ee, 
               namespace=ns, 
               joint_names_prefix=joints_prefix, 
-              robot_urdf=robot_urdf)
+              robot_urdf=robot_urdf, robot_urdf_package=rospackage)
     rospy.sleep(0.5)
     arm.set_wrench_offset(override=args.zero)
 
@@ -39,10 +40,10 @@ def main():
     while not rospy.is_shutdown():
         arm.publish_wrench()
 
-        # if offset_cnt > 100:
-        #     arm.set_wrench_offset(False)
-        #     offset_cnt = 0
-        # offset_cnt += 1
+        if offset_cnt > 100:
+            arm.set_wrench_offset(False)
+            offset_cnt = 0
+        offset_cnt += 1
 
 
 main()

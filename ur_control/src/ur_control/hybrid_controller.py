@@ -33,15 +33,15 @@ class ForcePositionController(object):
         # The position goal is the distance from
         # the current position
         if position is not None:
-            self.xr = position
+            self.target_position = position
         # TODO: The force will be constant for now
         if force is not None:
-            self.Fr = force
+            self.target_force = force
 
     def reset(self):
         """ reset targets and PID params """
         self.qc = None
-        self.xr = None
+        self.target_position = None
         self.safety_mode = False
         self.position_pd.reset()
         self.force_pd.reset()
@@ -55,11 +55,11 @@ class ForcePositionController(object):
             :return: list, angular velocity
         """
         # Force PD compensator
-        Fe = -1.*self.Fr - fc  # error
+        Fe = -1.*self.target_force - fc  # error
         dxf_force = self.force_pd.update(error=Fe, dt=self.dt)
         
         # Position PD compensator
-        xe = self.xr - xv
+        xe = self.target_position - xv
         dxf_pos = self.position_pd.update(error=xe, dt=self.dt)
 
         # Sum step from force and step from position PDs
@@ -74,11 +74,11 @@ class ForcePositionController(object):
             :return: list, angular velocity 
         """
         # Force PD compensator
-        Fe = -1.*self.Fr - fc  # error
+        Fe = -1.*self.target_force - fc  # error
         dxf_force = self.force_pd.update(error=Fe, dt=self.dt)
         
         # Position PD compensator
-        error = spalg.translation_rotation_error(self.xr, xv)
+        error = spalg.translation_rotation_error(self.target_position, xv)
         dxf_pos = self.position_pd.update(error=error, dt=self.dt)
 
         # self.error_data.append([error, Fe])
@@ -96,11 +96,11 @@ class ForcePositionController(object):
             :return: list, velocity (linear + angular)
         """
         # Force PD compensator
-        Fe = (-1.*(self.Fr) - fc)  # error
+        Fe = (-1.*(self.target_force) - fc)  # error
         dxf_force = self.force_pd.update(error=Fe, dt=self.dt)
         
         # Position PD compensator
-        xe = self.xr - xv
+        xe = self.target_position - xv
         dxf_pos = self.position_pd.update(error=xe, dt=self.dt)
 
         # convert euler angle error to angular velocity

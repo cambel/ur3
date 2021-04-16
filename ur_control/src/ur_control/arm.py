@@ -37,7 +37,9 @@ class Arm(object):
                  namespace='',
                  gripper=False,
                  joint_names_prefix=None,
-                 ft_topic=None):
+                 ft_topic=None,
+                 base_link=None,
+                 ee_link=None):
         """ ft_sensor bool: whether or not to try to load ft sensor information
             ee_tranform array [x,y,z,ax,ay,az,w]: optional transformation to the end-effector
                                                   that is applied before doing any operation in task-space
@@ -64,6 +66,9 @@ class Arm(object):
         assert namespace is not None, "namespace cannot be None"
         self.ns = namespace
         self.joint_names_prefix = joint_names_prefix
+
+        _base_link = base_link if base_link is not None else BASE_LINK
+        _ee_link = ee_link if ee_link is not None else EE_LINK
 
         self.base_link = BASE_LINK if joint_names_prefix is None else joint_names_prefix + BASE_LINK
         self.ee_link = EE_LINK if joint_names_prefix is None else joint_names_prefix + EE_LINK

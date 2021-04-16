@@ -29,5 +29,6 @@ def get_arm_joint_names(prefix):
 # RESULT_CODE
 DONE = 'done'
 FORCE_TORQUE_EXCEEDED = 'force_exceeded'
+STOP_ON_TARGET_FORCE = 'stop_on_target_force'
 IK_NOT_FOUND = 'ik_not_found'
 SPEED_LIMIT_EXCEEDED = 'speed_limit_exceeded'
