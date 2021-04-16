@@ -20,9 +20,9 @@ from control_msgs.msg import GripperCommandAction, GripperCommandGoal
 
 
 class GripperController(object):
-    def __init__(self, namespace='', prefix='', timeout=5.0, attach_link='robot::wrist_3_link'):
+    def __init__(self, namespace='', prefix=None, timeout=5.0, attach_link='robot::wrist_3_link'):
         self.ns = utils.solve_namespace(namespace)
-        self.prefix = prefix 
+        self.prefix = prefix if prefix is not None else ''
         node_name = "gripper_controller"
         self.gripper_type = str(rospy.get_param(self.ns + node_name + "/gripper_type"))
         
