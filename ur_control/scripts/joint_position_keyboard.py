@@ -169,6 +169,7 @@ See help inside the example with the '?' key for key bindings.
     ns = ''
     joints_prefix = None
     robot_urdf = "ur3e_robot"
+    rospackage = None
     if args.namespace:
         ns = args.namespace
         joints_prefix = args.namespace + "_"

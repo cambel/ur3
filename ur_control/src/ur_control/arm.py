@@ -139,7 +139,7 @@ class Arm(object):
     def _update_wrench_offset(self):
         namespace = '' if self.ns is None else self.ns
         self.wrench_offset = self.get_filtered_ft().tolist()
-        rospy.set_param('/%s/ft_offset' % namespace, self.wrench_offset)
+        rospy.set_param('%s/ft_offset' % namespace, self.wrench_offset)
 
     def _flexible_trajectory(self, position, time=5.0, vel=None):
         """ Publish point by point making it more flexible for real-time control """
@@ -166,6 +166,7 @@ class Arm(object):
         if self.ee_transform is not None:
             inv_ee_transform = np.copy(self.ee_transform)
             inv_ee_transform[:3] *= -1
+            inv_ee_transform[3:] = transformations.quaternion_inverse(inv_ee_transform[3:])
             pose = np.array(conversions.transform_end_effector(pose, inv_ee_transform))
 
         if self.ik_solver == IKFAST:
@@ -221,7 +222,7 @@ class Arm(object):
 
         return np.array(wrench_hist)
 
-    def get_ee_wrench(self):
+    def get_ee_wrench(self, relative=True):
         """ Compute the wrench (force/torque) in task-space """
         if self.ft_sensor is None:
             return np.zeros(6)
@@ -234,8 +235,12 @@ class Arm(object):
         # compute force transformation?
         # # # Transform of EE
         pose = self.end_effector()
-
-        return spalg.convert_wrench(wrench_force, pose)
+        ee_wrench_force = spalg.convert_wrench(wrench_force, pose)
+        
+        if relative:
+            return ee_wrench_force
+        else:
+            return wrench_force
 
     def publish_wrench(self):
         if self.ft_sensor is None:
