@@ -1,15 +1,23 @@
 #! /usr/bin/env python
 
 import numpy as np
-import ur_control.transformations as tr
+# In case of Python3, tf does not usually work
+try:
+  import tf.transformations as tr
+except ImportError:
+  from ur_control import transformations as tf
+
 from ur_control import spalg
 # Messages
 from geometry_msgs.msg import (Point, Quaternion, Pose, Vector3, Transform,
                                Wrench)
 from sensor_msgs.msg import CameraInfo, Image, RegionOfInterest
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
-import pyquaternion
+from math import pi, cos, sin
+
 # OpenRAVE types <--> Numpy types
+
+
 def from_dict(transform_dict):
     """
   Converts a dictionary with the fields C{rotation} and C{translation}
@@ -160,21 +168,17 @@ def to_pose(T):
   @rtype: geometry_msgs/Pose
   @return: The resulting ROS message
   """
-    pos = Point(*T[:3, 3])
-    quat = Quaternion(*tr.quaternion_from_matrix(T))
+    if len(T) == 6:
+        pos = Point(*T[:3])
+        quat = Quaternion(*tr.quaternion_from_euler(*T[3:]))
+    elif len(T) == 7:
+        pos = Point(*T[:3])
+        quat = to_quaternion(T[3:])
+    else:
+        pos = Point(*T[:3, 3])
+        quat = Quaternion(*tr.quaternion_from_matrix(T))
     return Pose(pos, quat)
 
-def to_pose_msg(pose):
-    """
-  Converts a homogeneous transformation (4x4) into a C{geometry_msgs/Pose} ROS message.
-  @type  T: np.array
-  @param T: The homogeneous transformation
-  @rtype: geometry_msgs/Pose
-  @return: The resulting ROS message
-  """
-    pos = Point(*pose[:3])
-    quat = to_quaternion(*pose[3:])
-    return Pose(pos, quat)
 
 def to_roi(top_left, bottom_right):
     msg = RegionOfInterest()
@@ -194,8 +198,12 @@ def to_transform(T):
   @rtype: geometry_msgs/Transform
   @return: The resulting ROS message
   """
-    translation = Vector3(*T[:3, 3])
-    rotation = Quaternion(*tr.quaternion_from_matrix(T))
+    if len(T) == 7:
+        translation = Vector3(*T[:3])
+        rotation = to_quaternion(T[3:])
+    else:
+        translation = Vector3(*T[:3, 3])
+        rotation = Quaternion(*tr.quaternion_from_matrix(T))
     return Transform(translation, rotation)
 
 
@@ -273,31 +281,13 @@ def euler_transformation_matrix(euler):
                   [0, np.sin(r), np.cos(r) * np.cos(p)]])
     return T
 
-def transform_end_effector(pose, extra_pose, rot_type='quaternion'):
-    """
-    Transform end effector pose
-      pose: current pose [x, y, z, ax, ay, az, w]
-      extra_pose: additional transformation [x, y, z, ax, ay, az, w]
-      matrix: if true: return (translation, rotation matrix)
-              else: return translation + quaternion list
-    """
-    extra_translation = np.array(extra_pose[:3]).reshape(3, 1)
-    extra_rot = tr.vector_to_pyquaternion(extra_pose[3:]).rotation_matrix
 
-    c_trans = np.array(pose[:3]).reshape(3, 1)
-    c_rot = tr.vector_to_pyquaternion(pose[3:]).rotation_matrix  
-    # BE CAREFUL!! Pose from KDL is ax ay az aw
-    #              Pose from IKfast is aw ax ay az
-
-    n_trans = np.matmul(c_rot, extra_translation) + c_trans
-    n_rot = np.matmul(c_rot, extra_rot)
-
-    if rot_type=='matrix':
-        return n_trans.flatten(), n_rot
-    
-    quat_rot = np.roll(pyquaternion.Quaternion(matrix=n_rot).normalised.elements, -1)
-    if rot_type=='euler':
-      euler = np.array(tr.euler_from_quaternion(quat_rot, axes='rxyz'))
-      return np.concatenate((n_trans.flatten(), euler))
-    elif rot_type == 'quaternion':
-      return np.concatenate((n_trans.flatten(), quat_rot))
+def to_float(val):
+    if isinstance(val, float):
+        return val
+    elif isinstance(val, str):
+        return (float(eval(val)))
+    elif isinstance(val, list):
+        return [to_float(o) for o in val]
+    else:
+        return (float(val))
