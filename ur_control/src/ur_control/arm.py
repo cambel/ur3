@@ -13,7 +13,10 @@ from ur_control.constants import JOINT_ORDER, JOINT_PUBLISHER_ROBOT, FT_SUBSCRIB
     DONE, FORCE_TORQUE_EXCEEDED, SPEED_LIMIT_EXCEEDED, IK_NOT_FOUND, get_arm_joint_names, \
     BASE_LINK, EE_LINK
 
-# from ur_ikfast import ur_kinematics as ur_ikfast
+try:
+    from ur_ikfast import ur_kinematics as ur_ikfast
+except ImportError:
+    print("Import ur_ikfast not available, IKFAST would not be supported without it")
 
 from ur_control.controllers import JointTrajectoryController, FTsensor, GripperController
 from ur_pykdl import ur_kinematics
@@ -29,6 +32,7 @@ class Arm(object):
                  ft_sensor=False,
                  ee_transform=None,
                  robot_urdf='ur3e_robot',
+                 robot_urdf_package=None,
                  ik_solver=TRAC_IK,
                  namespace='',
                  gripper=False,
@@ -48,6 +52,10 @@ class Arm(object):
         self._joint_velocity = dict()
         self._joint_effort = dict()
         self._current_ft = []
+
+        self._robot_urdf = robot_urdf
+        self._robot_urdf_package = robot_urdf_package if robot_urdf_package is not None else 'ur_pykdl'
+
         self.ft_sensor = None
         self.ft_topic = ft_topic if ft_topic is not None else FT_SUBSCRIBER
 
@@ -59,10 +67,11 @@ class Arm(object):
 
         self.base_link = BASE_LINK if joint_names_prefix is None else joint_names_prefix + BASE_LINK
         self.ee_link = EE_LINK if joint_names_prefix is None else joint_names_prefix + EE_LINK
+        
         self.max_joint_speed = np.deg2rad([100, 100, 100, 200, 200, 200])
         # self.max_joint_speed = np.deg2rad([191, 191, 191, 371, 371, 371])
 
-        self._init_ik_solver(robot_urdf)
+        self._init_ik_solver()
         self._init_controllers(gripper, joint_names_prefix)
         if ft_sensor:
             self._init_ft_sensor()
@@ -90,20 +99,22 @@ class Arm(object):
         if gripper:
             self.gripper = GripperController(namespace=self.ns, prefix=self.joint_names_prefix, timeout=2.0)
 
-    def _init_ik_solver(self, robot_urdf):
-        self.kdl = ur_kinematics(robot_urdf, base_link=self.base_link, ee_link=self.ee_link, prefix=self.joint_names_prefix)
+    def _init_ik_solver(self):
+        self.kdl = ur_kinematics(self._robot_urdf, base_link=self.base_link, ee_link=self.ee_link, prefix=self.joint_names_prefix, rospackage=self._robot_urdf_package)
         
         if self.ik_solver == IKFAST:
             # IKfast libraries
-            if robot_urdf == 'ur3_robot':
+            if self._robot_urdf == 'ur3_robot':
                 self.arm_ikfast = ur_ikfast.URKinematics('ur3')
-            elif robot_urdf == 'ur3e_robot':
+            elif self._robot_urdf == 'ur3e_robot':
                 self.arm_ikfast = ur_ikfast.URKinematics('ur3e')
         elif self.ik_solver == TRAC_IK:
             try:
-                self.trac_ik = IK(base_link=self.base_link, tip_link=self.ee_link,
-                              timeout=0.001, epsilon=1e-5, solve_type="Distance", 
-                              urdf_string=utils.load_urdf_string('ur_pykdl', robot_urdf))
+                if not rospy.has_param("robot_description"):
+                    self.trac_ik = IK(base_link=self.base_link, tip_link=self.ee_link, solve_type="Distance", 
+                                      urdf_string=utils.load_urdf_string(self._robot_urdf_package, self._robot_urdf))
+                else:
+                    self.trac_ik = IK(base_link=self.base_link, tip_link=self.ee_link, solve_type="Distance")
             except Exception as e:
                 rospy.logerr("Could not instantiate TRAC_IK" + str(e))
         else:

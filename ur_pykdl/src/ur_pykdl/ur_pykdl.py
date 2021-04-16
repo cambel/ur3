@@ -69,9 +69,10 @@ class ur_kinematics(object):
     """
     UR Kinematics with PyKDL
     """
-    def __init__(self, robot, base_link=None, ee_link=None, prefix=None):
+    def __init__(self, robot, base_link=None, ee_link=None, prefix=None, rospackage=None):
         rospack = rospkg.RosPack()
-        pykdl_dir = rospack.get_path('ur_pykdl')
+        rospackage_ = rospackage if rospackage is not None else 'ur_pykdl'
+        pykdl_dir = rospack.get_path(rospackage_)
         TREE_PATH = pykdl_dir + '/urdf/' + robot + '.urdf'
         self._ur = URDF.from_xml_file(TREE_PATH)
         self._kdl_tree = kdl_tree_from_urdf_model(self._ur)
