@@ -242,12 +242,12 @@ class Arm(object):
         else:
             return wrench_force
 
-    def publish_wrench(self):
+    def publish_wrench(self, relative=False):
         if self.ft_sensor is None:
             raise Exception("FT Sensor not initialized")
 
         " Publish arm's end-effector wrench "
-        wrench = self.get_ee_wrench()
+        wrench = self.get_ee_wrench(relative)
         # Note you need to call rospy.init_node() before this will work
         self.pub_ee_wrench.publish(conversions.to_wrench(wrench))
 

@@ -39,7 +39,7 @@ class CompliantController(Arm):
                 and (rospy.get_time() - initime) < timeout:
 
             # Transform wrench to the base_link frame
-            Wb = self.get_ee_wrench()
+            Wb = self.get_ee_wrench(relative=self.relative_to_ee)
 
             # Current Force in task-space
             Fb = -1 * Wb
@@ -58,8 +58,8 @@ class CompliantController(Arm):
             xb = self.end_effector()
 
             dxf = model.control_position_orientation(Fb, xb)  # angular velocity
-
-            xc = transformations.pose_from_angular_veloticy(xb, dxf, dt=model.dt, ee_rotation=self.relative_to_ee)
+            # TODO (cambel): smooth motion (velocity/acceleration)
+            xc = transformations.pose_from_angular_veloticy(xb, dxf, dt=model.dt)
 
             result = self.set_target_pose_flex(pose=xc, t=model.dt)
             # if result != DONE:
