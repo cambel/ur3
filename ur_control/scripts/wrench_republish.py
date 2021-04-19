@@ -3,7 +3,7 @@ import argparse
 import rospy
 import numpy as np
 from ur_control.compliant_controller import CompliantController
-
+from ur_control import transformations
 def main():
     """ Main function to be run. """
     parser = argparse.ArgumentParser(description='Test force control')
@@ -27,7 +27,8 @@ def main():
         robot_urdf = args.namespace
         rospackage = "o2ac_scene_description"
     
-    extra_ee = [0, 0, 0.0, 0, 0, 0, 1]
+    extra_ee = [0,0,0.] + transformations.quaternion_from_euler(*[np.pi/4,0,0]).tolist()
+    extra_ee = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
 
     global arm
     arm = CompliantController(ft_sensor=True, ee_transform=extra_ee, 
@@ -40,7 +41,7 @@ def main():
     offset_cnt = 0
 
     while not rospy.is_shutdown():
-        arm.publish_wrench()
+        arm.publish_wrench(relative=args.relative)
 
         if offset_cnt > 100:
             arm.set_wrench_offset(False)

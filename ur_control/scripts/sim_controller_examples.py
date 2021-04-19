@@ -14,8 +14,10 @@ np.set_printoptions(linewidth=np.inf)
 def move_joints(wait=True):
     # desired joint configuration 'q'
     # q = [2.37191, -1.88688, -1.82035,  0.4766,  2.31206,  3.18758]
-    # q = [1.5701, -1.1818, 1.3377, -1.7245, -1.5711, -0.0016]
+    q = [1.5701, -1.1854, 1.3136, -1.6975, -1.5708, -0.0016]
     q = [1.7078, -1.5267, 2.0624, -2.1325, -1.6114, 1.7185] #b_bot
+    q = [1.5794, -1.4553, 2.1418, -2.8737, -1.6081, 0.0063]
+    # q = [1.707, -1.5101, 2.1833, -2.5707, -1.6139, 1.7138]
     # go to desired joint configuration
     # in t time (seconds)
     # wait is for waiting to finish the motion before executing
@@ -106,6 +108,69 @@ def grasp_plugin():
     arm.gripper.open()
     arm.gripper.release(link_name="cube3::link")
 
+def move_to_pose():
+    cpose = arm.end_effector()
+    cpose[3:] = [0,0,0,1]
+    arm.set_target_pose(pose=cpose, wait=True, t=1.0)
+
+    # def _conical_helix_trajectory(self, steps, revolutions):
+    #     # initial_pose = self.ur3e_arm.end_effector()[:3]
+    #     initial_pose = self.rand_init_cpose[:3]
+    #     final_pose = self.target_pos[:3]
+
+    #     target_q = transformations.vector_to_pyquaternion(self.target_pos[3:])
+
+    #     p1 = target_q.rotate(initial_pose - final_pose)
+    #     p2 = np.zeros(3)
+
+    #     traj = get_conical_helix_trajectory(p1, p2, steps, revolutions)
+    #     traj = np.apply_along_axis(target_q.rotate, 1, traj)
+    #     self.base_trajectory = traj + final_pose
+
+def spiral_trajectory():
+    initial_q = [1.5794, -1.4553, 2.1418, -2.8737, -1.6081, 0.0063]
+    arm.set_joint_positions(initial_q, wait=True, t=2)
+
+    target_pose = arm.end_effector()
+
+    deltax = np.array([0.02, 0.02, 0.0, 0., 0., 0.])
+    initial_pose = transformations.pose_euler_to_quaternion(target_pose, deltax, ee_rotation=True)
+    arm.set_target_pose(initial_pose)
+
+    initial_pose = initial_pose[:3]
+    final_pose = target_pose[:3]
+
+    target_q = transformations.vector_to_pyquaternion(target_pose[3:])
+    target_q = transformations.vector_to_pyquaternion([0,0,0,1])
+
+    p1 = target_q.rotate(initial_pose - final_pose)
+    p2 = np.zeros(3)
+    steps = 200
+    duration = 10.0
+
+    traj = traj_utils.get_conical_helix_trajectory(p1, p2, steps, 2)
+    traj = np.apply_along_axis(target_q.rotate, 1, traj)
+    trajectory = traj + final_pose
+
+    arm.set_wrench_offset(True)
+
+    pf_model = init_force_control([0.5,0.5,0.5,0.5,0.5,0.5])
+
+    for i, position in enumerate(trajectory):
+        cmd = np.concatenate([position, target_pose[3:]])
+        # print(i, cmd)
+        # arm.set_target_pose(cmd, wait=True, t=(duration/steps))
+
+        timeout = (duration/steps)
+
+        target_force = np.array([0., 0., 0., 0., 0., 0.])
+        # ee_tranform = [0, 0, 0.] + transformations.quaternion_from_euler(*[np.pi/2, 0, 0]).tolist()
+        ee_tranform = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+
+        full_force_control(target_force, cmd, pf_model, ee_transform=ee_tranform, timeout=timeout*1.5, relative_to_ee=False)
+        # pf_model.reset()
+        rospy.sleep(timeout)
+    print("relative error", np.round(trajectory[-1] - arm.end_effector()[:3], 4))
 
 def circular_trajectory():
     initial_q = [5.1818, 0.3954, -1.5714, -0.3902, 1.5448, -0.5056]
@@ -148,7 +213,24 @@ def face_towards_target():
     cmd = spalg.face_towards(target_position, cpose)
     arm.set_target_pose(cmd, wait=True, t=1)
 
-def full_force_control(target_force=None, target_position=None, selection_matrix=[1.,1.,1.,1.,1.,1.], ee_transform=[0,0,0,0,0,0,1], relative_to_ee=False, timeout=10.0,):
+def init_force_control(selection_matrix, dt=0.002):
+    Kp = np.array([10.,10.,10.,0.1,0.1,0.1])
+    Kp_pos = Kp
+    Kd_pos = Kp * 0.01
+    Ki_pos = Kp * 0.01
+    position_pd = utils.PID(Kp=Kp_pos, Ki=Ki_pos, Kd=Kd_pos)
+
+    # Force PID gains
+    Kp = np.array([0.1,0.1,0.1,0.5,0.5,5.0])
+    Kp_force = Kp
+    Kd_force = Kp * 0.
+    Ki_force = Kp * 0.01
+    force_pd = utils.PID(Kp=Kp_force, Kd=Kd_force, Ki=Ki_force)
+    pf_model = ForcePositionController(position_pd=position_pd, force_pd=force_pd, alpha=np.diag(selection_matrix), dt=dt)
+
+    return pf_model
+
+def full_force_control(target_force=None, target_position=None, model=None, selection_matrix=[1., 1., 1., 1., 1., 1.], ee_transform=[0, 0, 0, 0, 0, 0, 1], relative_to_ee=False, timeout=10.0,):
     """ 
       Use with caution!! 
       target_force: list[6], target force for each direction x,y,z,ax,ay,az
@@ -157,48 +239,45 @@ def full_force_control(target_force=None, target_position=None, selection_matrix
       ee_transform: list[7], additional transformation of the end-effector (e.g to match tool or special orientation) x,y,z + quaternion
       relative_to_ee: bool, whether to use the base_link of the robot as frame or the ee_link (+ ee_transform)
       timeout: float, duration in seconds of the force control
-    """   
-    arm.set_wrench_offset(True) # offset the force sensor
+    """
+    arm.set_wrench_offset(True)  # offset the force sensor
     arm.relative_to_ee = relative_to_ee
     arm.ee_transform = ee_transform
 
     # TODO(cambel): Define a config file for the force-control parameters
-    robot_control_dt = 0.002
+    if model is None:
+        pf_model = init_force_control(selection_matrix)
+    else:
+        pf_model = model
+        pf_model.selection_matrix = np.diag(selection_matrix)
 
-    Kp = np.array([0.001]*6)
-    Kp_pos = Kp
-    Kd_pos = Kp * 0.1
-    position_pd = utils.PID(Kp=Kp_pos, Kd=Kd_pos)
-
-    # Force PID gains
-    Kp = np.array([0.05]*6)
-    Kp_force = Kp
-    Kd_force = Kp * 0.1
-    Ki_force = Kp * 0.01
-    force_pd = utils.PID(Kp=Kp_force, Kd=Kd_force, Ki=Ki_force)
-    pf_model = ForcePositionController(position_pd=position_pd, force_pd=force_pd, alpha=np.diag(selection_matrix), dt=robot_control_dt)
-
-    max_force_torque = np.array([500.,500.,500.,5.,5.,5.])
+    max_force_torque = np.array([50., 50., 50., 5., 5., 5.])
 
     target_position = arm.end_effector() if target_position is None else np.array(target_position)
-    target_force = np.array([0.,0.,0.,0.,0.,0.]) if target_force is None else target_force
+    target_force = np.array([0., 0., 0., 0., 0., 0.]) if target_force is None else target_force
 
     pf_model.set_goals(target_position, target_force)
 
-    print("STARTING Force Control with target_force:", target_force,"timeout", timeout)
+    # print("STARTING Force Control with target_force:", target_force, "timeout", timeout)
     res = arm.set_hybrid_control(pf_model, max_force_torque=max_force_torque, timeout=timeout, stop_on_target_force=False)
-    rospy.loginfo("Force control finished with: %s" % res) # debug
+    # rospy.loginfo("Force control finished with: %s" % res)  # debug
+
 
 def force_control():
     arm.set_wrench_offset(True)
 
-    timeout = 20.0
-    
-    selection_matrix = [1.,1.,0.0,1.,1.,1.]
-    target_position = arm.end_effector()
-    target_force = np.array([0.,0., 10.,0.,0.,0.])
+    timeout = 5.0
 
-    full_force_control(target_force, target_position, selection_matrix, timeout=timeout)
+    selection_matrix = [1., 1., 1.0, 1., 1., 1.]
+    target_position = arm.end_effector()
+    target_position[1] += 0.05
+    target_force = np.array([0., 0., 0., 0., 0., 0.])
+    # ee_tranform = [0, 0, 0.] + transformations.quaternion_from_euler(*[np.pi/2, 0, 0]).tolist()
+    ee_tranform = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+
+    # print(ee_tranform)
+    full_force_control(target_force, target_position, selection_matrix=selection_matrix, ee_transform=ee_tranform, timeout=timeout, relative_to_ee=False)
+
 
 def main():
     """ Main function to be run. """
@@ -213,12 +292,16 @@ def main():
                         help='Move gripper')
     parser.add_argument('-f', '--force', action='store_true',
                         help='Force control demo')
+    parser.add_argument('-p', '--pose', action='store_true',
+                        help='Move to pose')
     parser.add_argument('--grasp_naive', action='store_true',
                         help='Test simple grasping (cube_tasks world)')
     parser.add_argument('--grasp_plugin', action='store_true',
                         help='Test grasping plugin (cube_tasks world)')
     parser.add_argument('--circle', action='store_true',
                         help='Circular rotation around a target pose')
+    parser.add_argument('--spiral', action='store_true',
+                        help='Spiral rotation around a target pose')
     parser.add_argument('--face', action='store_true',
                         help='Face towards a target vector')
     parser.add_argument(
@@ -240,16 +323,17 @@ def main():
         joints_prefix = args.namespace + "_"
         robot_urdf = args.namespace
         rospackage = "o2ac_scene_description"
-    
-    use_gripper = args.gripper  
 
-    extra_ee = [0, 0, tcp_z, 0, 0, 0, 1]
+    use_gripper = args.gripper
+
+    extra_ee = [0,0,0.] + transformations.quaternion_from_euler(*[np.pi/4,0,0]).tolist()
+    extra_ee = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
 
     global arm
-    arm = CompliantController(ft_sensor=True, ee_transform=extra_ee, 
-              gripper=use_gripper, namespace=ns, 
-              joint_names_prefix=joints_prefix, 
-              robot_urdf=robot_urdf, robot_urdf_package=rospackage)
+    arm = CompliantController(ft_sensor=True, ee_transform=extra_ee,
+                              gripper=use_gripper, namespace=ns,
+                              joint_names_prefix=joints_prefix,
+                              robot_urdf=robot_urdf, robot_urdf_package=rospackage)
     print("Extra ee", extra_ee)
 
     real_start_time = timeit.default_timer()
@@ -257,6 +341,8 @@ def main():
 
     if args.move:
         move_joints()
+    if args.pose:
+        move_to_pose()
     if args.move_traj:
         follow_trajectory()
     if args.move_ee:
@@ -269,6 +355,8 @@ def main():
         grasp_plugin()
     if args.circle:
         circular_trajectory()
+    if args.spiral:
+        spiral_trajectory()
     if args.face:
         face_towards_target()
     if args.force:
