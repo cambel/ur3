@@ -16,8 +16,8 @@ def move_joints(wait=True):
     # q = [2.37191, -1.88688, -1.82035,  0.4766,  2.31206,  3.18758]
     q = [1.5701, -1.1854, 1.3136, -1.6975, -1.5708, -0.0016]
     q = [1.5794, -1.4553, 2.1418, -2.8737, -1.6081, 0.0063]
-    q = [1.7078, -1.5267, 2.0624, -2.1325, -1.6114, 1.7185] #b_bot
-    q = [1.5909, -1.3506, 1.9397, -2.0634, -2.5136, -1.4549] #b_bot bearing
+    q = [1.7078, -1.5267, 2.0624, -2.1325, -1.6114, 1.7185]  # b_bot
+    q = [1.5909, -1.3506, 1.9397, -2.0634, -2.5136, -1.4549]  # b_bot bearing
     # q = [1.707, -1.5101, 2.1833, -2.5707, -1.6139, 1.7138]
     # go to desired joint configuration
     # in t time (seconds)
@@ -109,9 +109,10 @@ def grasp_plugin():
     arm.gripper.open()
     arm.gripper.release(link_name="cube3::link")
 
+
 def move_to_pose():
     cpose = arm.end_effector()
-    cpose[3:] = [0,0,0,1]
+    cpose[3:] = [0, 0, 0, 1]
     arm.set_target_pose(pose=cpose, wait=True, t=1.0)
 
     # def _conical_helix_trajectory(self, steps, revolutions):
@@ -128,62 +129,69 @@ def move_to_pose():
     #     traj = np.apply_along_axis(target_q.rotate, 1, traj)
     #     self.base_trajectory = traj + final_pose
 
-def compute_trajectory(initial_q, deltax, steps, revolutions=1.0, traj_type="circular"):
-    arm.set_joint_positions(initial_q, wait=True, t=2)
-
-    initial_pose = arm.end_effector()
-
-    target_pose = transformations.pose_euler_to_quaternion(initial_pose, deltax, ee_rotation=True)
-
-    initial_pose = initial_pose[:3]
-    final_pose = target_pose[:3]
-
-    target_q = transformations.vector_to_pyquaternion(target_pose[3:])
-    target_q = transformations.vector_to_pyquaternion(transformations.quaternion_from_euler(*[0, np.pi/2, 0]))
-
-    p1 = np.zeros(3)
-    p2 = target_q.rotate(initial_pose - final_pose)
-
-    if traj_type == "circular":
-        traj = traj_utils.get_circular_trajectory(p1, p2, steps, revolutions)
-    if traj_type == "spiral":
-        traj = traj_utils.get_spiral_trajectory(p1, p2, steps, revolutions, from_center=True)
-    
-    traj = np.apply_along_axis(target_q.rotate, 1, traj)
-    trajectory = traj + final_pose
-
-    trajectory = [np.concatenate([t, target_pose[3:]]) for t in trajectory]
-
-    return trajectory
 
 def spiral_trajectory():
-    initial_q = [1.5909, -1.3506, 1.9397, -2.0634, -2.5136, -1.4549] #b_bot bearing
-    deltax = np.array([0.002, 0.0, 0.0, 0., 0., 0.])
+    initial_q = [1.5909, -1.3506, 1.9397, -2.0634, -2.5136, -1.4549]  # b_bot bearing
+    arm.set_joint_positions(initial_q, wait=True, t=1)
+
+    plane = "YZ"
+    radius = 0.05
+    radius_direction = "+Z"
 
     steps = 200
     duration = 10.0
-    
-    trajectory = compute_trajectory(initial_q, deltax, steps, revolutions=5, traj_type="spiral")
+
+    initial_pose = arm.end_effector()
+    trajectory = traj_utils.compute_trajectory(initial_pose, plane, radius, radius_direction, steps, revolutions=5, trajectory_type="spiral", from_center=True)
     execute_trajectory(trajectory, timeout=(duration/steps), use_force_control=True)
+
 
 def circular_trajectory():
-    initial_q = [1.5909, -1.3506, 1.9397, -2.0634, -2.5136, -1.4549] #b_bot bearing
-    deltax = np.array([0.002, 0.0, 0.0, 0., 0., 0.])
+    initial_q = [1.5909, -1.3506, 1.9397, -2.0634, -2.5136, -1.4549]  # b_bot bearing
+    arm.set_joint_positions(initial_q, wait=True, t=1)
 
-    steps = 200
-    duration = 10.0
+    plane = "YZ"
+    radius = 0.05
+    radius_direction = "+Y"
 
-    trajectory = compute_trajectory(initial_q, deltax, steps, revolutions=5, traj_type="circular")
+    steps = 100
+    duration = 2.0
+
+    initial_pose = arm.end_effector()
+    trajectory = traj_utils.compute_trajectory(initial_pose, plane, radius, radius_direction, steps, revolutions=1, trajectory_type="circular", from_center=False)
     execute_trajectory(trajectory, timeout=(duration/steps), use_force_control=True)
+
+
+def test_multiple_planes():
+    planes = ["XY", "XZ", "YZ"]
+    radius_directions = [["+X", "-X", "+Y", "-Y"],["+X", "-X", "+Z", "-Z"],["+Y", "-Y", "+Z", "-Z"]]
+    for a, b in zip(planes, radius_directions):
+        for r in b:
+            print("PLANE", a, r)
+            initial_q = [1.5909, -1.3506, 1.9397, -2.0634, -2.5136, -1.4549]  # b_bot bearing
+            arm.set_joint_positions(initial_q, wait=True, t=1)
+
+            plane = a
+            radius = 0.05
+            radius_direction = r
+
+            steps = 100
+            duration = 2.0
+
+            initial_pose = arm.end_effector()
+            trajectory = traj_utils.compute_trajectory(initial_pose, plane, radius, radius_direction, steps, revolutions=1, trajectory_type="spiral", from_center=False)
+            execute_trajectory(trajectory, timeout=(duration/steps), use_force_control=False)
+
 
 def execute_trajectory(trajectory, timeout, use_force_control=False):
     if use_force_control:
-        pf_model = init_force_control([0.,1.,1.,1.,1.,1.])
+        pf_model = init_force_control([1., 1., 1., 1., 1., 1.])
         ee_tranform = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
         target_force = np.array([-1., 0., 0., 0., 0., 0.])
         arm.set_wrench_offset(True)
 
-    arm.set_target_pose(trajectory[0], wait=True, t=2)
+    # arm.set_target_pose(trajectory[0], wait=True, t=2)
+    # print("Initial error", np.round(spalg.translation_rotation_error(trajectory[0], arm.end_effector())[:3], 4))
 
     for cmd in trajectory:
         if use_force_control:
@@ -191,8 +199,8 @@ def execute_trajectory(trajectory, timeout, use_force_control=False):
         else:
             arm.set_target_pose_flex(cmd, t=timeout)
             rospy.sleep(timeout)
-            
-    print("relative error", np.round(spalg.translation_rotation_error(trajectory[-1], arm.end_effector()), 4))
+
+    # print("relative error", np.round(spalg.translation_rotation_error(trajectory[-1], arm.end_effector()), 4))
 
 
 def face_towards_target():
@@ -204,6 +212,7 @@ def face_towards_target():
     # compute pose with new rotation
     cmd = spalg.face_towards(target_position, cpose)
     arm.set_target_pose(cmd, wait=True, t=1)
+
 
 def init_force_control(selection_matrix, dt=0.002):
     Kp = np.array([1., 1., 1., 10., 10., 10.])
@@ -221,6 +230,7 @@ def init_force_control(selection_matrix, dt=0.002):
     pf_model = ForcePositionController(position_pd=position_pd, force_pd=force_pd, alpha=np.diag(selection_matrix), dt=dt)
 
     return pf_model
+
 
 def full_force_control(target_force=None, target_position=None, model=None, selection_matrix=[1., 1., 1., 1., 1., 1.], ee_transform=[0, 0, 0, 0, 0, 0, 1], relative_to_ee=False, timeout=10.0,):
     """ 
@@ -318,7 +328,7 @@ def main():
 
     use_gripper = args.gripper
 
-    extra_ee = [0,0,0.] + transformations.quaternion_from_euler(*[np.pi/4,0,0]).tolist()
+    extra_ee = [0, 0, 0.] + transformations.quaternion_from_euler(*[np.pi/4, 0, 0]).tolist()
     extra_ee = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
 
     global arm
