@@ -39,7 +39,7 @@ class CompliantController(Arm):
                 and (rospy.get_time() - initime) < timeout:
 
             # Transform wrench to the base_link frame
-            Wb = self.get_ee_wrench(relative=self.relative_to_ee)
+            Wb = self.get_ee_wrench()
 
             # Current Force in task-space
             Fb = -1 * Wb
