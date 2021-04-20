@@ -339,7 +339,7 @@ class Arm(object):
         speed = deltaq / t
         cmd = position
         if np.any(np.abs(speed) > (self.max_joint_speed/t)):
-            print("exceeded max speed", speed)
+            rospy.logdebug("Attempting to exceeded max speed %s, ignoring command" % speed)
             return SPEED_LIMIT_EXCEEDED
         self._flexible_trajectory(cmd, t, v)
         return DONE

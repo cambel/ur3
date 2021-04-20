@@ -50,7 +50,7 @@ class CompliantController(Arm):
                 return FORCE_TORQUE_EXCEEDED
 
             if stop_on_target_force and np.any(np.abs(Fb)[model.target_force != 0] > model.target_force[model.target_force != 0]):
-                rospy.loginfo('Target force/torque reached {}'.format(np.round(Wb, 3)) + ' Stopping!')
+                rospy.loginfo('Target F/T reached {}'.format(np.round(Wb, 3)) + ' Stopping!')
                 self.set_target_pose_flex(pose=xb, t=model.dt)
                 return STOP_ON_TARGET_FORCE
 
@@ -58,7 +58,6 @@ class CompliantController(Arm):
             xb = self.end_effector()
 
             dxf = model.control_position_orientation(Fb, xb)  # angular velocity
-            # TODO (cambel): smooth motion (velocity/acceleration)
             xc = transformations.pose_from_angular_veloticy(xb, dxf, dt=model.dt)
 
             result = self.set_target_pose_flex(pose=xc, t=model.dt)
