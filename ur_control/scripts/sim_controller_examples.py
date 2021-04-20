@@ -15,8 +15,9 @@ def move_joints(wait=True):
     # desired joint configuration 'q'
     # q = [2.37191, -1.88688, -1.82035,  0.4766,  2.31206,  3.18758]
     q = [1.5701, -1.1854, 1.3136, -1.6975, -1.5708, -0.0016]
-    q = [1.7078, -1.5267, 2.0624, -2.1325, -1.6114, 1.7185] #b_bot
     q = [1.5794, -1.4553, 2.1418, -2.8737, -1.6081, 0.0063]
+    q = [1.7078, -1.5267, 2.0624, -2.1325, -1.6114, 1.7185] #b_bot
+    q = [1.5909, -1.3506, 1.9397, -2.0634, -2.5136, -1.4549] #b_bot bearing
     # q = [1.707, -1.5101, 2.1833, -2.5707, -1.6139, 1.7138]
     # go to desired joint configuration
     # in t time (seconds)
@@ -127,80 +128,71 @@ def move_to_pose():
     #     traj = np.apply_along_axis(target_q.rotate, 1, traj)
     #     self.base_trajectory = traj + final_pose
 
-def spiral_trajectory():
-    initial_q = [1.5794, -1.4553, 2.1418, -2.8737, -1.6081, 0.0063]
+def compute_trajectory(initial_q, deltax, steps, revolutions=1.0, traj_type="circular"):
     arm.set_joint_positions(initial_q, wait=True, t=2)
 
-    target_pose = arm.end_effector()
+    initial_pose = arm.end_effector()
 
-    deltax = np.array([0.02, 0.02, 0.0, 0., 0., 0.])
-    initial_pose = transformations.pose_euler_to_quaternion(target_pose, deltax, ee_rotation=True)
-    arm.set_target_pose(initial_pose)
+    target_pose = transformations.pose_euler_to_quaternion(initial_pose, deltax, ee_rotation=True)
 
     initial_pose = initial_pose[:3]
     final_pose = target_pose[:3]
 
     target_q = transformations.vector_to_pyquaternion(target_pose[3:])
-    target_q = transformations.vector_to_pyquaternion([0,0,0,1])
+    target_q = transformations.vector_to_pyquaternion(transformations.quaternion_from_euler(*[0, np.pi/2, 0]))
 
-    p1 = target_q.rotate(initial_pose - final_pose)
-    p2 = np.zeros(3)
+    p1 = np.zeros(3)
+    p2 = target_q.rotate(initial_pose - final_pose)
+
+    if traj_type == "circular":
+        traj = traj_utils.get_circular_trajectory(p1, p2, steps, revolutions)
+    if traj_type == "spiral":
+        traj = traj_utils.get_spiral_trajectory(p1, p2, steps, revolutions, from_center=True)
+    
+    traj = np.apply_along_axis(target_q.rotate, 1, traj)
+    trajectory = traj + final_pose
+
+    trajectory = [np.concatenate([t, target_pose[3:]]) for t in trajectory]
+
+    return trajectory
+
+def spiral_trajectory():
+    initial_q = [1.5909, -1.3506, 1.9397, -2.0634, -2.5136, -1.4549] #b_bot bearing
+    deltax = np.array([0.002, 0.0, 0.0, 0., 0., 0.])
+
+    steps = 200
+    duration = 10.0
+    
+    trajectory = compute_trajectory(initial_q, deltax, steps, revolutions=5, traj_type="spiral")
+    execute_trajectory(trajectory, timeout=(duration/steps), use_force_control=True)
+
+def circular_trajectory():
+    initial_q = [1.5909, -1.3506, 1.9397, -2.0634, -2.5136, -1.4549] #b_bot bearing
+    deltax = np.array([0.002, 0.0, 0.0, 0., 0., 0.])
+
     steps = 200
     duration = 10.0
 
-    traj = traj_utils.get_conical_helix_trajectory(p1, p2, steps, 2)
-    traj = np.apply_along_axis(target_q.rotate, 1, traj)
-    trajectory = traj + final_pose
+    trajectory = compute_trajectory(initial_q, deltax, steps, revolutions=5, traj_type="circular")
+    execute_trajectory(trajectory, timeout=(duration/steps), use_force_control=True)
 
-    arm.set_wrench_offset(True)
-
-    pf_model = init_force_control([0.5,0.5,0.5,0.5,0.5,0.5])
-
-    for i, position in enumerate(trajectory):
-        cmd = np.concatenate([position, target_pose[3:]])
-        # print(i, cmd)
-        # arm.set_target_pose(cmd, wait=True, t=(duration/steps))
-
-        timeout = (duration/steps)
-
-        target_force = np.array([0., 0., 0., 0., 0., 0.])
-        # ee_tranform = [0, 0, 0.] + transformations.quaternion_from_euler(*[np.pi/2, 0, 0]).tolist()
+def execute_trajectory(trajectory, timeout, use_force_control=False):
+    if use_force_control:
+        pf_model = init_force_control([0.,1.,1.,1.,1.,1.])
         ee_tranform = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+        target_force = np.array([-1., 0., 0., 0., 0., 0.])
+        arm.set_wrench_offset(True)
 
-        full_force_control(target_force, cmd, pf_model, ee_transform=ee_tranform, timeout=timeout*1.5, relative_to_ee=False)
-        # pf_model.reset()
-        rospy.sleep(timeout)
-    print("relative error", np.round(trajectory[-1] - arm.end_effector()[:3], 4))
+    arm.set_target_pose(trajectory[0], wait=True, t=2)
 
-def circular_trajectory():
-    initial_q = [5.1818, 0.3954, -1.5714, -0.3902, 1.5448, -0.5056]
-    arm.set_joint_positions(initial_q, wait=True, t=2)
-
-    target_position = [0.20, -0.30, 0.80]
-    target_orienation = [0.01504, 0.01646, -0.01734, 0.9996]
-    target_orienation = [0.18603, 0.01902, -0.01464, 0.98225]
-    target_pose = target_position + target_orienation
-
-    deltax = np.array([0., 0.05, 0.1, 0., 0., 0.])
-    initial_pose = transformations.pose_euler_to_quaternion(target_pose, deltax, ee_rotation=True)
-
-    initial_pose = initial_pose[:3]
-    final_pose = target_position[:3]
-
-    target_q = transformations.vector_to_pyquaternion(target_orienation)
-
-    p1 = target_q.rotate(initial_pose - final_pose)
-    p2 = np.zeros(3)
-    steps = 20
-    duration = 10
-
-    traj = traj_utils.circunference(p1, p2, steps)
-    traj = np.apply_along_axis(target_q.rotate, 1, traj)
-    trajectory = traj + final_pose
-
-    for position in trajectory:
-        cmd = np.concatenate([position, target_orienation])
-        arm.set_target_pose(cmd, wait=True, t=(duration/steps))
+    for cmd in trajectory:
+        if use_force_control:
+            full_force_control(target_force, cmd, pf_model, ee_transform=ee_tranform, timeout=timeout, relative_to_ee=False)
+        else:
+            arm.set_target_pose_flex(cmd, t=timeout)
+            rospy.sleep(timeout)
+            
+    print("relative error", np.round(spalg.translation_rotation_error(trajectory[-1], arm.end_effector()), 4))
 
 
 def face_towards_target():
@@ -214,14 +206,14 @@ def face_towards_target():
     arm.set_target_pose(cmd, wait=True, t=1)
 
 def init_force_control(selection_matrix, dt=0.002):
-    Kp = np.array([10.,10.,10.,0.1,0.1,0.1])
+    Kp = np.array([1., 1., 1., 10., 10., 10.])
     Kp_pos = Kp
     Kd_pos = Kp * 0.01
     Ki_pos = Kp * 0.01
-    position_pd = utils.PID(Kp=Kp_pos, Ki=Ki_pos, Kd=Kd_pos)
+    position_pd = utils.PID(Kp=Kp_pos, Ki=Ki_pos, Kd=Kd_pos, dynamic_pid=True)
 
     # Force PID gains
-    Kp = np.array([0.1,0.1,0.1,0.5,0.5,5.0])
+    Kp = np.array([0.02, 0.05, 0.05, 0.5, 0.5, 5.0])
     Kp_force = Kp
     Kd_force = Kp * 0.
     Ki_force = Kp * 0.01
@@ -266,11 +258,11 @@ def full_force_control(target_force=None, target_position=None, model=None, sele
 def force_control():
     arm.set_wrench_offset(True)
 
-    timeout = 5.0
+    timeout = 30.0
 
-    selection_matrix = [1., 1., 1.0, 1., 1., 1.]
+    selection_matrix = [0.5, 0.9, 0.9, 1., 1., 1.]
     target_position = arm.end_effector()
-    target_position[1] += 0.05
+    # target_position[1] += 0.05
     target_force = np.array([0., 0., 0., 0., 0., 0.])
     # ee_tranform = [0, 0, 0.] + transformations.quaternion_from_euler(*[np.pi/2, 0, 0]).tolist()
     ee_tranform = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
