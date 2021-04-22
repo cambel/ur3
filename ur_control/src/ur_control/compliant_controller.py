@@ -91,6 +91,11 @@ class CompliantController(Arm):
             # Current Force in task-space
             Fb = -1 * Wb
             dxf = model.control_position_orientation(Fb, xb)  # angular velocity
+
+            # Limit linear/angular velocity
+            dxf[:3] = np.clip(dxf[:3], -1., 1.)
+            dxf[3:] = np.clip(dxf[3:], -5., 5.)
+
             xc = transformations.pose_from_angular_veloticy(xb, dxf, dt=model.dt)
 
             self.set_target_pose_flex(pose=xc, t=model.dt)

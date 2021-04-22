@@ -175,7 +175,7 @@ class Arm(object):
         elif self.ik_solver == TRAC_IK:
             ik = self.trac_ik.get_ik(self.joint_angles(), pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6])
             if ik is None:
-                print("IK not found")
+                rospy.logdebug("TRACK-IK: solution not found!")
 
         return ik
 
