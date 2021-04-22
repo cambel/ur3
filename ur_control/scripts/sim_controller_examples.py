@@ -1,5 +1,8 @@
 #!/usr/bin/env python
+import sys
+import signal
 from ur_control import utils, spalg, transformations, traj_utils
+from ur_control.constants import FORCE_TORQUE_EXCEEDED
 from ur_control.hybrid_controller import ForcePositionController
 from ur_control.compliant_controller import CompliantController
 import argparse
@@ -11,19 +14,30 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(linewidth=np.inf)
 
 
+def signal_handler(sig, frame):
+    print('You pressed Ctrl+C!')
+    arm.set_joint_positions(arm.joint_angles, wait=True, t=1.0)
+    sys.exit(0)
+
+
+signal.signal(signal.SIGINT, signal_handler)
+
+
 def move_joints(wait=True):
     # desired joint configuration 'q'
     # q = [2.37191, -1.88688, -1.82035,  0.4766,  2.31206,  3.18758]
     q = [1.5701, -1.1854, 1.3136, -1.6975, -1.5708, -0.0016]
     q = [1.5794, -1.4553, 2.1418, -2.8737, -1.6081, 0.0063]
-    q = [1.7078, -1.5267, 2.0624, -2.1325, -1.6114, 1.7185]  # b_bot
-    q = [1.5909, -1.3506, 1.9397, -2.0634, -2.5136, -1.4549]  # b_bot bearing
+    q = [1.7181, -1.4153, 1.8695, -2.0119, -1.6093, -1.4208]  # b_bot
+    q = [1.7321, -1.4295, 2.0241, -2.6473, -1.6894, -1.4177]
+    q = [1.6626, -1.2571, 1.9806, -2.0439, -2.7765, -1.3049]  # b_bot bearing
+    # q = [1.6241, -1.2576, 2.0085, -2.1514, -2.7841, -1.408] # b_bot grasp bearing
     # q = [1.707, -1.5101, 2.1833, -2.5707, -1.6139, 1.7138]
     # go to desired joint configuration
     # in t time (seconds)
     # wait is for waiting to finish the motion before executing
     # anything else or ignore and continue with whatever is next
-    arm.set_joint_positions(position=q, wait=wait, t=0.5)
+    arm.set_joint_positions(position=q, wait=wait, t=2.0)
 
 
 def follow_trajectory():
@@ -46,7 +60,7 @@ def move_endeffector(wait=True):
     # get current position of the end effector
     cpose = arm.end_effector()
     # define the desired translation/rotation
-    deltax = np.array([0., 0., 0.04, 0., 0., 0.])
+    deltax = np.array([0., 0., 0.0, 0., 1., 0.])
     # add translation/rotation to current position
     cpose = transformations.pose_euler_to_quaternion(cpose, deltax, ee_rotation=True)
     # execute desired new pose
@@ -131,40 +145,53 @@ def move_to_pose():
 
 
 def spiral_trajectory():
-    initial_q = [1.5909, -1.3506, 1.9397, -2.0634, -2.5136, -1.4549]  # b_bot bearing
-    arm.set_joint_positions(initial_q, wait=True, t=1)
+    initial_q = [1.6626, -1.2571, 1.9806, -2.0439, -2.7765, -1.3049]  # b_bot bearing
+    initial_q = [1.7095, -1.5062, 2.0365, -1.8598, -2.6038, -1.3207]  # b_bot shaft
+    initial_q = [1.6092, -1.2341, 1.7759, -2.0393, -2.6305, -1.5072]  # b_bot bearing with housing
+    
+    arm.set_joint_positions(initial_q, wait=True, t=2)
 
     plane = "YZ"
-    radius = 0.05
+    radius = 0.002
     radius_direction = "+Z"
+    revolutions = 5
 
-    steps = 200
-    duration = 10.0
+    steps = 100
+    duration = 30.0
 
-    initial_pose = arm.end_effector()
-    trajectory = traj_utils.compute_trajectory(initial_pose, plane, radius, radius_direction, steps, revolutions=5, trajectory_type="spiral", from_center=True)
-    execute_trajectory(trajectory, timeout=(duration/steps), use_force_control=True)
+    arm.set_wrench_offset(True)
+
+    for _ in range(2):
+        initial_pose = arm.end_effector()
+        trajectory = traj_utils.compute_trajectory(initial_pose, plane, radius, radius_direction, steps, revolutions, trajectory_type="spiral", from_center=True,
+                                                   wiggle_direction="Z", wiggle_angle=np.deg2rad(3.0), wiggle_revolutions=10.0)
+        execute_trajectory(trajectory, duration=duration, use_force_control=True)
 
 
 def circular_trajectory():
-    initial_q = [1.5909, -1.3506, 1.9397, -2.0634, -2.5136, -1.4549]  # b_bot bearing
-    arm.set_joint_positions(initial_q, wait=True, t=1)
+    initial_q = [1.6626, -1.2571, 1.9806, -2.0439, -2.7765, -1.3049]  # b_bot bearing
+    arm.set_joint_positions(initial_q, wait=True, t=2)
 
     plane = "YZ"
-    radius = 0.05
+    radius = 0.003
     radius_direction = "+Y"
 
     steps = 100
-    duration = 2.0
+    duration = 30.0
 
-    initial_pose = arm.end_effector()
-    trajectory = traj_utils.compute_trajectory(initial_pose, plane, radius, radius_direction, steps, revolutions=1, trajectory_type="circular", from_center=False)
-    execute_trajectory(trajectory, timeout=(duration/steps), use_force_control=True)
+    arm.set_wrench_offset(True)
+
+
+    for _ in range(2): # Execute the trajectory twice starting from the end of the previous trajectory
+        initial_pose = arm.end_effector()
+        trajectory = traj_utils.compute_trajectory(initial_pose, plane, radius, radius_direction, steps, revolutions, trajectory_type="spiral", from_center=True,
+                                                   wiggle_direction="Z", wiggle_angle=np.deg2rad(2.0), wiggle_revolutions=10.0)
+        execute_trajectory(trajectory, duration=duration, use_force_control=True)
 
 
 def test_multiple_planes():
     planes = ["XY", "XZ", "YZ"]
-    radius_directions = [["+X", "-X", "+Y", "-Y"],["+X", "-X", "+Z", "-Z"],["+Y", "-Y", "+Z", "-Z"]]
+    radius_directions = [["+X", "-X", "+Y", "-Y"], ["+X", "-X", "+Z", "-Z"], ["+Y", "-Y", "+Z", "-Z"]]
     for a, b in zip(planes, radius_directions):
         for r in b:
             print("PLANE", a, r)
@@ -183,24 +210,31 @@ def test_multiple_planes():
             execute_trajectory(trajectory, timeout=(duration/steps), use_force_control=False)
 
 
-def execute_trajectory(trajectory, timeout, use_force_control=False):
+def wiggle():
+    initial_pose = arm.end_effector()
+    steps = 100.
+    traj = traj_utils.compute_rotation_wiggle(initial_pose[3:], "Z", np.deg2rad(10.0), steps, 3)
+    timeout = 10./steps
+
+    for i, to in enumerate(traj):
+        cmd = np.concatenate([initial_pose[:3], to])
+        # print("Initial error", i, np.round(spalg.translation_rotation_error(traj[0], arm.end_effector())[3:], 4))
+        arm.set_target_pose_flex(cmd, t=timeout)
+        rospy.sleep(timeout)
+
+
+def execute_trajectory(trajectory, duration, use_force_control=False, termination_criteria=None):
     if use_force_control:
-        pf_model = init_force_control([1., 1., 1., 1., 1., 1.])
+        pf_model = init_force_control([0., 0.8, 0.8, 0.8, 0.8, 0.8])
+        # pf_model = init_force_control([0., 1., 1., 1., 1., 1.])
         ee_tranform = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
-        target_force = np.array([-1., 0., 0., 0., 0., 0.])
-        arm.set_wrench_offset(True)
+        target_force = np.array([-5., 0., 0., 0., 0., 0.])
+        max_force_torque = np.array([50., 50., 50., 5., 5., 5.])
 
-    # arm.set_target_pose(trajectory[0], wait=True, t=2)
-    # print("Initial error", np.round(spalg.translation_rotation_error(trajectory[0], arm.end_effector())[:3], 4))
+    termination_criteria = lambda current_pose: current_pose[0] > -0.05
 
-    for cmd in trajectory:
-        if use_force_control:
-            full_force_control(target_force, cmd, pf_model, ee_transform=ee_tranform, timeout=timeout, relative_to_ee=False)
-        else:
-            arm.set_target_pose_flex(cmd, t=timeout)
-            rospy.sleep(timeout)
-
-    # print("relative error", np.round(spalg.translation_rotation_error(trajectory[-1], arm.end_effector()), 4))
+    full_force_control(target_force, trajectory, pf_model, ee_transform=ee_tranform, timeout=duration,
+                       relative_to_ee=False, max_force_torque=max_force_torque, termination_criteria=termination_criteria)
 
 
 def face_towards_target():
@@ -215,16 +249,16 @@ def face_towards_target():
 
 
 def init_force_control(selection_matrix, dt=0.002):
-    Kp = np.array([1., 1., 1., 10., 10., 10.])
+    Kp = np.array([1., 1., 1., 2.5, 2.5, 2.5])
     Kp_pos = Kp
     Kd_pos = Kp * 0.01
     Ki_pos = Kp * 0.01
     position_pd = utils.PID(Kp=Kp_pos, Ki=Ki_pos, Kd=Kd_pos, dynamic_pid=True)
 
     # Force PID gains
-    Kp = np.array([0.02, 0.05, 0.05, 0.5, 0.5, 5.0])
+    Kp = np.array([0.05, 0.05, 0.05, 5.0, 5.0, 5.0])
     Kp_force = Kp
-    Kd_force = Kp * 0.
+    Kd_force = Kp * 0.05
     Ki_force = Kp * 0.01
     force_pd = utils.PID(Kp=Kp_force, Kd=Kd_force, Ki=Ki_force)
     pf_model = ForcePositionController(position_pd=position_pd, force_pd=force_pd, alpha=np.diag(selection_matrix), dt=dt)
@@ -232,7 +266,11 @@ def init_force_control(selection_matrix, dt=0.002):
     return pf_model
 
 
-def full_force_control(target_force=None, target_position=None, model=None, selection_matrix=[1., 1., 1., 1., 1., 1.], ee_transform=[0, 0, 0, 0, 0, 0, 1], relative_to_ee=False, timeout=10.0,):
+def full_force_control(
+        target_force=None, target_positions=None, model=None,
+        selection_matrix=[1., 1., 1., 1., 1., 1.], ee_transform=[0, 0, 0, 0, 0, 0, 1],
+        relative_to_ee=False, timeout=10.0, max_force_torque=[50., 50., 50., 5., 5., 5.], 
+        termination_criteria=None):
     """ 
       Use with caution!! 
       target_force: list[6], target force for each direction x,y,z,ax,ay,az
@@ -253,24 +291,25 @@ def full_force_control(target_force=None, target_position=None, model=None, sele
         pf_model = model
         pf_model.selection_matrix = np.diag(selection_matrix)
 
-    max_force_torque = np.array([50., 50., 50., 5., 5., 5.])
+    max_force_torque = np.array(max_force_torque)
 
-    target_position = arm.end_effector() if target_position is None else np.array(target_position)
     target_force = np.array([0., 0., 0., 0., 0., 0.]) if target_force is None else target_force
 
-    pf_model.set_goals(target_position, target_force)
+    target_positions = arm.end_effector() if target_positions is None else np.array(target_positions)
+
+    pf_model.set_goals(force=target_force)
 
     # print("STARTING Force Control with target_force:", target_force, "timeout", timeout)
-    res = arm.set_hybrid_control(pf_model, max_force_torque=max_force_torque, timeout=timeout, stop_on_target_force=False)
+    return arm.set_hybrid_control_trajectory(target_positions, pf_model, max_force_torque=max_force_torque, timeout=timeout, stop_on_target_force=False, termination_criteria=termination_criteria)
     # rospy.loginfo("Force control finished with: %s" % res)  # debug
 
 
 def force_control():
     arm.set_wrench_offset(True)
 
-    timeout = 30.0
+    timeout = 15.0
 
-    selection_matrix = [0.5, 0.9, 0.9, 1., 1., 1.]
+    selection_matrix = [0., 1., 1., 1., 1., 1.]
     target_position = arm.end_effector()
     # target_position[1] += 0.05
     target_force = np.array([0., 0., 0., 0., 0., 0.])
@@ -296,6 +335,8 @@ def main():
                         help='Force control demo')
     parser.add_argument('-p', '--pose', action='store_true',
                         help='Move to pose')
+    parser.add_argument('-w', '--wiggle', action='store_true',
+                        help='Wiggle')
     parser.add_argument('--grasp_naive', action='store_true',
                         help='Test simple grasping (cube_tasks world)')
     parser.add_argument('--grasp_plugin', action='store_true',
@@ -363,7 +404,8 @@ def main():
         face_towards_target()
     if args.force:
         force_control()
-
+    if args.wiggle:
+        wiggle()
     print("real time", round(timeit.default_timer() - real_start_time, 3))
     print("ros time", round(rospy.get_time() - ros_start_time, 3))
 
