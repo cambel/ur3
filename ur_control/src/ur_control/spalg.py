@@ -506,6 +506,7 @@ def translation_rotation_error(to_pose, from_pose):
 
 def convert_wrench(wrench_force, pose):
     ee_transform = tr.vector_to_pyquaternion(pose[3:]).transformation_matrix
+    ee_transform[:3,3] = pose[:3]
 
     # # # Wrench force transformation
     wFtS = force_frame_transform(ee_transform)
