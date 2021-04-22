@@ -12,7 +12,7 @@ import types
 
 from ur_control.arm import Arm
 from ur_control import transformations, spalg, utils
-from ur_control.constants import DONE, FORCE_TORQUE_EXCEEDED, SPEED_LIMIT_EXCEEDED, STOP_ON_TARGET_FORCE
+from ur_control.constants import DONE, FORCE_TORQUE_EXCEEDED, SPEED_LIMIT_EXCEEDED, STOP_ON_TARGET_FORCE, TERMINATION_CRITERIA
 
 
 class CompliantController(Arm):
@@ -67,14 +67,14 @@ class CompliantController(Arm):
                 assert isinstance(termination_criteria, types.LambdaType), "Invalid termination criteria, expecting lambda/function with one argument[current pose array[7]]"
                 if termination_criteria(xb):
                     rospy.loginfo("Termination criteria returned True, stopping force control")
-                    break
+                    return TERMINATION_CRITERIA
 
             if (rospy.get_time() - sub_inittime) > ptp_timeout:
                 sub_inittime = rospy.get_time()
                 ptp_index += 1
                 if ptp_index >= len(trajectory):
                     rospy.loginfo("Trajectory completed")
-                    break
+                    return DONE
                 model.set_goals(position=trajectory[ptp_index])
 
             if stop_on_target_force and np.all(np.abs(Wb)[model.target_force != 0] > model.target_force[model.target_force != 0]):
@@ -93,7 +93,7 @@ class CompliantController(Arm):
             dxf = model.control_position_orientation(Fb, xb)  # angular velocity
 
             # Limit linear/angular velocity
-            dxf[:3] = np.clip(dxf[:3], -1., 1.)
+            dxf[:3] = np.clip(dxf[:3], -0.5, 0.5)
             dxf[3:] = np.clip(dxf[3:], -5., 5.)
 
             xc = transformations.pose_from_angular_veloticy(xb, dxf, dt=model.dt)

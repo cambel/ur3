@@ -32,7 +32,7 @@ def move_joints(wait=True):
     q = [1.7321, -1.4295, 2.0241, -2.6473, -1.6894, -1.4177]
     q = [1.6626, -1.2571, 1.9806, -2.0439, -2.7765, -1.3049]  # b_bot bearing
     # q = [1.6241, -1.2576, 2.0085, -2.1514, -2.7841, -1.408] # b_bot grasp bearing
-    q = [1.3467, -1.3844, 1.6364, -1.8374, -1.7094, -1.7512] # push
+    q = [1.2852, -1.3817, 1.6348, -1.8448, -1.7099, -1.8092] # push
     # go to desired joint configuration
     # in t time (seconds)
     # wait is for waiting to finish the motion before executing
@@ -256,7 +256,7 @@ def init_force_control(selection_matrix, dt=0.002):
     position_pd = utils.PID(Kp=Kp_pos, Ki=Ki_pos, Kd=Kd_pos, dynamic_pid=True)
 
     # Force PID gains
-    Kp = np.array([0.1, 0.1, 0.1, 5.0, 5.0, 5.0])
+    Kp = np.array([0.05, 0.05, 0.05, 5.0, 5.0, 5.0])
     Kp_force = Kp
     Kd_force = Kp * 0.01
     Ki_force = Kp * 0.01
