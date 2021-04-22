@@ -32,12 +32,12 @@ def move_joints(wait=True):
     q = [1.7321, -1.4295, 2.0241, -2.6473, -1.6894, -1.4177]
     q = [1.6626, -1.2571, 1.9806, -2.0439, -2.7765, -1.3049]  # b_bot bearing
     # q = [1.6241, -1.2576, 2.0085, -2.1514, -2.7841, -1.408] # b_bot grasp bearing
-    # q = [1.707, -1.5101, 2.1833, -2.5707, -1.6139, 1.7138]
+    q = [1.3467, -1.3844, 1.6364, -1.8374, -1.7094, -1.7512] # push
     # go to desired joint configuration
     # in t time (seconds)
     # wait is for waiting to finish the motion before executing
     # anything else or ignore and continue with whatever is next
-    arm.set_joint_positions(position=q, wait=wait, t=2.0)
+    arm.set_joint_positions(position=q, wait=wait, t=1.0)
 
 
 def follow_trajectory():
@@ -147,7 +147,7 @@ def move_to_pose():
 def spiral_trajectory():
     initial_q = [1.6626, -1.2571, 1.9806, -2.0439, -2.7765, -1.3049]  # b_bot bearing
     initial_q = [1.7095, -1.5062, 2.0365, -1.8598, -2.6038, -1.3207]  # b_bot shaft
-    initial_q = [1.6092, -1.2341, 1.7759, -2.0393, -2.6305, -1.5072]  # b_bot bearing with housing
+    initial_q = [1.5786, -1.2561, 1.8284, -2.2029, -2.6168, -1.519]  # b_bot bearing with housing
     
     arm.set_joint_positions(initial_q, wait=True, t=2)
 
@@ -164,7 +164,7 @@ def spiral_trajectory():
     for _ in range(2):
         initial_pose = arm.end_effector()
         trajectory = traj_utils.compute_trajectory(initial_pose, plane, radius, radius_direction, steps, revolutions, trajectory_type="spiral", from_center=True,
-                                                   wiggle_direction="Z", wiggle_angle=np.deg2rad(3.0), wiggle_revolutions=10.0)
+                                                   wiggle_direction="Z", wiggle_angle=np.deg2rad(2.0), wiggle_revolutions=10.0)
         execute_trajectory(trajectory, duration=duration, use_force_control=True)
 
 
@@ -231,7 +231,7 @@ def execute_trajectory(trajectory, duration, use_force_control=False, terminatio
         target_force = np.array([-5., 0., 0., 0., 0., 0.])
         max_force_torque = np.array([50., 50., 50., 5., 5., 5.])
 
-    termination_criteria = lambda current_pose: current_pose[0] > -0.05
+    termination_criteria = lambda current_pose: current_pose[0] > -0.035
 
     full_force_control(target_force, trajectory, pf_model, ee_transform=ee_tranform, timeout=duration,
                        relative_to_ee=False, max_force_torque=max_force_torque, termination_criteria=termination_criteria)
@@ -256,9 +256,9 @@ def init_force_control(selection_matrix, dt=0.002):
     position_pd = utils.PID(Kp=Kp_pos, Ki=Ki_pos, Kd=Kd_pos, dynamic_pid=True)
 
     # Force PID gains
-    Kp = np.array([0.05, 0.05, 0.05, 5.0, 5.0, 5.0])
+    Kp = np.array([0.1, 0.1, 0.1, 5.0, 5.0, 5.0])
     Kp_force = Kp
-    Kd_force = Kp * 0.05
+    Kd_force = Kp * 0.01
     Ki_force = Kp * 0.01
     force_pd = utils.PID(Kp=Kp_force, Kd=Kd_force, Ki=Ki_force)
     pf_model = ForcePositionController(position_pd=position_pd, force_pd=force_pd, alpha=np.diag(selection_matrix), dt=dt)
@@ -310,14 +310,9 @@ def force_control():
     timeout = 15.0
 
     selection_matrix = [0., 1., 1., 1., 1., 1.]
-    target_position = arm.end_effector()
-    # target_position[1] += 0.05
-    target_force = np.array([0., 0., 0., 0., 0., 0.])
-    # ee_tranform = [0, 0, 0.] + transformations.quaternion_from_euler(*[np.pi/2, 0, 0]).tolist()
-    ee_tranform = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+    target_force = np.array([-5., 0., 0., 0., 0., 0.])
 
-    # print(ee_tranform)
-    full_force_control(target_force, target_position, selection_matrix=selection_matrix, ee_transform=ee_tranform, timeout=timeout, relative_to_ee=False)
+    full_force_control(target_force, selection_matrix=selection_matrix, timeout=timeout, relative_to_ee=False)
 
 
 def main():
