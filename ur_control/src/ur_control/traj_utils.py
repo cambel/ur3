@@ -81,8 +81,35 @@ def get_plane_direction(plane, radius):
 
     return np.array(direction_array)
 
+def compute_rotation_wiggle(initial_orientation, direction, angle, steps, revolutions):
+    """
+        Compute a sinusoidal trajectory for the orientation of the end-effector in one given direction.
+        To keep it simple, only supports one direction.
+        initial_orientation: array[4], orientation in quaternion form
+        direction: string, 'X','Y', or 'Z' w.r.t the robot's base
+        angle: float, magnitude of rotation in radians
+        steps: int, number of steps for the resulting trajectory
+        revolutions: int, number of revolutions 
+    """
+    assert direction in ('X','Y','Z'), "Invalid direction: %s" % direction
+    DIRECTION_INDEX = {'X': 0, 'Y': 1, 'Z': 2}
 
-def compute_trajectory(initial_pose, plane, radius, radius_direction, steps=100, revolutions=5, from_center=True,  trajectory_type="circular"):
+    euler = np.array(transformations.euler_from_quaternion(initial_orientation, axes='rxyz'))
+    theta = np.linspace(0, 2*np.pi*revolutions, steps)
+    deltas = angle * np.sin(theta)
+
+    direction_array = np.zeros(3)
+    direction_array[DIRECTION_INDEX.get(direction)] = 1.0
+    deltas = deltas.reshape(-1,1) * direction_array.reshape(1,3)
+    
+    new_eulers = deltas + euler
+    
+    cmd_orientations = [transformations.quaternion_from_euler(*new_euler, axes='rxyz') for new_euler in new_eulers]
+    
+    return cmd_orientations
+
+def compute_trajectory(initial_pose, plane, radius, radius_direction, steps=100, revolutions=5, from_center=True,  trajectory_type="circular",
+                       wiggle_direction=None, wiggle_angle=0.0, wiggle_revolutions=0.0):
     """
         Compute a trajectory "circular" or "spiral":
         plane: string, only 3 valid options "XY", "XZ", "YZ", is the plane w.r.t to the robot base where the trajectory will be drawn
@@ -93,6 +120,9 @@ def compute_trajectory(initial_pose, plane, radius, radius_direction, steps=100,
         from_center: bool, whether to start the trajectory assuming the current position as center (True) or the radius+radius_direction as center (False)
                             [True] is better for spiral trajectory while [False] is better for the circular trajectory, though other options are okay.
         trajectory_type: string, "circular" or "spiral"
+        wiggle_direction: string, 'X','Y', or 'Z' w.r.t the robot's base
+        wiggle_angle: float, magnitude of wiggle-rotation in radians
+        wiggle_revolutions: int, number of wiggle-revolutions 
     """
 
     direction = get_plane_direction(radius_direction, radius)
@@ -133,6 +163,11 @@ def compute_trajectory(initial_pose, plane, radius, radius_direction, steps=100,
 
     traj = np.apply_along_axis(target_orientation.rotate, 1, traj)
     trajectory = traj + final_pose
-    trajectory = [np.concatenate([t, target_pose[3:]]) for t in trajectory]
+    
+    if wiggle_direction is None:
+        trajectory = [np.concatenate([t, target_pose[3:]]) for t in trajectory]
+    else:
+        target_orientation = compute_rotation_wiggle(target_pose[3:], wiggle_direction, wiggle_angle, steps, wiggle_revolutions)
+        trajectory = [np.concatenate([tp, to]) for tp, to in zip(trajectory, target_orientation)]
 
     return trajectory
