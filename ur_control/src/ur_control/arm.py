@@ -72,7 +72,7 @@ class Arm(object):
 
         self.base_link = BASE_LINK if joint_names_prefix is None else joint_names_prefix + BASE_LINK
         self.ee_link = EE_LINK if joint_names_prefix is None else joint_names_prefix + EE_LINK
-        
+
         self.max_joint_speed = np.deg2rad([100, 100, 100, 200, 200, 200])
         # self.max_joint_speed = np.deg2rad([191, 191, 191, 371, 371, 371])
 
@@ -106,7 +106,7 @@ class Arm(object):
 
     def _init_ik_solver(self):
         self.kdl = ur_kinematics(self._robot_urdf, base_link=self.base_link, ee_link=self.ee_link, prefix=self.joint_names_prefix, rospackage=self._robot_urdf_package)
-        
+
         if self.ik_solver == IKFAST:
             # IKfast libraries
             if self._robot_urdf == 'ur3_robot':
@@ -116,7 +116,7 @@ class Arm(object):
         elif self.ik_solver == TRAC_IK:
             try:
                 if not rospy.has_param("robot_description"):
-                    self.trac_ik = IK(base_link=self.base_link, tip_link=self.ee_link, solve_type="Distance", 
+                    self.trac_ik = IK(base_link=self.base_link, tip_link=self.ee_link, solve_type="Distance",
                                       urdf_string=utils.load_urdf_string(self._robot_urdf_package, self._robot_urdf))
                 else:
                     self.trac_ik = IK(base_link=self.base_link, tip_link=self.ee_link, solve_type="Distance")
@@ -236,7 +236,7 @@ class Arm(object):
         # # # Transform of EE
         pose = self.end_effector()
         ee_wrench_force = spalg.convert_wrench(wrench_force, pose)
-        
+
         if relative:
             return ee_wrench_force
         else:
@@ -361,3 +361,17 @@ class Arm(object):
             return IK_NOT_FOUND
         else:
             return self.set_joint_positions_flex(q, t=t)
+
+### Complementary control methods ###
+
+    def move_relative(self, delta, relative_to_ee=False, wait=True, t=5.):
+        """
+            Move relative to the current pose of the robot
+            delta: array[6], translations and rotations(euler angles) from the current pose
+            relative_to_ee: bool, whether to consider the delta relative to the robot's base or its end-effector (TCP)
+            wait: bool, wait for the motion to be completed
+            t: float, duration of the motion (how fast it will be)
+        """
+        cpose = self.end_effector()
+        cmd = transformations.pose_euler_to_quaternion(cpose, delta, ee_rotation=relative_to_ee)
+        return self.set_target_pose(cmd, wait=True, t=t)

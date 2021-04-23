@@ -1727,7 +1727,7 @@ def pose_euler_to_quaternion(pose, delta, ee_rotation=False, axes='rxyz'):
         axes: string type of axes for euler angles transformation
     """
     pose_cmd = numpy.copy(pose)
-    delta_x = delta[:]
+    delta_x = numpy.copy(delta)
     # Translation
     if ee_rotation:
         delta_x[2] *= -1
