@@ -42,6 +42,7 @@ class CompliantController(Arm):
         """
 
         xb = self.end_effector()
+        failure_counter = 0
 
         ptp_index = 0
 
@@ -98,9 +99,17 @@ class CompliantController(Arm):
 
             xc = transformations.pose_from_angular_veloticy(xb, dxf, dt=model.dt)
 
-            self.set_target_pose_flex(pose=xc, t=model.dt)
+            # Avoid extra acceleration when a point failed due to IK or other violation
+            # So, this corrects the allowed time for the next point
+            dt = model.dt * (failure_counter+1) 
+            result = self.set_target_pose_flex(pose=xc, t=dt)
+            if result != DONE:
+                failure_counter += 1
+            else:
+                failure_counter = 0
 
-            self.rate.sleep()
+            for _ in range(failure_counter+1):
+                self.rate.sleep()
         return DONE
 
     def set_hybrid_control(self, model, max_force_torque, timeout=5.0, stop_on_target_force=False):
@@ -108,6 +117,8 @@ class CompliantController(Arm):
         # Timeout for motion
         initime = rospy.get_time()
         xb = self.end_effector()
+        failure_counter = 0
+
         while not rospy.is_shutdown() \
                 and (rospy.get_time() - initime) < timeout:
 
@@ -131,11 +142,22 @@ class CompliantController(Arm):
             xb = self.end_effector()
 
             dxf = model.control_position_orientation(Fb, xb)  # angular velocity
+            
+            # Limit linear/angular velocity
+            dxf[:3] = np.clip(dxf[:3], -0.5, 0.5)
+            dxf[3:] = np.clip(dxf[3:], -5., 5.)
+            
             xc = transformations.pose_from_angular_veloticy(xb, dxf, dt=model.dt)
 
-            result = self.set_target_pose_flex(pose=xc, t=model.dt)
-            # if result != DONE:
-            #     return result
+            # Avoid extra acceleration when a point failed due to IK or other violation
+            # So, this corrects the allowed time for the next point
+            dt = model.dt * (failure_counter+1) 
+            result = self.set_target_pose_flex(pose=xc, t=dt)
+            if result != DONE:
+                failure_counter += 1
+            else:
+                failure_counter = 0
 
-            self.rate.sleep()
+            for _ in range(failure_counter+1):
+                self.rate.sleep()
         return DONE

@@ -148,7 +148,7 @@ def spiral_trajectory():
     initial_q = [1.6626, -1.2571, 1.9806, -2.0439, -2.7765, -1.3049]  # b_bot bearing
     initial_q = [1.7095, -1.5062, 2.0365, -1.8598, -2.6038, -1.3207]  # b_bot shaft
     initial_q = [1.5786, -1.2561, 1.8284, -2.2029, -2.6168, -1.519]  # b_bot bearing with housing
-    
+
     arm.set_joint_positions(initial_q, wait=True, t=2)
 
     plane = "YZ"
@@ -207,7 +207,7 @@ def test_multiple_planes():
 
             initial_pose = arm.end_effector()
             trajectory = traj_utils.compute_trajectory(initial_pose, plane, radius, radius_direction, steps, revolutions=1, trajectory_type="spiral", from_center=False)
-            execute_trajectory(trajectory, timeout=(duration/steps), use_force_control=False)
+            execute_trajectory(trajectory, duration=duration, use_force_control=True)
 
 
 def wiggle():
