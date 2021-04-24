@@ -79,6 +79,15 @@ def from_pose(msg):
     T[:3, 3] = from_point(msg.position)
     return T
 
+def from_pose_to_list(msg):
+    """
+  Converts a C{geometry_msgs/Pose} ROS message into a numpy array (Homogeneous transformation 4x4).
+  @type  msg: geometry_msgs/Pose
+  @param msg: The ROS message to be converted
+  @rtype: np.array
+  @return: The resulting numpy array
+  """
+    return np.concatenate([from_point(msg.position), from_quaternion(msg.orientation)])
 
 def from_quaternion(msg):
     """

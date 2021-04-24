@@ -81,6 +81,7 @@ def get_plane_direction(plane, radius):
 
     return np.array(direction_array)
 
+
 def compute_rotation_wiggle(initial_orientation, direction, angle, steps, revolutions):
     """
         Compute a sinusoidal trajectory for the orientation of the end-effector in one given direction.
@@ -91,7 +92,7 @@ def compute_rotation_wiggle(initial_orientation, direction, angle, steps, revolu
         steps: int, number of steps for the resulting trajectory
         revolutions: int, number of revolutions 
     """
-    assert direction in ('X','Y','Z'), "Invalid direction: %s" % direction
+    assert direction in ('X', 'Y', 'Z'), "Invalid direction: %s" % direction
     DIRECTION_INDEX = {'X': 0, 'Y': 1, 'Z': 2}
 
     euler = np.array(transformations.euler_from_quaternion(initial_orientation, axes='rxyz'))
@@ -100,13 +101,14 @@ def compute_rotation_wiggle(initial_orientation, direction, angle, steps, revolu
 
     direction_array = np.zeros(3)
     direction_array[DIRECTION_INDEX.get(direction)] = 1.0
-    deltas = deltas.reshape(-1,1) * direction_array.reshape(1,3)
-    
+    deltas = deltas.reshape(-1, 1) * direction_array.reshape(1, 3)
+
     new_eulers = deltas + euler
-    
+
     cmd_orientations = [transformations.quaternion_from_euler(*new_euler, axes='rxyz') for new_euler in new_eulers]
-    
+
     return cmd_orientations
+
 
 def compute_trajectory(initial_pose, plane, radius, radius_direction, steps=100, revolutions=5, from_center=True,  trajectory_type="circular",
                        wiggle_direction=None, wiggle_angle=0.0, wiggle_revolutions=0.0):
@@ -163,7 +165,7 @@ def compute_trajectory(initial_pose, plane, radius, radius_direction, steps=100,
 
     traj = np.apply_along_axis(target_orientation.rotate, 1, traj)
     trajectory = traj + final_pose
-    
+
     if wiggle_direction is None:
         trajectory = [np.concatenate([t, target_pose[3:]]) for t in trajectory]
     else:

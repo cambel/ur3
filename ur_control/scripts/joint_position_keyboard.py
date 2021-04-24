@@ -170,21 +170,24 @@ See help inside the example with the '?' key for key bindings.
     joints_prefix = None
     robot_urdf = "ur3e_robot"
     rospackage = None
+    tcp_link = None
     if args.namespace:
         ns = args.namespace
         joints_prefix = args.namespace + "_"
         robot_urdf = args.namespace
         rospackage = "o2ac_scene_description"
+        tcp_link='robotiq_85_tip_link'
     
     use_gripper = args.gripper  
 
-    extra_ee = [0, 0, 0.0, 0, 0, 0, 1]
+    extra_ee = [0, 0, 0., 0, 0, 0, 1]
 
     global arm
     arm = Arm(ft_sensor=False, ee_transform=extra_ee, 
               gripper=use_gripper, namespace=ns, 
               joint_names_prefix=joints_prefix, 
-              robot_urdf=robot_urdf, robot_urdf_package=rospackage)
+              robot_urdf=robot_urdf, robot_urdf_package=rospackage,
+              ee_link=tcp_link)
 
     print("Extra ee", extra_ee)
 

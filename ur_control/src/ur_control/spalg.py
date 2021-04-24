@@ -498,6 +498,7 @@ def quaternions_orientation_error(Qd, Qc):
         q2 = tr.vector_to_pyquaternion(Qc)
         return quaternions_orientation_error(q1, q2)
 
+
 def translation_rotation_error(to_pose, from_pose):
     position_error = to_pose[:3] - from_pose[:3]
     orientation_error = quaternions_orientation_error(to_pose[3:], from_pose[3:])
@@ -506,13 +507,14 @@ def translation_rotation_error(to_pose, from_pose):
 
 def convert_wrench(wrench_force, pose):
     ee_transform = tr.vector_to_pyquaternion(pose[3:]).transformation_matrix
-    ee_transform[:3,3] = pose[:3]
+    ee_transform[:3, 3] = pose[:3]
 
     # # # Wrench force transformation
     wFtS = force_frame_transform(ee_transform)
     wrench = np.dot(wFtS, wrench_force)
 
     return wrench
+
 
 def face_towards(target_position, current_pose, up_vector=[0, 0, 1]):
     """
@@ -584,16 +586,16 @@ def look_rotation(forward, up=[0, 0, 1]):
     return quaternion
 
 
-def angle_between(v1, v2):
-    """ Returns the angle in radians between vectors 'v1' and 'v2'::
+def jump_threshold(trajectory, dt, threshold):
+    speed = np.abs((trajectory - np.roll(trajectory, -1)) / dt)
+    speed[-1] = 0.0  # ignore last point
 
-            >>> angle_between((1, 0, 0), (0, 1, 0))
-            1.5707963267948966
-            >>> angle_between((1, 0, 0), (1, 0, 0))
-            0.0
-            >>> angle_between((1, 0, 0), (-1, 0, 0))
-            3.141592653589793
-    """
-    v1_u = unit_vector(v1)
-    v2_u = unit_vector(v2)
-    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+    z_score = (speed - np.mean(speed, 0)) / np.std(speed, 0)
+
+    for i, z in enumerate(z_score[:-1]):
+        # print("z score:", i, np.round(z, 2))
+        if np.any(z > threshold):
+            # print("wwoooow   z score:", i, z)
+            trajectory[i] = (trajectory[i-1] + trajectory[i+1]) / 2
+
+    return trajectory

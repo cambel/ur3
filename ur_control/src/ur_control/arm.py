@@ -70,8 +70,8 @@ class Arm(object):
         _base_link = base_link if base_link is not None else BASE_LINK
         _ee_link = ee_link if ee_link is not None else EE_LINK
 
-        self.base_link = BASE_LINK if joint_names_prefix is None else joint_names_prefix + BASE_LINK
-        self.ee_link = EE_LINK if joint_names_prefix is None else joint_names_prefix + EE_LINK
+        self.base_link = _base_link if joint_names_prefix is None else joint_names_prefix + _base_link
+        self.ee_link = _ee_link if joint_names_prefix is None else joint_names_prefix + _ee_link
 
         self.max_joint_speed = np.deg2rad([100, 100, 100, 200, 200, 200])
         # self.max_joint_speed = np.deg2rad([191, 191, 191, 371, 371, 371])
@@ -162,18 +162,20 @@ class Arm(object):
 
         self._flex_trajectory_pub.publish(action_msg)
 
-    def _solve_ik(self, pose):
+    def _solve_ik(self, pose, q_guess=None):
         if self.ee_transform is not None:
             inv_ee_transform = np.copy(self.ee_transform)
             inv_ee_transform[:3] *= -1
             inv_ee_transform[3:] = transformations.quaternion_inverse(inv_ee_transform[3:])
             pose = np.array(conversions.transform_end_effector(pose, inv_ee_transform))
 
+        q_guess_ = q_guess if q_guess is not None else self.joint_angles()
+
         if self.ik_solver == IKFAST:
-            ik = self.arm_ikfast.inverse(pose, q_guess=self.joint_angles())
+            ik = self.arm_ikfast.inverse(pose, q_guess=q_guess_)
 
         elif self.ik_solver == TRAC_IK:
-            ik = self.trac_ik.get_ik(self.joint_angles(), pose[0], pose[1], pose[2], pose[3], pose[4], pose[5], pose[6])
+            ik = self.trac_ik.get_ik(q_guess_, *pose)
             if ik is None:
                 rospy.logdebug("TRACK-IK: solution not found!")
 
@@ -375,3 +377,29 @@ class Arm(object):
         cpose = self.end_effector()
         cmd = transformations.pose_euler_to_quaternion(cpose, delta, ee_rotation=relative_to_ee)
         return self.set_target_pose(cmd, wait=True, t=t)
+
+    def move_linear(self, pose, granularity=100, t=5.0):
+        """
+            CAUTION: simple linear interpolation
+            pose: array[7], target translation and rotation
+            granularity: int, number of point for the interpolation
+            t: float, duration in seconds
+        """
+        cpose = self.end_effector()
+        points = np.linspace(cpose[:3], pose[:3], granularity)
+        rotations = Quaternion.intermediates(transformations.vector_to_pyquaternion(cpose[3:]), transformations.vector_to_pyquaternion(pose[3:]), granularity, include_endpoints=True)
+        joint_trajectory = []
+
+        for point, rotation in zip(points, rotations):
+            cmd = np.concatenate([point, transformations.vector_from_pyquaternion(rotation)])
+            q = self._solve_ik(cmd)
+            if q is not None:  # ignore points with no IK solution, can we do better?
+                joint_trajectory.append(q)
+
+        dt = t/float(len(joint_trajectory))
+        # TODO(cambel): is this good enough to catch big jumps due to IK solutions?
+        joint_trajectory = spalg.jump_threshold(np.array(joint_trajectory), dt, 2.5)
+
+        for q in joint_trajectory:
+            self.set_joint_positions_flex(q, t=dt)
+            rospy.sleep(dt)
