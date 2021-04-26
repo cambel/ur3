@@ -590,12 +590,14 @@ def jump_threshold(trajectory, dt, threshold):
     speed = np.abs((trajectory - np.roll(trajectory, -1)) / dt)
     speed[-1] = 0.0  # ignore last point
 
-    z_score = (speed - np.mean(speed, 0)) / np.std(speed, 0)
+    mean = np.mean(speed[:-1], 0)
+    std = np.std(speed[:-1], 0)
 
-    for i, z in enumerate(z_score[:-1]):
-        # print("z score:", i, np.round(z, 2))
-        if np.any(z > threshold):
-            # print("wwoooow   z score:", i, z)
-            trajectory[i] = (trajectory[i-1] + trajectory[i+1]) / 2
+    # print("mean:", np.round(mean, 2))
+    # print("std:", np.round(std, 2))
+    for i, s in enumerate(speed[:-1]):
+        if np.any(s > mean + 3*std):
+            # print("spike:", i, z)
+            trajectory[i] = (trajectory[i-1] + trajectory[i+1]) / 2.0
 
     return trajectory
