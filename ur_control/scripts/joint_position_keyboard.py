@@ -70,7 +70,7 @@ def map_keyboard():
     global delta_q
     global delta_x
     delta_q = np.deg2rad(1.0)
-    delta_x = 0.001
+    delta_x = 0.005
 
     bindings = {
         #'shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_joint', 'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint'
@@ -176,12 +176,14 @@ See help inside the example with the '?' key for key bindings.
         joints_prefix = args.namespace + "_"
         robot_urdf = args.namespace
         rospackage = "o2ac_scene_description"
-        tcp_link='robotiq_85_tip_link'
+        tcp_link='tool0'
     
     use_gripper = args.gripper  
 
     extra_ee = [0, 0, 0., 0, 0, 0, 1]
-
+    extra_ee = [0.0, 0.0, 0.173, 0.500, -0.500, 0.500, 0.500]
+    extra_ee = [0.0, 0.0, 0.173, 0, 0, 0, 1]
+    
     global arm
     arm = Arm(ft_sensor=False, ee_transform=extra_ee, 
               gripper=use_gripper, namespace=ns, 

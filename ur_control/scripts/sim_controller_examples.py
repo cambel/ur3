@@ -29,16 +29,16 @@ def move_joints(wait=True):
     # q = [2.37191, -1.88688, -1.82035,  0.4766,  2.31206,  3.18758]
     q = [1.5701, -1.1854, 1.3136, -1.6975, -1.5708, -0.0016]
     q = [1.5794, -1.4553, 2.1418, -2.8737, -1.6081, 0.0063]
-    q = [1.7181, -1.4153, 1.8695, -2.0119, -1.6093, -1.4208]  # b_bot
     q = [1.7321, -1.4295, 2.0241, -2.6473, -1.6894, -1.4177]
     q = [1.6626, -1.2571, 1.9806, -2.0439, -2.7765, -1.3049]  # b_bot bearing
     # q = [1.6241, -1.2576, 2.0085, -2.1514, -2.7841, -1.408] # b_bot grasp bearing
-    q = [1.2852, -1.3817, 1.6348, -1.8448, -1.7099, -1.8092]  # push
+    q = [1.6288, -1.3301, 1.8391, -2.0612, -1.5872, -1.5548]  # b_bot
+    q = [1.5837, -1.2558, 1.826, -2.194, -2.6195, -1.5081]  # push
     # go to desired joint configuration
     # in t time (seconds)
     # wait is for waiting to finish the motion before executing
     # anything else or ignore and continue with whatever is next
-    arm.set_joint_positions(position=q, wait=wait, t=1.0)
+    arm.set_joint_positions(position=q, wait=wait, t=2.0)
 
 
 def follow_trajectory():
@@ -148,12 +148,12 @@ def move_to_pose():
 def spiral_trajectory():
     initial_q = [1.6626, -1.2571, 1.9806, -2.0439, -2.7765, -1.3049]  # b_bot bearing
     initial_q = [1.7095, -1.5062, 2.0365, -1.8598, -2.6038, -1.3207]  # b_bot shaft
-    initial_q = [1.5786, -1.2561, 1.8284, -2.2029, -2.6168, -1.519]  # b_bot bearing with housing
+    initial_q = [1.6463, -1.2494, 1.7844, -2.0497, -2.6194, -1.3827]  # push # b_bot bearing with housing
 
     arm.set_joint_positions(initial_q, wait=True, t=2)
 
     plane = "YZ"
-    radius = 0.002
+    radius = 0.00
     radius_direction = "+Z"
     revolutions = 5
 
@@ -165,7 +165,7 @@ def spiral_trajectory():
     for _ in range(2):
         initial_pose = arm.end_effector()
         trajectory = traj_utils.compute_trajectory(initial_pose, plane, radius, radius_direction, steps, revolutions, trajectory_type="spiral", from_center=True,
-                                                   wiggle_direction="Z", wiggle_angle=np.deg2rad(2.0), wiggle_revolutions=10.0)
+                                                   wiggle_direction="Y", wiggle_angle=np.deg2rad(1.0), wiggle_revolutions=10.0)
         execute_trajectory(trajectory, duration=duration, use_force_control=True)
 
 
@@ -228,7 +228,7 @@ def execute_trajectory(trajectory, duration, use_force_control=False, terminatio
         pf_model = init_force_control([0., 0.8, 0.8, 0.8, 0.8, 0.8])
         # pf_model = init_force_control([0., 1., 1., 1., 1., 1.])
         ee_tranform = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
-        target_force = np.array([-5., 0., 0., 0., 0., 0.])
+        target_force = np.array([0., 0., 0., 0., 0., 0.])
         max_force_torque = np.array([50., 50., 50., 5., 5., 5.])
 
     def termination_criteria(current_pose): return current_pose[0] > -0.035
@@ -307,7 +307,7 @@ def full_force_control(
 def force_control():
     arm.set_wrench_offset(True)
 
-    timeout = 15.0
+    timeout = 5.0
 
     selection_matrix = [0., 1., 1., 1., 1., 1.]
     target_force = np.array([-5., 0., 0., 0., 0., 0.])
@@ -433,12 +433,12 @@ def main():
         joints_prefix = args.namespace + "_"
         robot_urdf = args.namespace
         rospackage = "o2ac_scene_description"
-        tcp_link='robotiq_85_tip_link'
+        tcp_link='tool0'
 
     use_gripper = args.gripper
 
     extra_ee = [0, 0, 0.] + transformations.quaternion_from_euler(*[np.pi/4, 0, 0]).tolist()
-    extra_ee = [0.0, 0.0, 0.173, 0.0, 0.0, 0.0, 1.0]
+    extra_ee = [0.0, 0.0, 0.173, 0.500, -0.500, 0.500, 0.500]
 
     global arm
     arm = CompliantController(ft_sensor=True, ee_transform=extra_ee,

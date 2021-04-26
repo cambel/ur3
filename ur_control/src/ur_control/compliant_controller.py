@@ -45,6 +45,7 @@ class CompliantController(Arm):
         failure_counter = 0
 
         ptp_index = 0
+        last_pose = None
 
         if trajectory.ndim == 1:  # just one point
             ptp_timeout = timeout
@@ -108,8 +109,17 @@ class CompliantController(Arm):
             else:
                 failure_counter = 0
 
+            # Safety limits: max translation
+            if last_pose is not None:
+                displacement = np.abs(spalg.translation_rotation_error(self.end_effector(), last_pose))
+                if np.any(displacement > [0.0005, 0.0005, 0.0005, 0.008, 0.008, 0.008]):
+                    rospy.logerr('Maximum displacement exceeded {}!!'.format(np.round(displacement, 5)))
+                    return FORCE_TORQUE_EXCEEDED
+
             for _ in range(failure_counter+1):
                 self.rate.sleep()
+
+            last_pose = self.end_effector()
         return DONE
 
     def set_hybrid_control(self, model, max_force_torque, timeout=5.0, stop_on_target_force=False):

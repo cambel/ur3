@@ -41,7 +41,7 @@ class Arm(object):
                  base_link=None,
                  ee_link=None):
         """ ft_sensor bool: whether or not to try to load ft sensor information
-            ee_tranform array [x,y,z,ax,ay,az,w]: optional transformation to the end-effector
+            ee_transform array [x,y,z,ax,ay,az,w]: optional transformation to the end-effector
                                                   that is applied before doing any operation in task-space
             robot_urdf string: name of the robot urdf file to be used
             namespace string: nodes namespace prefix
@@ -240,7 +240,12 @@ class Arm(object):
         # compute force transformation?
         # # # Transform of EE
         pose = self.end_effector()
-        ee_wrench_force = spalg.convert_wrench(wrench_force, pose)
+        
+        if self.ee_transform is not None:
+            ee_wrench_force = spalg.convert_wrench(wrench_force, self.ee_transform)
+            ee_wrench_force = spalg.convert_wrench(ee_wrench_force, pose)
+        else:
+            ee_wrench_force = spalg.convert_wrench(wrench_force, pose)
 
         if relative:
             return ee_wrench_force

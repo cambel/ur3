@@ -28,7 +28,7 @@ def main():
         rospackage = "o2ac_scene_description"
     
     extra_ee = [0,0,0.] + transformations.quaternion_from_euler(*[np.pi/4,0,0]).tolist()
-    extra_ee = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+    extra_ee = [0.0, 0.0, 0.173, 0.500, -0.500, 0.500, 0.500]
 
     global arm
     arm = CompliantController(ft_sensor=True, ee_transform=extra_ee, 
