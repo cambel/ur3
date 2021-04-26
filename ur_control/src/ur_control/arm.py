@@ -378,7 +378,7 @@ class Arm(object):
         cmd = transformations.pose_euler_to_quaternion(cpose, delta, ee_rotation=relative_to_ee)
         return self.set_target_pose(cmd, wait=True, t=t)
 
-    def move_linear(self, pose, granularity=100, t=5.0):
+    def move_linear(self, pose, eef_step=0.01, t=5.0):
         """
             CAUTION: simple linear interpolation
             pose: array[7], target translation and rotation
@@ -386,13 +386,20 @@ class Arm(object):
             t: float, duration in seconds
         """
         cpose = self.end_effector()
-        points = np.linspace(cpose[:3], pose[:3], granularity)
-        rotations = Quaternion.intermediates(transformations.vector_to_pyquaternion(cpose[3:]), transformations.vector_to_pyquaternion(pose[3:]), granularity, include_endpoints=True)
+        translation_dist = np.linalg.norm(cpose[:3])
+        rotation_dist = Quaternion.distance(transformations.vector_to_pyquaternion(cpose[3:]), transformations.vector_to_pyquaternion(pose[3:])) / 2.0
+
+        steps = int((translation_dist + rotation_dist) / eef_step)
+
+        points = np.linspace(cpose[:3], pose[:3], steps)
+        rotations = Quaternion.intermediates(transformations.vector_to_pyquaternion(cpose[3:]), transformations.vector_to_pyquaternion(pose[3:]), steps, include_endpoints=True)
+
         joint_trajectory = []
 
-        for point, rotation in zip(points, rotations):
+        for i, (point, rotation) in enumerate(zip(points, rotations)):
             cmd = np.concatenate([point, transformations.vector_from_pyquaternion(rotation)])
-            q = self._solve_ik(cmd)
+            q_guess = None if i < 2 else np.mean(joint_trajectory[:-1], 0)
+            q = self._solve_ik(cmd, q_guess)
             if q is not None:  # ignore points with no IK solution, can we do better?
                 joint_trajectory.append(q)
 
@@ -400,6 +407,10 @@ class Arm(object):
         # TODO(cambel): is this good enough to catch big jumps due to IK solutions?
         joint_trajectory = spalg.jump_threshold(np.array(joint_trajectory), dt, 2.5)
 
-        for q in joint_trajectory:
-            self.set_joint_positions_flex(q, t=dt)
-            rospy.sleep(dt)
+        for i, q in enumerate(joint_trajectory):
+            self.joint_traj_controller.add_point(positions=q,
+                                                 time=(i+1) * dt,
+                                                 velocities=None,
+                                                 accelerations=None)
+        self.joint_traj_controller.start(delay=0.01, wait=True)
+        self.joint_traj_controller.clear_points()
