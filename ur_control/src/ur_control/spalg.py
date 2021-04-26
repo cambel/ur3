@@ -587,7 +587,8 @@ def look_rotation(forward, up=[0, 0, 1]):
 
 
 def jump_threshold(trajectory, dt, threshold):
-    speed = np.abs((trajectory - np.roll(trajectory, -1)) / dt)
+    traj = np.copy(trajectory)
+    speed = np.abs((traj - np.roll(traj, -1)) / dt)
     speed[-1] = 0.0  # ignore last point
 
     mean = np.mean(speed[:-1], 0)
@@ -596,8 +597,11 @@ def jump_threshold(trajectory, dt, threshold):
     # print("mean:", np.round(mean, 2))
     # print("std:", np.round(std, 2))
     for i, s in enumerate(speed[:-1]):
-        if np.any(s > mean + 3*std):
-            # print("spike:", i, z)
-            trajectory[i] = (trajectory[i-1] + trajectory[i+1]) / 2.0
+        if np.any(s > mean + threshold*std):
+            # print("### spike:", i, np.round(s-mean,2))
+            # TODO(cambel): fix for cases where spikes are consecutive 
+            traj[i] = (traj[i-1] + traj[i+1]) / 2.0
+        # else:
+        #     print("usual:", i, np.round(s-mean,2))
 
-    return trajectory
+    return traj

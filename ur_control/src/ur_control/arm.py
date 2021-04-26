@@ -170,6 +170,9 @@ class Arm(object):
             pose = np.array(conversions.transform_end_effector(pose, inv_ee_transform))
 
         q_guess_ = q_guess if q_guess is not None else self.joint_angles()
+        # TODO(cambel): weird it shouldn't happen but...
+        if isinstance(q_guess, np.float64):
+            q_guess_ = None
 
         if self.ik_solver == IKFAST:
             ik = self.arm_ikfast.inverse(pose, q_guess=q_guess_)
