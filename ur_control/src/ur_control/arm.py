@@ -335,6 +335,25 @@ class Arm(object):
         self.joint_traj_controller.start(delay=0.01, wait=wait)
         self.joint_traj_controller.clear_points()
 
+    def set_joint_trajectory(self, trajectory, velocities=None, accelerations=None, t=5.0):
+        dt = float(t)/float(len(trajectory))
+
+        vel = None
+        acc = None
+
+        if velocities is not None:
+            vel = [velocities] * 6
+        if accelerations is not None:
+            acc = [accelerations] * 6
+
+        for i, q in enumerate(trajectory):
+            self.joint_traj_controller.add_point(positions=q,
+                                                 time=(i+1) * dt,
+                                                 velocities=vel,
+                                                 accelerations=acc)
+        self.joint_traj_controller.start(delay=0.01, wait=True)
+        self.joint_traj_controller.clear_points()
+
     def set_joint_positions_flex(self, position, t=5.0, v=None):
         qc = self.joint_angles()
         deltaq = (qc - position)
@@ -385,6 +404,16 @@ class Arm(object):
             granularity: int, number of point for the interpolation
             t: float, duration in seconds
         """
+        joint_trajectory = self.compute_cartesian_path(pose, eef_step, t)
+        self.set_joint_trajectory(joint_trajectory, t=t)
+
+    def compute_cartesian_path(self, pose, eef_step=0.01, t=5.0):
+        """
+            CAUTION: simple linear interpolation
+            pose: array[7], target translation and rotation
+            granularity: int, number of point for the interpolation
+            t: float, duration in seconds
+        """
         cpose = self.end_effector()
         translation_dist = np.linalg.norm(cpose[:3])
         rotation_dist = Quaternion.distance(transformations.vector_to_pyquaternion(cpose[3:]), transformations.vector_to_pyquaternion(pose[3:])) / 2.0
@@ -405,12 +434,4 @@ class Arm(object):
 
         dt = t/float(len(joint_trajectory))
         # TODO(cambel): is this good enough to catch big jumps due to IK solutions?
-        joint_trajectory = spalg.jump_threshold(np.array(joint_trajectory), dt, 2.5)
-
-        for i, q in enumerate(joint_trajectory):
-            self.joint_traj_controller.add_point(positions=q,
-                                                 time=(i+1) * dt,
-                                                 velocities=None,
-                                                 accelerations=None)
-        self.joint_traj_controller.start(delay=0.01, wait=True)
-        self.joint_traj_controller.clear_points()
+        return spalg.jump_threshold(np.array(joint_trajectory), dt, 2.5)
