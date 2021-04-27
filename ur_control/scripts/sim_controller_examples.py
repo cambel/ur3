@@ -319,7 +319,7 @@ def force_control():
 
 
 def execute_manual_routine(routine_filename):
-    path = rospkg.RosPack().get_path("o2ac_routines") + ("/config/%s.yaml" % routine_filename)
+    path = rospkg.RosPack().get_path("o2ac_routines") + ("/config/playback_sequences/%s.yaml" % routine_filename)
     with open(path, 'r') as f:
         routine = yaml.load(f)
     robot_name = routine["robot_name"]
@@ -327,7 +327,7 @@ def execute_manual_routine(routine_filename):
 
     for i, point in enumerate(waypoints):
         print("point:", i+1)
-        raw_input()
+        # raw_input()
         pose = point['pose']
         pose_type = point['type']
         gripper_action = point.get('gripper-action')
@@ -335,7 +335,7 @@ def execute_manual_routine(routine_filename):
         move_to_waypoint(pose, pose_type, gripper_action, 1.)
 
 def move_to_waypoint(pose, pose_type, gripper_action, duration):
-    if pose_type == 'joint-space':
+    if pose_type == 'joint-space' or pose_type == 'joint-space-goal-cartesian-lin-motion':
         target=pose = arm.end_effector(pose)
         # arm.set_joint_positions(pose, wait=True, t=1.0)
         arm.move_linear(target, t=duration)

@@ -25,7 +25,15 @@ class GripperController(object):
         self.prefix = prefix if prefix is not None else ''
         node_name = "gripper_controller"
         self.gripper_type = str(rospy.get_param(self.ns + node_name + "/gripper_type"))
-        
+        self.valid_joint_names = []
+        if rospy.has_param(self.ns + node_name + "/joint"):
+            self.valid_joint_names = [rospy.get_param(self.ns + node_name + "/joint")]
+        elif rospy.has_param(self.ns + node_name + "/joint"):
+            self.valid_joint_names = rospy.get_param(self.ns + node_name + "/joints")
+        else:
+            rospy.logerr("Couldn't find valid joints params in %s" % (self.ns + node_name))
+            return
+
         if self.gripper_type == "hand-e":
             self._max_gap = 0.025 * 2.0
             self._to_open = 0.0
@@ -173,26 +181,21 @@ class GripperController(object):
         @type  msg: sensor_msgs/JointState
         @param msg: The JointState message published by the RT hardware interface.
         """
-        valid_joint_names = []
-        if self.gripper_type == "hand-e":
-            valid_joint_names = [self.prefix + 'hande_right_finger_joint']
-        elif self.gripper_type == "85":
-            valid_joint_names = [self.prefix + 'robotiq_85_left_knuckle_joint']
-        else:
-            return
         
         position = []
         velocity = []
         effort = []
         name = []
-        for joint_name in valid_joint_names:
+
+        for joint_name in self.valid_joint_names:
             if joint_name in msg.name:
                 idx = msg.name.index(joint_name)
                 name.append(msg.name[idx])
                 effort.append(msg.effort[idx])
                 velocity.append(msg.velocity[idx])
                 position.append(msg.position[idx])
-        if set(name) == set(valid_joint_names):
+
+        if set(name) == set(self.valid_joint_names):
             self._current_jnt_positions = np.array(position)
             self._current_jnt_velocities = np.array(velocity)
             self._current_jnt_efforts = np.array(effort)
@@ -215,6 +218,7 @@ class JointControllerBase(object):
         from the same node.
         """
         self.valid_joint_names = constants.JOINT_ORDER if joint_names is None else joint_names
+
         self.ns = utils.solve_namespace(namespace)
         self._jnt_positions_hist = collections.deque(maxlen=24)
         # Set-up publishers/subscribers

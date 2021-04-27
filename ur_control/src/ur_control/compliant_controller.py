@@ -58,6 +58,8 @@ class CompliantController(Arm):
 
         log = {SPEED_LIMIT_EXCEEDED:0, IK_NOT_FOUND:0}
 
+        result = DONE
+
         # Timeout for motion
         initime = rospy.get_time()
         sub_inittime = rospy.get_time()
@@ -73,26 +75,30 @@ class CompliantController(Arm):
                 assert isinstance(termination_criteria, types.LambdaType), "Invalid termination criteria, expecting lambda/function with one argument[current pose array[7]]"
                 if termination_criteria(xb):
                     rospy.loginfo("Termination criteria returned True, stopping force control")
-                    return TERMINATION_CRITERIA
+                    result = TERMINATION_CRITERIA
+                    break
 
             if (rospy.get_time() - sub_inittime) > ptp_timeout:
                 sub_inittime = rospy.get_time()
                 ptp_index += 1
                 if ptp_index >= len(trajectory):
                     rospy.loginfo("Trajectory completed")
-                    return DONE
+                    result = DONE
+                    break
                 model.set_goals(position=trajectory[ptp_index])
 
             if stop_on_target_force and np.all(np.abs(Wb)[model.target_force != 0] > model.target_force[model.target_force != 0]):
                 rospy.loginfo('Target F/T reached {}'.format(np.round(Wb, 3)) + ' Stopping!')
                 self.set_target_pose_flex(pose=xb, t=model.dt)
-                return STOP_ON_TARGET_FORCE
+                result = STOP_ON_TARGET_FORCE
+                break
 
             # Safety limits: max force
             if np.any(np.abs(Wb) > max_force_torque):
                 rospy.logerr('Maximum force/torque exceeded {}'.format(np.round(Wb, 3)))
                 self.set_target_pose_flex(pose=xb, t=model.dt)
-                return FORCE_TORQUE_EXCEEDED
+                result = FORCE_TORQUE_EXCEEDED
+                break
 
             # Current Force in task-space
             Fb = -1 * Wb
@@ -139,7 +145,7 @@ class CompliantController(Arm):
         
         if verbose:
             rospy.logwarn("Total # of commands ignored: %s" % log)
-        return DONE
+        return result
 
     # TODO(cambel): organize this code to avoid this repetition of code
     def set_hybrid_control(self, model, max_force_torque, timeout=5.0, stop_on_target_force=False):

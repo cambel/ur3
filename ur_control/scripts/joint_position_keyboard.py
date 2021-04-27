@@ -181,8 +181,7 @@ See help inside the example with the '?' key for key bindings.
     use_gripper = args.gripper  
 
     extra_ee = [0, 0, 0., 0, 0, 0, 1]
-    extra_ee = [0.0, 0.0, 0.173, 0, 0, 0, 1]
-    extra_ee = [0.0, 0.0, 0.01, 0.500, -0.500, 0.500, 0.500]
+    extra_ee = [0.0, 0.0, 0.173, 0.500, -0.500, 0.500, 0.500]
     
     global arm
     arm = Arm(ft_sensor=False, ee_transform=extra_ee, 
