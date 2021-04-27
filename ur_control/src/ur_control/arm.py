@@ -73,8 +73,8 @@ class Arm(object):
         self.base_link = _base_link if joint_names_prefix is None else joint_names_prefix + _base_link
         self.ee_link = _ee_link if joint_names_prefix is None else joint_names_prefix + _ee_link
 
-        self.max_joint_speed = np.deg2rad([100, 100, 100, 200, 200, 200])
-        # self.max_joint_speed = np.deg2rad([191, 191, 191, 371, 371, 371])
+        self.max_joint_speed = np.deg2rad([100, 100, 100, 200, 200, 200]) # deg/s -> rad/s
+        # self.max_joint_speed = np.deg2rad([191, 191, 191, 371, 371, 371])  
 
         self._init_ik_solver()
         self._init_controllers(gripper, joint_names_prefix)
@@ -180,7 +180,7 @@ class Arm(object):
         elif self.ik_solver == TRAC_IK:
             ik = self.trac_ik.get_ik(q_guess_, *pose)
             if ik is None:
-                rospy.logdebug("TRACK-IK: solution not found!")
+                rospy.logwarn("TRACK-IK: solution not found!")
 
         return ik
 
@@ -364,8 +364,8 @@ class Arm(object):
         deltaq = (qc - position)
         speed = deltaq / t
         cmd = position
-        if np.any(np.abs(speed) > (self.max_joint_speed/t)):
-            rospy.logdebug("Attempting to exceeded max speed %s, ignoring command" % speed)
+        if np.any(np.abs(speed) > self.max_joint_speed):
+            rospy.logwarn("Exceeded max speed %s deg/s, ignoring command" % np.round(np.rad2deg(speed), 0))
             return SPEED_LIMIT_EXCEEDED
         self._flexible_trajectory(cmd, t, v)
         return DONE

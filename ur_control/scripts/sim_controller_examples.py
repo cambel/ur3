@@ -153,16 +153,16 @@ def spiral_trajectory():
     arm.set_joint_positions(initial_q, wait=True, t=2)
 
     plane = "YZ"
-    radius = 0.00
+    radius = 0.003
     radius_direction = "+Z"
-    revolutions = 5
+    revolutions = 2
 
     steps = 100
-    duration = 30.0
+    duration = 5.0
 
     arm.set_wrench_offset(True)
 
-    for _ in range(2):
+    for _ in range(1):
         initial_pose = arm.end_effector()
         trajectory = traj_utils.compute_trajectory(initial_pose, plane, radius, radius_direction, steps, revolutions, trajectory_type="spiral", from_center=True,
                                                    wiggle_direction="Y", wiggle_angle=np.deg2rad(1.0), wiggle_revolutions=10.0)
@@ -177,15 +177,16 @@ def circular_trajectory():
     radius = 0.003
     radius_direction = "+Y"
 
-    steps = 100
-    duration = 30.0
+    steps = 200
+    revolutions = 2
+    duration = 5.0
 
     arm.set_wrench_offset(True)
 
-    for _ in range(2):  # Execute the trajectory twice starting from the end of the previous trajectory
+    for _ in range(1):  # Execute the trajectory twice starting from the end of the previous trajectory
         initial_pose = arm.end_effector()
-        trajectory = traj_utils.compute_trajectory(initial_pose, plane, radius, radius_direction, steps, revolutions, trajectory_type="spiral", from_center=True,
-                                                   wiggle_direction="Z", wiggle_angle=np.deg2rad(2.0), wiggle_revolutions=10.0)
+        trajectory = traj_utils.compute_trajectory(initial_pose, plane, radius, radius_direction, steps, revolutions, trajectory_type="circular", from_center=False,
+                                                   wiggle_direction="X", wiggle_angle=np.deg2rad(0.0), wiggle_revolutions=10.0)
         execute_trajectory(trajectory, duration=duration, use_force_control=True)
 
 
@@ -227,15 +228,19 @@ def execute_trajectory(trajectory, duration, use_force_control=False, terminatio
     if use_force_control:
         pf_model = init_force_control([0., 0.8, 0.8, 0.8, 0.8, 0.8])
         # pf_model = init_force_control([0., 1., 1., 1., 1., 1.])
-        ee_tranform = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
         target_force = np.array([0., 0., 0., 0., 0., 0.])
         max_force_torque = np.array([50., 50., 50., 5., 5., 5.])
 
-    def termination_criteria(current_pose): return current_pose[0] > -0.035
+        def termination_criteria(current_pose): return current_pose[0] > 1
 
-    full_force_control(target_force, trajectory, pf_model, ee_transform=ee_tranform, timeout=duration,
-                       relative_to_ee=False, max_force_torque=max_force_torque, termination_criteria=termination_criteria)
+        full_force_control(target_force, trajectory, pf_model, timeout=duration,
+                        relative_to_ee=False, max_force_torque=max_force_torque, termination_criteria=termination_criteria)
 
+    else:
+        joint_trajectory = []
+        for point in trajectory:
+            joint_trajectory.append(arm._solve_ik(point))
+        arm.set_joint_trajectory(joint_trajectory, t=duration)
 
 def face_towards_target():
     """
@@ -268,7 +273,7 @@ def init_force_control(selection_matrix, dt=0.002):
 
 def full_force_control(
         target_force=None, target_positions=None, model=None,
-        selection_matrix=[1., 1., 1., 1., 1., 1.], ee_transform=[0, 0, 0, 0, 0, 0, 1],
+        selection_matrix=[1., 1., 1., 1., 1., 1.], 
         relative_to_ee=False, timeout=10.0, max_force_torque=[50., 50., 50., 5., 5., 5.],
         termination_criteria=None):
     """ 
@@ -276,13 +281,11 @@ def full_force_control(
       target_force: list[6], target force for each direction x,y,z,ax,ay,az
       target_position: list[7], target position for each direction x,y,z + quaternion
       selection_matrix: list[6], define which direction is controlled by position(1.0) or force(0.0)
-      ee_transform: list[7], additional transformation of the end-effector (e.g to match tool or special orientation) x,y,z + quaternion
       relative_to_ee: bool, whether to use the base_link of the robot as frame or the ee_link (+ ee_transform)
       timeout: float, duration in seconds of the force control
     """
     arm.set_wrench_offset(True)  # offset the force sensor
     arm.relative_to_ee = relative_to_ee
-    arm.ee_transform = ee_transform
 
     # TODO(cambel): Define a config file for the force-control parameters
     if model is None:
@@ -438,6 +441,7 @@ def main():
     use_gripper = args.gripper
 
     extra_ee = [0, 0, 0.] + transformations.quaternion_from_euler(*[np.pi/4, 0, 0]).tolist()
+    extra_ee = [0.0, 0.0, 0.173, 0., 0., 0., 1.]
     extra_ee = [0.0, 0.0, 0.173, 0.500, -0.500, 0.500, 0.500]
 
     global arm

@@ -12,7 +12,7 @@ import types
 
 from ur_control.arm import Arm
 from ur_control import transformations, spalg, utils
-from ur_control.constants import DONE, FORCE_TORQUE_EXCEEDED, SPEED_LIMIT_EXCEEDED, STOP_ON_TARGET_FORCE, TERMINATION_CRITERIA
+from ur_control.constants import DONE, FORCE_TORQUE_EXCEEDED, SPEED_LIMIT_EXCEEDED, STOP_ON_TARGET_FORCE, TERMINATION_CRITERIA, IK_NOT_FOUND
 
 
 class CompliantController(Arm):
@@ -31,7 +31,7 @@ class CompliantController(Arm):
         js_rate = utils.read_parameter('/joint_state_controller/publish_rate', 500.0)
         self.rate = rospy.Rate(js_rate)
 
-    def set_hybrid_control_trajectory(self, trajectory, model, max_force_torque, timeout=5.0, stop_on_target_force=False, termination_criteria=None):
+    def set_hybrid_control_trajectory(self, trajectory, model, max_force_torque, timeout=5.0, stop_on_target_force=False, termination_criteria=None, verbose=True):
         """ Move the robot according to a hybrid controller model
             trajectory: array[array[7]] or array[7], can define a single target pose or a trajectory of multiple poses.
             model: force control model, see hybrid_controller.py 
@@ -41,11 +41,13 @@ class CompliantController(Arm):
             termination_criteria: lambda/function, special termination criteria based on current pose of the robot w.r.t the robot's base
         """
 
+        reduced_speed = np.deg2rad([50, 50, 50, 100, 100, 100])
+
         xb = self.end_effector()
         failure_counter = 0
 
         ptp_index = 0
-        last_pose = None
+        q_last = self.joint_angles()
 
         if trajectory.ndim == 1:  # just one point
             ptp_timeout = timeout
@@ -53,6 +55,8 @@ class CompliantController(Arm):
         else:  # trajectory
             ptp_timeout = timeout / len(trajectory)
             model.set_goals(position=trajectory[ptp_index])
+
+        log = {SPEED_LIMIT_EXCEEDED:0, IK_NOT_FOUND:0}
 
         # Timeout for motion
         initime = rospy.get_time()
@@ -103,27 +107,47 @@ class CompliantController(Arm):
             # Avoid extra acceleration when a point failed due to IK or other violation
             # So, this corrects the allowed time for the next point
             dt = model.dt * (failure_counter+1) 
-            result = self.set_target_pose_flex(pose=xc, t=dt)
+            
+            q = self._solve_ik(xc)
+            if q is None:
+                rospy.logwarn("IK not found")
+                result = IK_NOT_FOUND
+            else:
+                q_speed = (q_last - q)/dt
+                if np.any(np.abs(q_speed) > reduced_speed):
+                    rospy.logwarn_once("Exceeded reduced max speed %s deg/s, Ignoring command" % np.round(np.rad2deg(q_speed),0)) 
+                    result = SPEED_LIMIT_EXCEEDED
+                else:
+                    result = self.set_joint_positions_flex(position=q, t=dt)
+
             if result != DONE:
                 failure_counter += 1
+                if result == IK_NOT_FOUND:
+                    log[IK_NOT_FOUND] += 1
+                if result == SPEED_LIMIT_EXCEEDED:
+                    log[SPEED_LIMIT_EXCEEDED] += 1
+                continue # Don't wait since there is not motion
             else:
                 failure_counter = 0
 
-            # Safety limits: max translation
-            if last_pose is not None:
-                displacement = np.abs(spalg.translation_rotation_error(self.end_effector(), last_pose))
-                if np.any(displacement > [0.0005, 0.0005, 0.0005, 0.008, 0.008, 0.008]):
-                    rospy.logerr('Maximum displacement exceeded {}!!'.format(np.round(displacement, 5)))
-                    return FORCE_TORQUE_EXCEEDED
-
+            # Compensate the time allocated to the next command when there are failures
+            # Especially important for following a motion trajectory
             for _ in range(failure_counter+1):
                 self.rate.sleep()
 
-            last_pose = self.end_effector()
+            q_last = self.joint_angles()
+        
+        if verbose:
+            rospy.logwarn("Total # of commands ignored: %s" % log)
         return DONE
 
+    # TODO(cambel): organize this code to avoid this repetition of code
     def set_hybrid_control(self, model, max_force_torque, timeout=5.0, stop_on_target_force=False):
         """ Move the robot according to a hybrid controller model"""
+        
+        reduced_speed = np.deg2rad([100, 100, 100, 150, 150, 150])
+        q_last = self.joint_angles()
+
         # Timeout for motion
         initime = rospy.get_time()
         xb = self.end_effector()
@@ -162,12 +186,28 @@ class CompliantController(Arm):
             # Avoid extra acceleration when a point failed due to IK or other violation
             # So, this corrects the allowed time for the next point
             dt = model.dt * (failure_counter+1) 
-            result = self.set_target_pose_flex(pose=xc, t=dt)
+
+            q = self._solve_ik(xc)
+            if q is None:
+                rospy.logwarn("IK not found")
+                result = IK_NOT_FOUND
+            else:
+                q_speed = (q_last - q)/dt
+                if np.any(np.abs(q_speed) > reduced_speed):
+                    rospy.logwarn("Exceeded reduced max speed %s deg/s, Ignoring command" % np.round(np.rad2deg(q_speed),0)) 
+                    result = SPEED_LIMIT_EXCEEDED
+                else:
+                    result = self.set_joint_positions_flex(position=q, t=dt)
+            
             if result != DONE:
                 failure_counter += 1
+                continue # Don't wait since there is not motion
             else:
                 failure_counter = 0
 
+            # Compensate the time allocated to the next command when there are failures
             for _ in range(failure_counter+1):
                 self.rate.sleep()
+
+            q_last = self.joint_angles()
         return DONE

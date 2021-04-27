@@ -159,9 +159,11 @@ def compute_trajectory(initial_pose, plane, radius, radius_direction, steps=100,
     if trajectory_type == "circular":
         # Hack for some reason this offset does not work for changes w.r.t Z
         traj = get_circular_trajectory(p1, p2, steps, revolutions, from_center=from_center, inverse=("Z" in radius_direction))
-    if trajectory_type == "spiral":
+    elif trajectory_type == "spiral":
         # Hack for some reason this offset does not work for changes w.r.t Z
         traj = get_spiral_trajectory(p1, p2, steps, revolutions, from_center=from_center, inverse=("Z" in radius_direction))
+    else:
+        rospy.logerr("Unsupported trajectory type: %s" % trajectory_type)
 
     traj = np.apply_along_axis(target_orientation.rotate, 1, traj)
     trajectory = traj + final_pose

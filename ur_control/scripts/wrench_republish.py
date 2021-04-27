@@ -29,6 +29,7 @@ def main():
     
     extra_ee = [0,0,0.] + transformations.quaternion_from_euler(*[np.pi/4,0,0]).tolist()
     extra_ee = [0.0, 0.0, 0.173, 0.500, -0.500, 0.500, 0.500]
+    # extra_ee = [0.0, 0.0, 0.173, 0., 0., 0., 1.]
 
     global arm
     arm = CompliantController(ft_sensor=True, ee_transform=extra_ee, 
@@ -41,7 +42,7 @@ def main():
     offset_cnt = 0
 
     while not rospy.is_shutdown():
-        arm.publish_wrench(relative=args.relative)
+        arm.publish_wrench()
 
         if offset_cnt > 100:
             arm.set_wrench_offset(False)
