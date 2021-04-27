@@ -287,7 +287,7 @@ def euler_transformation_matrix(euler):
                   [0, np.sin(r), np.cos(r) * np.cos(p)]])
     return T
 
-def transform_end_effector(pose, extra_pose, rot_type='quaternion'):
+def transform_end_effector(pose, extra_pose, rot_type='quaternion', inverse=False):
     """
     Transform end effector pose
       pose: current pose [x, y, z, ax, ay, az, w]
@@ -303,8 +303,12 @@ def transform_end_effector(pose, extra_pose, rot_type='quaternion'):
     # BE CAREFUL!! Pose from KDL is ax ay az aw
     #              Pose from IKfast is aw ax ay az
 
-    n_trans = np.matmul(c_rot, extra_translation) + c_trans
     n_rot = np.matmul(c_rot, extra_rot)
+
+    if inverse:
+      n_trans = np.matmul(n_rot, extra_translation) + c_trans
+    else:
+      n_trans = np.matmul(c_rot, extra_translation) + c_trans
 
     if rot_type=='matrix':
         return n_trans.flatten(), n_rot

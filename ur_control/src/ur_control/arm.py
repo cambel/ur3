@@ -166,8 +166,8 @@ class Arm(object):
         if self.ee_transform is not None:
             inv_ee_transform = np.copy(self.ee_transform)
             inv_ee_transform[:3] *= -1
-            inv_ee_transform[3:] = transformations.quaternion_inverse(inv_ee_transform[3:])
-            pose = np.array(conversions.transform_end_effector(pose, inv_ee_transform))
+            inv_ee_transform[3:] = transformations.quaternion_inverse(self.ee_transform[3:])
+            pose = np.array(conversions.transform_end_effector(pose, inv_ee_transform, inverse=True))
 
         q_guess_ = q_guess if q_guess is not None else self.joint_angles()
         # TODO(cambel): weird it shouldn't happen but...
@@ -227,7 +227,7 @@ class Arm(object):
 
         return np.array(wrench_hist)
 
-    def get_ee_wrench(self, relative=True):
+    def get_ee_wrench(self):
         """ Compute the wrench (force/torque) in task-space """
         if self.ft_sensor is None:
             return np.zeros(6)
@@ -247,17 +247,14 @@ class Arm(object):
         else:
             ee_wrench_force = spalg.convert_wrench(wrench_force, pose)
 
-        if relative:
-            return ee_wrench_force
-        else:
-            return wrench_force
+        return ee_wrench_force
 
-    def publish_wrench(self, relative=False):
+    def publish_wrench(self):
         if self.ft_sensor is None:
             raise Exception("FT Sensor not initialized")
 
         " Publish arm's end-effector wrench "
-        wrench = self.get_ee_wrench(relative)
+        wrench = self.get_ee_wrench()
         # Note you need to call rospy.init_node() before this will work
         self.pub_ee_wrench.publish(conversions.to_wrench(wrench))
 
