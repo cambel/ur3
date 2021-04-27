@@ -261,7 +261,7 @@ def init_force_control(selection_matrix, dt=0.002):
     position_pd = utils.PID(Kp=Kp_pos, Ki=Ki_pos, Kd=Kd_pos, dynamic_pid=True)
 
     # Force PID gains
-    Kp = np.array([0.05, 0.05, 0.05, 5.0, 5.0, 5.0])
+    Kp = np.array([0.05, 0.05, 0.05, 1.0, 1.0, 1.0])
     Kp_force = Kp
     Kd_force = Kp * 0.01
     Ki_force = Kp * 0.01
@@ -310,10 +310,10 @@ def full_force_control(
 def force_control():
     arm.set_wrench_offset(True)
 
-    timeout = 5.0
+    timeout = 10.0
 
-    selection_matrix = [0., 1., 1., 1., 1., 1.]
-    target_force = np.array([-5., 0., 0., 0., 0., 0.])
+    selection_matrix = [1., 1., 1., 0., 1., 1.]
+    target_force = np.array([0., 0., 0., 0., 0., 0.])
 
     full_force_control(target_force, selection_matrix=selection_matrix, timeout=timeout, relative_to_ee=False)
 

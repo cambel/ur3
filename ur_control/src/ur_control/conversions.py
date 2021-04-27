@@ -320,6 +320,13 @@ def transform_end_effector(pose, extra_pose, rot_type='quaternion', inverse=Fals
     elif rot_type == 'quaternion':
       return np.concatenate((n_trans.flatten(), quat_rot))
 
+def inverse_transformation(pose, transform):
+    inv_ee_transform = np.copy(transform)
+    inv_ee_transform[:3] *= -1
+    inv_ee_transform[3:] = tr.quaternion_inverse(transform[3:])
+    
+    return np.array(transform_end_effector(pose, inv_ee_transform, inverse=True))
+
 def to_float(val):
     if isinstance(val, float):
         return val

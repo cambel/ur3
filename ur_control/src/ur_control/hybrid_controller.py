@@ -33,6 +33,7 @@ class ForcePositionController(object):
         # The position goal is the distance from
         # the current position
         if position is not None:
+            assert not np.isscalar(position), "Invalid target position"
             self.target_position = position
         # TODO: The force will be constant for now
         if force is not None:

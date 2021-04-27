@@ -164,10 +164,7 @@ class Arm(object):
 
     def _solve_ik(self, pose, q_guess=None):
         if self.ee_transform is not None:
-            inv_ee_transform = np.copy(self.ee_transform)
-            inv_ee_transform[:3] *= -1
-            inv_ee_transform[3:] = transformations.quaternion_inverse(self.ee_transform[3:])
-            pose = np.array(conversions.transform_end_effector(pose, inv_ee_transform, inverse=True))
+            pose = conversions.inverse_transformation(pose, self.ee_transform)
 
         q_guess_ = q_guess if q_guess is not None else self.joint_angles()
         # TODO(cambel): weird it shouldn't happen but...
@@ -242,8 +239,8 @@ class Arm(object):
         pose = self.end_effector()
         
         if self.ee_transform is not None:
-            ee_wrench_force = spalg.convert_wrench(wrench_force, self.ee_transform)
-            ee_wrench_force = spalg.convert_wrench(ee_wrench_force, pose)
+            pose = conversions.inverse_transformation(pose, self.ee_transform)
+            ee_wrench_force = spalg.convert_wrench(wrench_force, pose)
         else:
             ee_wrench_force = spalg.convert_wrench(wrench_force, pose)
 

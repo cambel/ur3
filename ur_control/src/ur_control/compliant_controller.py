@@ -85,7 +85,8 @@ class CompliantController(Arm):
                     rospy.loginfo("Trajectory completed")
                     result = DONE
                     break
-                model.set_goals(position=trajectory[ptp_index])
+                if not trajectory.ndim == 1: # For some reason the timeout validation is not robust enough
+                    model.set_goals(position=trajectory[ptp_index])
 
             if stop_on_target_force and np.all(np.abs(Wb)[model.target_force != 0] > model.target_force[model.target_force != 0]):
                 rospy.loginfo('Target F/T reached {}'.format(np.round(Wb, 3)) + ' Stopping!')
