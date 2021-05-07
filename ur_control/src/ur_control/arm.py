@@ -98,7 +98,7 @@ class Arm(object):
                                                     queue_size=10)
 
         self.joint_traj_controller = JointTrajectoryController(
-            publisher_name=traj_publisher, namespace=self.ns, joint_names=self.joint_names)
+            publisher_name=traj_publisher, namespace=self.ns, joint_names=self.joint_names, timeout=2.0)
 
         self.gripper = None
         if gripper:

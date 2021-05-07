@@ -295,8 +295,10 @@ class JointControllerBase(object):
             if joint_name in msg.name:
                 idx = msg.name.index(joint_name)
                 name.append(msg.name[idx])
-                effort.append(msg.effort[idx])
-                velocity.append(msg.velocity[idx])
+                if msg.effort:
+                    effort.append(msg.effort[idx])
+                if msg.velocity:
+                    velocity.append(msg.velocity[idx])
                 position.append(msg.position[idx])
         if set(name) == set(self.valid_joint_names):
             self._current_jnt_positions = np.array(position)
