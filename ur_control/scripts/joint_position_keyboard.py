@@ -5,6 +5,8 @@ UR Joint Position Example: keyboard
 import argparse
 
 import rospy
+import yaml
+import os
 
 from ur_control.arm import Arm
 from ur_control import transformations
@@ -16,6 +18,24 @@ np.set_printoptions(linewidth=np.inf)
 np.set_printoptions(suppress=True)
 
 def map_keyboard():
+    def record_playback_sequence():
+        filepath = "/root/o2ac-ur/catkin_ws/src/o2ac_routines/config/playback_sequences/shaft_move_to_taskboard.yaml"
+        playback_sequence = {}
+        new_point = {"pose": arm.joint_angles().tolist(), 
+                    "pose_type": 'joint-space-goal-cartesian-lin-motion',
+                    "speed": 0.8}
+        if os.path.exists(filepath):
+            with open(filepath, 'r') as f:
+              playback_sequence = yaml.load(f)
+            
+            playback_sequence["waypoints"].append(new_point)
+        else:
+            playback_sequence["robot_name"] = "b_bot"
+            playback_sequence["waypoints"] = [new_point] 
+
+        with open(filepath, 'w') as f:
+            yaml.dump(playback_sequence, f)
+
     def print_robot_state():
         print("Joint angles:", np.round(arm.joint_angles(), 4).tolist())
         print("EE Pose:", np.round(arm.end_effector(), 5).tolist())
@@ -113,6 +133,7 @@ def map_keyboard():
         't': (open_gripper, [], "open gripper"),
         'g': (close_gripper, [], "close gripper"),
         'b': (move_gripper, [-0.002], "close a bit gripper"),        
+        '4': (record_playback_sequence, [], "storing playback sequence point"),        
     }
     done = False
     print("Controlling joints. Press ? for help, Esc to quit.")
