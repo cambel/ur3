@@ -9,6 +9,7 @@
 import rospy
 import numpy as np
 import types
+import timeit
 
 from ur_control.arm import Arm
 from ur_control import transformations, spalg, utils
@@ -31,7 +32,9 @@ class CompliantController(Arm):
         js_rate = utils.read_parameter('/joint_state_controller/publish_rate', 500.0)
         self.rate = rospy.Rate(js_rate)
 
-    def set_hybrid_control_trajectory(self, trajectory, model, max_force_torque, timeout=5.0, stop_on_target_force=False, termination_criteria=None, verbose=True):
+    def set_hybrid_control_trajectory(self, trajectory, model, max_force_torque, timeout=5.0, 
+                                            stop_on_target_force=False, termination_criteria=None,
+                                            displacement_epsilon=0.001, verbose=False):
         """ Move the robot according to a hybrid controller model
             trajectory: array[array[7]] or array[7], can define a single target pose or a trajectory of multiple poses.
             model: force control model, see hybrid_controller.py 
@@ -39,6 +42,7 @@ class CompliantController(Arm):
             timeout: float, maximum duration of controller's operation
             stop_on_target_force: bool: stop once the model's target force has been achieved, stopping controller when all non-zero target forces/torques are reached
             termination_criteria: lambda/function, special termination criteria based on current pose of the robot w.r.t the robot's base
+            displacement_epsilon: float,  if there is no motion larger than this, then start counting the standby time
         """
 
         reduced_speed = np.deg2rad([50, 50, 50, 100, 100, 100])
@@ -60,6 +64,9 @@ class CompliantController(Arm):
 
         result = DONE
 
+        standby_timer = timeit.default_timer()
+        displacement_dt = 0.0 # overall euclidean distance
+
         # Timeout for motion
         initime = rospy.get_time()
         sub_inittime = rospy.get_time()
@@ -73,7 +80,8 @@ class CompliantController(Arm):
 
             if termination_criteria is not None:
                 assert isinstance(termination_criteria, types.LambdaType), "Invalid termination criteria, expecting lambda/function with one argument[current pose array[7]]"
-                if termination_criteria(xb):
+                standby_time = timeit.default_timer() - standby_timer
+                if termination_criteria(xb, standby_time):
                     rospy.loginfo("Termination criteria returned True, stopping force control")
                     result = TERMINATION_CRITERIA
                     break
@@ -141,6 +149,11 @@ class CompliantController(Arm):
             # Especially important for following a motion trajectory
             for _ in range(failure_counter+1):
                 self.rate.sleep()
+
+            displacement_dt += np.linalg.norm(self.end_effector(q_last)[:3] - self.end_effector()[:3])
+            if displacement_dt > displacement_epsilon:
+                standby_timer = timeit.default_timer() # restart timer
+                displacement_dt = 0.0
 
             q_last = self.joint_angles()
         
