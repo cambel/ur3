@@ -9,7 +9,6 @@
 import rospy
 import numpy as np
 import types
-import timeit
 
 from ur_control.arm import Arm
 from ur_control import transformations, spalg, utils
@@ -34,7 +33,8 @@ class CompliantController(Arm):
 
     def set_hybrid_control_trajectory(self, trajectory, model, max_force_torque, timeout=5.0, 
                                             stop_on_target_force=False, termination_criteria=None,
-                                            displacement_epsilon=0.001, verbose=False):
+                                            displacement_epsilon=0.002, check_displacement_time=2.0,
+                                            verbose=False):
         """ Move the robot according to a hybrid controller model
             trajectory: array[array[7]] or array[7], can define a single target pose or a trajectory of multiple poses.
             model: force control model, see hybrid_controller.py 
@@ -42,7 +42,8 @@ class CompliantController(Arm):
             timeout: float, maximum duration of controller's operation
             stop_on_target_force: bool: stop once the model's target force has been achieved, stopping controller when all non-zero target forces/torques are reached
             termination_criteria: lambda/function, special termination criteria based on current pose of the robot w.r.t the robot's base
-            displacement_epsilon: float,  if there is no motion larger than this, then start counting the standby time
+            displacement_epsilon: float,  minimum displacement necessary to consider the robot in standby 
+            check_displacement_time: float,  time interval to check whether the displacement has been larger than displacement_epsilon
         """
 
         reduced_speed = np.deg2rad([50, 50, 50, 100, 100, 100])
@@ -64,8 +65,10 @@ class CompliantController(Arm):
 
         result = DONE
 
-        standby_timer = timeit.default_timer()
-        displacement_dt = 0.0 # overall euclidean distance
+        check_displacement_time = 2 # seconds
+        standby_timer = rospy.get_time()
+        standby_last_pose = self.end_effector()
+        standby = False
 
         # Timeout for motion
         initime = rospy.get_time()
@@ -80,8 +83,7 @@ class CompliantController(Arm):
 
             if termination_criteria is not None:
                 assert isinstance(termination_criteria, types.LambdaType), "Invalid termination criteria, expecting lambda/function with one argument[current pose array[7]]"
-                standby_time = timeit.default_timer() - standby_timer
-                if termination_criteria(xb, standby_time):
+                if termination_criteria(xb, standby):
                     rospy.loginfo("Termination criteria returned True, stopping force control")
                     result = TERMINATION_CRITERIA
                     break
@@ -150,10 +152,14 @@ class CompliantController(Arm):
             for _ in range(failure_counter+1):
                 self.rate.sleep()
 
-            displacement_dt += np.linalg.norm(self.end_effector(q_last)[:3] - self.end_effector()[:3])
-            if displacement_dt > displacement_epsilon:
-                standby_timer = timeit.default_timer() # restart timer
-                displacement_dt = 0.0
+            standby_time = (rospy.get_time() - standby_timer)
+            if standby_time > check_displacement_time:
+                displacement_dt = np.linalg.norm(standby_last_pose[:3] - self.end_effector()[:3])
+                standby = displacement_dt < displacement_epsilon
+                if standby:
+                    rospy.logwarn("No more than %s displacement in the last %s seconds" % (round(displacement_dt, 6), check_displacement_time))
+                last_pose = self.end_effector()
+                standby_timer = rospy.get_time()
 
             q_last = self.joint_angles()
         
