@@ -6,7 +6,7 @@ from ur_control import transformations as tr
 
 from ur_control import spalg
 # Messages
-from geometry_msgs.msg import (Point, Quaternion, Pose, Vector3, Transform,
+from geometry_msgs.msg import (Point, Quaternion, Pose, PoseStamped, Vector3, Transform,
                                Wrench)
 from sensor_msgs.msg import CameraInfo, Image, RegionOfInterest
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
@@ -336,3 +336,9 @@ def to_float(val):
         return [to_float(o) for o in val]
     else:
         return (float(val))
+
+def to_pose_stamp(frame_id, pose):
+  ps = PoseStamped()
+  ps.header.frame_id = frame_id
+  ps.pose = to_pose(pose)
+  return ps
