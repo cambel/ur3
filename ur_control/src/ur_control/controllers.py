@@ -96,6 +96,13 @@ class GripperController(object):
                                      where 1.0 is open and 0.0 is close
                              If False value value assume to be from 0.0 to max_gap
         """
+        if value == "close":
+            self.close()
+            return
+        elif value == "open":
+            self.open()
+            return
+        
         if self.gripper_type == "85":
             if percentage:
                 value = np.clip(value, 0.0, 1.0)
