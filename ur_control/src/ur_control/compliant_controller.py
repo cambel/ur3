@@ -160,6 +160,7 @@ class CompliantController(Arm):
                     rospy.logwarn("No more than %s displacement in the last %s seconds" % (round(displacement_dt, 6), check_displacement_time))
                 last_pose = self.end_effector()
                 standby_timer = rospy.get_time()
+                standby_last_pose = self.end_effector()
 
             q_last = self.joint_angles()
         
