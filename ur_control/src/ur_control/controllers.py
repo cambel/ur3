@@ -246,7 +246,7 @@ class JointControllerBase(object):
             rospy.sleep(0.01)
             if rospy.is_shutdown():
                 return
-        self.rate = utils.read_parameter('{0}joint_state_controller/publish_rate'.format(self.ns), 125)
+        self.rate = utils.read_parameter('{0}joint_state_controller/publish_rate'.format(self.ns), 500)
         self._num_joints = len(self._joint_names)
         rospy.logdebug('Topic [%sjoint_states] found' % self.ns)
 
