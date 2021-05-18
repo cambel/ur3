@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<robot name="ur3" xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find ur_description)/urdf/common.gazebo.xacro" />
+  <!-- robots -->
+  <xacro:include filename="$(find ur_e_description)/urdf/ur5e.urdf.xacro" />
+  
+  <xacro:ur5e_robot prefix="" joint_limited="true"
+    shoulder_pan_lower_limit="${-pi}" shoulder_pan_upper_limit="${pi}"
+    shoulder_lift_lower_limit="${-pi}" shoulder_lift_upper_limit="${pi}"
+    elbow_joint_lower_limit="0.0" elbow_joint_upper_limit="${pi}"
+    wrist_1_lower_limit="${-pi*1.5}" wrist_1_upper_limit="${pi}"
+    wrist_2_lower_limit="${-pi*1.5}" wrist_2_upper_limit="${pi*1.5}"
+    wrist_3_lower_limit="${-2*pi}" wrist_3_upper_limit="${2*pi}"
+    transmission_hw_interface="hardware_interface/PositionJointInterface"
+    safety_limits="false" safety_pos_margin="0.15"
+    safety_k_position="20"
+    kinematics_file="${load_yaml('$(find o2ac_scene_description)/config/a_bot_calibration.yaml')}"
+  />
+
+  <!-- Spawn and attach robotiq 85 gripper (+ cameras) -->
+  <xacro:include filename="$(find o2ac_scene_description)/urdf/components/o2ac_end_effector.urdf.xacro" />
+  <xacro:o2ac_end_effector prefix="" use_soft_wrist="false" use_cameras="true" parent = "ee_link" />
+
+  <!-- The "world" link definition should be removed, but apparently it is necessary for Gazebo -->
+  <link name="world" />
+  <joint name="world_joint" type="fixed">
+    <parent link="world" />
+    <child link = "base_link" />
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+  </joint>
+
+</robot>

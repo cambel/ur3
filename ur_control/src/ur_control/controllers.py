@@ -42,7 +42,12 @@ class GripperController(object):
             self._max_gap = 0.085
             self._to_open = self._max_gap
             self._to_close = 0.0
-
+            self._max_angle = 46
+        if self.gripper_type == "140":
+            self._max_gap = 0.140
+            self._to_open = self._max_gap
+            self._to_close = 0.0
+            self._max_angle = 40
         self._js_sub = rospy.Subscriber('joint_states', JointState, self.joint_states_cb, queue_size=1)
 
         retry = False
@@ -87,10 +92,10 @@ class GripperController(object):
         rospy.logdebug('Successfully connected to [%s]' % action_server)
         rospy.loginfo('GripperCommandAction initialized. ns: {0}'.format(self.ns))
 
-    def close(self):
-        self.command(0.0, percentage=True)
+    def close(self, wait=True):
+        self.command(0.0, percentage=True, wait=wait)
 
-    def command(self, value, percentage=False):
+    def command(self, value, percentage=False, wait=True):
         """ assume command given in percentage otherwise meters 
             percentage bool: If True value value assumed to be from 0.0 to 1.0
                                      where 1.0 is open and 0.0 is close
@@ -103,7 +108,7 @@ class GripperController(object):
             self.open()
             return
         
-        if self.gripper_type == "85":
+        if self.gripper_type == "85" or self.gripper_type == "140":
             if percentage:
                 value = np.clip(value, 0.0, 1.0)
                 cmd = (value) * self._max_gap
@@ -121,17 +126,20 @@ class GripperController(object):
                 cmd = np.clip(value, 0.0, self._max_gap)
                 cmd = (self._max_gap - value) / 2.0
             self._goal.command.position = cmd
-        self._client.send_goal_and_wait(self._goal, execute_timeout=rospy.Duration(5))
+        if wait:
+            self._client.send_goal_and_wait(self._goal, execute_timeout=rospy.Duration(2))
+        else:
+            self._client.send_goal(self.goal)
         rospy.sleep(0.05)
 
     def _distance_to_angle(self, distance):
         distance = np.clip(distance, 0, self._max_gap)
-        angle = (self._max_gap - distance) * np.deg2rad(46) / self._max_gap
+        angle = (self._max_gap - distance) * np.deg2rad(self._max_angle) / self._max_gap
         return angle
 
     def _angle_to_distance(self, angle):
-        angle = np.clip(angle, 0, np.deg2rad(46))
-        distance = (np.deg2rad(46) - angle) * self._max_gap / np.deg2rad(46)
+        angle = np.clip(angle, 0, np.deg2rad(self._max_angle))
+        distance = (np.deg2rad(self._max_angle) - angle) * self._max_gap / np.deg2rad(self._max_angle)
         return distance
 
     def get_result(self):
@@ -151,8 +159,8 @@ class GripperController(object):
         res = self.attach_srv.call(req)
         return res.ok
 
-    def open(self):
-        self.command(1.0, percentage=True)
+    def open(self, wait=True):
+        self.command(1.0, percentage=True, wait=wait)
 
     def release(self, link_name):
         parent = self.attach_link.rsplit('::')

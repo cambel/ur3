@@ -70,7 +70,7 @@
       grasp_plugin False = gazebo_gripper 
       grasp_plugin True = custom gazebo_grasp_fix
   -->
-  <xacro:if value="$(arg grasp_plugin)">
+  <!-- <xacro:if value="$(arg grasp_plugin)">
     <gazebo>
       <plugin name="gazebo_grasp_fix" filename="libgazebo_grasp_fix.so">
             <arm>
@@ -102,7 +102,7 @@
         <palm_link>robotiq_85_base_link</palm_link>
       </gripper>
     </gazebo> 
-  </xacro:unless>
+  </xacro:unless> -->
 
   <!-- Gazebo grasping plugin -->
   
