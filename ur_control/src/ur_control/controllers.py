@@ -38,16 +38,16 @@ class GripperController(object):
             self._max_gap = 0.025 * 2.0
             self._to_open = 0.0
             self._to_close = self._max_gap
-        if self.gripper_type == "85":
+        elif self.gripper_type == "85":
             self._max_gap = 0.085
             self._to_open = self._max_gap
             self._to_close = 0.0
-            self._max_angle = 46
-        if self.gripper_type == "140":
+            self._max_angle = np.deg2rad(46.0)
+        elif self.gripper_type == "140":
             self._max_gap = 0.140
             self._to_open = self._max_gap
             self._to_close = 0.0
-            self._max_angle = 40
+            self._max_angle = np.deg2rad(41.0)
         self._js_sub = rospy.Subscriber('joint_states', JointState, self.joint_states_cb, queue_size=1)
 
         retry = False
@@ -134,12 +134,12 @@ class GripperController(object):
 
     def _distance_to_angle(self, distance):
         distance = np.clip(distance, 0, self._max_gap)
-        angle = (self._max_gap - distance) * np.deg2rad(self._max_angle) / self._max_gap
+        angle = (self._max_gap - distance) * self._max_angle / self._max_gap
         return angle
 
     def _angle_to_distance(self, angle):
-        angle = np.clip(angle, 0, np.deg2rad(self._max_angle))
-        distance = (np.deg2rad(self._max_angle) - angle) * self._max_gap / np.deg2rad(self._max_angle)
+        angle = np.clip(angle, 0, self._max_angle)
+        distance = (self._max_angle - angle) * self._max_gap / self._max_angle
         return distance
 
     def get_result(self):
