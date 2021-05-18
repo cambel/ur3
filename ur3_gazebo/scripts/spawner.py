@@ -69,9 +69,15 @@ def place_soft():
 def place_door():
     name = "hinged_door"
     objpose = [[-0.40, 0.20, 0.76], [0, 0, 0.9238795, 0.3826834]]
-    models = [[Model(name, objpose[0], orientation=objpose[1])]]
+    models = [Model(name, objpose[0], orientation=objpose[1])]
     spawner.load_models(models)
 
+def place_taskboard():
+    spawner = GazeboModels('o2ac_gazebo')
+    name = "taskboard"
+    objpose = [[-0.294+.1, -.18+.1, 0.85], [0, 0, 0., 0.]] 
+    models = [Model(name, objpose[0], orientation=objpose[1], reference_frame="world")]
+    spawner.load_models(models,)
 
 def place_aruco():
     name = "Apriltag36_11_00000"
@@ -99,6 +105,8 @@ def main():
                         help='Place ball with collision')
     parser.add_argument('--cube', action='store_true',
                         help='Place cube with collision')
+    parser.add_argument('--taskboard', action='store_true',
+                        help='Place taskboard with collision')
     args = parser.parse_args()
 
     if args.place:
@@ -115,6 +123,7 @@ def main():
         place_ball()
     if args.cube:
         place_cube()
-
+    if args.taskboard:
+        place_taskboard()
 if __name__ == "__main__":
     main()
