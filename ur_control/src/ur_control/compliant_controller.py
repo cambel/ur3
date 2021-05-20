@@ -99,10 +99,8 @@ class CompliantController(Arm):
                 sub_inittime = rospy.get_time()
                 ptp_index += 1
                 if ptp_index >= len(trajectory):
-                    model.position_pd.reset()
                     model.set_goals(position=trajectory[-1])
                 elif not trajectory.ndim == 1:  # For some reason the timeout validation is not robust enough
-                    model.position_pd.reset()
                     model.set_goals(position=trajectory[ptp_index])
 
             Fb = -1 * Wb

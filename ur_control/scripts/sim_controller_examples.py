@@ -153,9 +153,9 @@ def spiral_trajectory():
     arm.set_joint_positions(initial_q, wait=True, t=2)
 
     plane = "YZ"
-    radius = 0.005
+    radius = 0.003
     radius_direction = "+Z"
-    revolutions = 2
+    revolutions = 3
 
     steps = 100
     duration = 10.0
@@ -165,7 +165,7 @@ def spiral_trajectory():
     for _ in range(1):
         initial_pose = arm.end_effector()
         trajectory = traj_utils.compute_trajectory(initial_pose, plane, radius, radius_direction, steps, revolutions, trajectory_type="spiral", from_center=True,
-                                                   wiggle_direction="X", wiggle_angle=np.deg2rad(0.0), wiggle_revolutions=0.0)
+                                                   wiggle_direction="X", wiggle_angle=np.deg2rad(10.0), wiggle_revolutions=1.0)
         execute_trajectory(trajectory, duration=duration, use_force_control=True)
 
 
@@ -223,28 +223,10 @@ def wiggle():
         arm.set_target_pose_flex(cmd, t=timeout)
         rospy.sleep(timeout)
 
-import matplotlib
-matplotlib.use('TkAgg')
-from matplotlib import pyplot as plt
-
-import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
-
-def plot(data):
-    data = np.array(data)
-    print(data.shape)
-
-    fig = plt.figure(figsize=(8,8))
-
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot(np.zeros_like(data[:,0]), data[:,1], data[:,2])
-    plt.show()
-
-
 def execute_trajectory(trajectory, duration, use_force_control=False, termination_criteria=None):
     if use_force_control:
-        # pf_model = init_force_control([0., 0.8, 0.8, 0.8, 0.8, 0.8])
-        pf_model = init_force_control([0., 1., 1., 1., 1., 1.])
+        pf_model = init_force_control([0., 0.9, 0.9, 0.9, 0.9, 0.9])
+        # pf_model = init_force_control([0., 1., 1., 1., 1., 1.])
         target_force = np.array([-1., 0., 0., 0., 0., 0.])
         max_force_torque = np.array([50., 50., 50., 5., 5., 5.])
 
@@ -271,14 +253,14 @@ def face_towards_target():
 
 
 def init_force_control(selection_matrix, dt=0.002):
-    Kp = np.array([2., 2., 2., 5., 5., 5.])
+    Kp = np.array([3., 3., 3., 5., 5., 5.])
     Kp_pos = Kp
     Kd_pos = Kp * 0.01
     Ki_pos = Kp * 0.01
     position_pd = utils.PID(Kp=Kp_pos, Ki=Ki_pos, Kd=Kd_pos, dynamic_pid=True)
 
     # Force PID gains
-    Kp = np.array([0.05, 0.05, 0.05, 1.0, 1.0, 1.0])
+    Kp = np.array([0.05, 0.05, 0.05, 0.5, 0.5, 0.5])
     Kp_force = Kp
     Kd_force = Kp * 0.01
     Ki_force = Kp * 0.01
