@@ -1744,7 +1744,7 @@ def pose_euler_to_quaternion(pose, delta, ee_rotation=False, axes='rxyz'):
     return pose_cmd
 
 
-def pose_from_angular_veloticy(pose, velocity, dt=1.0, ee_rotation=False):
+def pose_from_angular_velocity(pose, velocity, dt=1.0, ee_rotation=False):
     """
         Transform an action translation + euler [x, y, z, rx, ry, rz] into
         translation(optional rotated) + quaternion [x, y, z, rx, ry, rz, w]

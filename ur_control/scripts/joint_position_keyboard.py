@@ -74,7 +74,7 @@ def map_keyboard():
             delta[dim] += delta_q * sign / 0.25
         
         for _ in range(n): 
-            x = transformations.pose_from_angular_veloticy(x, delta, dt=dt, ee_rotation=relative_ee)
+            x = transformations.pose_from_angular_velocity(x, delta, dt=dt, ee_rotation=relative_ee)
 
         arm.set_target_pose_flex(pose=x, t=0.25)
 

@@ -55,7 +55,7 @@ def start_control(motion_type="linear"):
             print("motion_type not supported", motion_type)
             break
 
-        x = transformations.pose_from_angular_veloticy(x, xd, dt=0.25)
+        x = transformations.pose_from_angular_velocity(x, xd, dt=0.25)
         if mouse6d.joy_buttons[0] == 1:
             print_robot_state()
 
