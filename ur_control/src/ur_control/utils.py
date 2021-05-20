@@ -57,7 +57,7 @@ class PDRotation:
         return output
 
 class PID:
-    def __init__(self, Kp, Ki=None, Kd=None, dynamic_pid=False, max_gain_multiplier=100.0):
+    def __init__(self, Kp, Ki=None, Kd=None, dynamic_pid=False, max_gain_multiplier=200.0):
         # Proportional gain
         self.Kp = np.array(Kp)
         self.Ki = np.zeros_like(Kp)
@@ -97,7 +97,8 @@ class PID:
         if self.dynamic_pid:
             kp = np.abs([self.Kp[i]/error[i] if error[i] != 0.0 else self.Kp[i] for i in range(6)])
             kp = np.clip(kp, self.Kp, self.Kp*self.max_gain_multiplier)
-            kd = self.Kd
+            kd = np.abs([self.Kd[i]*error[i] if error[i] != 0.0 else self.Kd[i] for i in range(6)])
+            kd = np.clip(kd, self.Kd/self.max_gain_multiplier, self.Kd)
             ki = self.Ki
         else:
             kp = self.Kp
@@ -113,7 +114,13 @@ class PID:
         p_term = kp * error
         i_term = ki * self.integral
         i_term = np.maximum(self.i_min, np.minimum(i_term, self.i_max))
-        d_term = kd * delta_error / dt
+        
+        # First delta error is huge since it was initialized at zero first, avoid considering
+        if not np.allclose(self.last_error, np.zeros_like(self.last_error)):
+            d_term = kd * delta_error / dt
+        else:
+            d_term = kd * np.zeros_like(delta_error) / dt
+
         output = p_term + i_term + d_term
         # Save last values
         self.last_error = np.array(error)

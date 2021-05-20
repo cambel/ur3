@@ -116,7 +116,7 @@ class Arm(object):
         elif self.ik_solver == TRAC_IK:
             try:
                 if not rospy.has_param("robot_description"):
-                    self.trac_ik = IK(base_link=self.base_link, tip_link=self.ee_link, solve_type="Distance",
+                    self.trac_ik = IK(base_link=self.base_link, tip_link=self.ee_link, solve_type="Distance", timeout=0.002, epsilon=1e-5,
                                       urdf_string=utils.load_urdf_string(self._robot_urdf_package, self._robot_urdf))
                 else:
                     self.trac_ik = IK(base_link=self.base_link, tip_link=self.ee_link, solve_type="Distance")
@@ -162,7 +162,7 @@ class Arm(object):
 
         self._flex_trajectory_pub.publish(action_msg)
 
-    def _solve_ik(self, pose, q_guess=None):
+    def _solve_ik(self, pose, q_guess=None, attempts=5, verbose=True):
         if self.ee_transform is not None:
             pose = conversions.inverse_transformation(pose, self.ee_transform)
 
@@ -177,7 +177,10 @@ class Arm(object):
         elif self.ik_solver == TRAC_IK:
             ik = self.trac_ik.get_ik(q_guess_, *pose)
             if ik is None:
-                rospy.logwarn("TRACK-IK: solution not found!")
+                if attempts > 0:
+                    return self._solve_ik(pose, q_guess, attempts-1)
+                if verbose:
+                    rospy.logwarn("TRACK-IK: solution not found!")
 
         return ik
 

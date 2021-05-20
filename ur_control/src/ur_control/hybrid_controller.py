@@ -2,6 +2,7 @@ import rospy
 from ur_control import utils, conversions, spalg
 import numpy as np
 
+
 class ForcePositionController(object):
     def __init__(self,
                  position_pd,
@@ -58,7 +59,7 @@ class ForcePositionController(object):
         # Force PD compensator
         Fe = -1.*self.target_force - fc  # error
         dxf_force = self.force_pd.update(error=Fe, dt=self.dt)
-        
+
         # Position PD compensator
         xe = self.target_position - xv
         dxf_pos = self.position_pd.update(error=xe, dt=self.dt)
@@ -66,7 +67,7 @@ class ForcePositionController(object):
         # Sum step from force and step from position PDs
         dxf_pos = np.dot(self.alpha, dxf_pos)
         dxf_force = np.dot((np.identity(3) - self.alpha), dxf_force)
-        return dxf_pos + dxf_force
+        return dxf_pos + dxf_force, dxf_pos, dxf_force
 
     def control_position_orientation(self, fc, xv):
         """ Obtains the next action from the hybrid controller
@@ -77,7 +78,7 @@ class ForcePositionController(object):
         # Force PD compensator
         Fe = -1.*self.target_force - fc  # error
         dxf_force = self.force_pd.update(error=Fe, dt=self.dt)
-        
+
         # Position PD compensator
         error = spalg.translation_rotation_error(self.target_position, xv)
         dxf_pos = self.position_pd.update(error=error, dt=self.dt)
@@ -88,7 +89,7 @@ class ForcePositionController(object):
         # Sum step from force and step from position PDs
         dxf_pos = np.dot(self.alpha, dxf_pos)
         dxf_force = np.dot((np.identity(6) - self.alpha), dxf_force)
-        return dxf_pos + dxf_force
+        return dxf_pos + dxf_force, dxf_pos, dxf_force
 
     def control_velocity(self, fc, xv):
         """ Obtains the next action from hybrid controller 
@@ -99,7 +100,7 @@ class ForcePositionController(object):
         # Force PD compensator
         Fe = (-1.*(self.target_force) - fc)  # error
         dxf_force = self.force_pd.update(error=Fe, dt=self.dt)
-        
+
         # Position PD compensator
         xe = self.target_position - xv
         dxf_pos = self.position_pd.update(error=xe, dt=self.dt)
@@ -112,4 +113,4 @@ class ForcePositionController(object):
         # Sum step from force and step from position PDs
         dxf_pos = np.dot(self.alpha, dxf_pos)
         dxf_force = np.dot((np.identity(6) - self.alpha), dxf_force)
-        return dxf_pos + dxf_force
+        return dxf_pos + dxf_force, dxf_pos, dxf_force

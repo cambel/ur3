@@ -153,33 +153,33 @@ def spiral_trajectory():
     arm.set_joint_positions(initial_q, wait=True, t=2)
 
     plane = "YZ"
-    radius = 0.003
+    radius = 0.005
     radius_direction = "+Z"
     revolutions = 2
 
     steps = 100
-    duration = 5.0
+    duration = 10.0
 
     arm.set_wrench_offset(True)
 
     for _ in range(1):
         initial_pose = arm.end_effector()
         trajectory = traj_utils.compute_trajectory(initial_pose, plane, radius, radius_direction, steps, revolutions, trajectory_type="spiral", from_center=True,
-                                                   wiggle_direction="Y", wiggle_angle=np.deg2rad(1.0), wiggle_revolutions=10.0)
+                                                   wiggle_direction="X", wiggle_angle=np.deg2rad(0.0), wiggle_revolutions=0.0)
         execute_trajectory(trajectory, duration=duration, use_force_control=True)
 
 
 def circular_trajectory():
-    initial_q = [1.6626, -1.2571, 1.9806, -2.0439, -2.7765, -1.3049]  # b_bot bearing
-    arm.set_joint_positions(initial_q, wait=True, t=2)
+    initial_q = [1.5791, -1.257, 1.8261, -2.2056, -2.6119, -1.5235]  # b_bot bearing
+    arm.set_joint_positions(initial_q, wait=True, t=1)
 
     plane = "YZ"
     radius = 0.003
-    radius_direction = "+Y"
+    radius_direction = "+Z"
 
-    steps = 200
-    revolutions = 2
-    duration = 5.0
+    steps = 100
+    revolutions = 1
+    duration = 10.0
 
     arm.set_wrench_offset(True)
 
@@ -223,15 +223,32 @@ def wiggle():
         arm.set_target_pose_flex(cmd, t=timeout)
         rospy.sleep(timeout)
 
+import matplotlib
+matplotlib.use('TkAgg')
+from matplotlib import pyplot as plt
+
+import numpy as np
+from mpl_toolkits.mplot3d import Axes3D
+
+def plot(data):
+    data = np.array(data)
+    print(data.shape)
+
+    fig = plt.figure(figsize=(8,8))
+
+    ax = fig.add_subplot(111, projection='3d')
+    ax.plot(np.zeros_like(data[:,0]), data[:,1], data[:,2])
+    plt.show()
+
 
 def execute_trajectory(trajectory, duration, use_force_control=False, termination_criteria=None):
     if use_force_control:
-        pf_model = init_force_control([0., 0.8, 0.8, 0.8, 0.8, 0.8])
-        # pf_model = init_force_control([0., 1., 1., 1., 1., 1.])
-        target_force = np.array([0., 0., 0., 0., 0., 0.])
+        # pf_model = init_force_control([0., 0.8, 0.8, 0.8, 0.8, 0.8])
+        pf_model = init_force_control([0., 1., 1., 1., 1., 1.])
+        target_force = np.array([-1., 0., 0., 0., 0., 0.])
         max_force_torque = np.array([50., 50., 50., 5., 5., 5.])
 
-        def termination_criteria(current_pose): return current_pose[0] > 1
+        def termination_criteria(current_pose, standby): return False
 
         full_force_control(target_force, trajectory, pf_model, timeout=duration,
                         relative_to_ee=False, max_force_torque=max_force_torque, termination_criteria=termination_criteria)
@@ -254,7 +271,7 @@ def face_towards_target():
 
 
 def init_force_control(selection_matrix, dt=0.002):
-    Kp = np.array([1., 1., 1., 2.5, 2.5, 2.5])
+    Kp = np.array([2., 2., 2., 5., 5., 5.])
     Kp_pos = Kp
     Kd_pos = Kp * 0.01
     Ki_pos = Kp * 0.01
