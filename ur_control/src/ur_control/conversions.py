@@ -337,7 +337,7 @@ def to_float(val):
     else:
         return (float(val))
 
-def to_pose_stamp(frame_id, pose):
+def to_pose_stamped(frame_id, pose):
   ps = PoseStamped()
   ps.header.frame_id = frame_id
   ps.pose = to_pose(pose)
