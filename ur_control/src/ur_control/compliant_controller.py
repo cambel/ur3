@@ -73,7 +73,6 @@ class CompliantController(Arm):
 
         result = DONE
 
-        check_displacement_time = 2  # seconds
         standby_timer = rospy.get_time()
         standby_last_pose = self.end_effector()
         standby = False
