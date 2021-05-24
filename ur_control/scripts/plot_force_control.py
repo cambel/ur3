@@ -6,23 +6,24 @@ import matplotlib
 matplotlib.use('TkAgg')
 
 
-data_actual = np.load("/root/o2ac-ur/catkin_ws/src/o2ac_routines/scripts/plt/actual.npy")
+data_actual = np.load("/root/o2ac-ur/underlay_ws/src/ur_python_utilities/ur_control/config/actual.npy")
 orientation_actual = np.array([list(transformations.euler_from_quaternion(t[3:], axes="rxyz")) for t in data_actual])
 # orientation_actual = orientation_actual / np.linalg.norm(orientation_actual)
 
-data_target = np.load("/root/o2ac-ur/catkin_ws/src/o2ac_routines/scripts/plt/target.npy")
-orientation_target = np.array([list(transformations.euler_from_quaternion(t[3:], axes="rxyz")) for t in data_target])
+data_target = np.load("/root/o2ac-ur/underlay_ws/src/ur_python_utilities/ur_control/config/target.npy")
+orientation_target = data_target[3:]
+# orientation_target = np.array([list(transformations.euler_from_quaternion(t[3:], axes="rxyz")) for t in data_target])
 # orientation_target = orientation_target / np.linalg.norm(orientation_target)
 
-data_target2 = np.load("/root/o2ac-ur/catkin_ws/src/o2ac_routines/scripts/plt/target2.npy")
+data_target2 = np.load("/root/o2ac-ur/underlay_ws/src/ur_python_utilities/ur_control/config/target2.npy")
 orientation_target2 = np.array([list(transformations.euler_from_quaternion(t[3:], axes="rxyz")) for t in data_target2])
 # orientation_target2 = orientation_target2 / np.linalg.norm(orientation_target2)
 
-trajectory = np.load("/root/o2ac-ur/catkin_ws/src/o2ac_routines/scripts/plt/trajectory.npy")
+trajectory = np.load("/root/o2ac-ur/underlay_ws/src/ur_python_utilities/ur_control/config/trajectory.npy")
 orientation_traj = np.array([list(transformations.euler_from_quaternion(t[3:], axes="rxyz")) for t in trajectory])
 # orientation_traj = orientation_traj / np.linalg.norm(orientation_traj)
 
-data_dxf = np.load("/root/o2ac-ur/catkin_ws/src/o2ac_routines/scripts/plt/data_dxf.npy")
+data_dxf = np.load("/root/o2ac-ur/underlay_ws/src/ur_python_utilities/ur_control/config/data_dxf.npy")
 
 data = data_target
 data = trajectory
@@ -39,18 +40,23 @@ col = np.arange(data.shape[0])
 
 dir = 5
 
+# plt.plot(np.arange(0, orientation_traj.shape[0]), orientation_traj[:, 0], label="ax_trajectory")
+# plt.show()
 def plot_orientation():
     ax = fig.add_subplot(311)
-    ax.plot(np.arange(0, data.shape[0]), orientation_target2[:, 0], label="ax_target")
+    ax.plot(np.arange(0, orientation_target.shape[0]), orientation_target[:, 0], label="ax_target")
+    ax.plot(np.arange(0, data.shape[0]), orientation_target2[:, 0], label="ax_target2")
     ax.plot(np.arange(0, data.shape[0]), orientation_actual[:, 0], label="ax_actual")
     ax.plot(np.linspace(0, data.shape[0], num=orientation_traj.shape[0]), orientation_traj[:, 0], label="ax_trajectory")
     ax.legend()
     ax = fig.add_subplot(312)
-    ax.plot(np.arange(0, data.shape[0]), orientation_target2[:, 1], label="ax_target")
+    ax.plot(np.arange(0, orientation_target.shape[0]), orientation_target[:, 1], label="ax_target")
+    ax.plot(np.arange(0, data.shape[0]), orientation_target2[:, 1], label="ax_target2")
     ax.plot(np.arange(0, data.shape[0]), orientation_actual[:, 1], label="ax_actual")
     ax.plot(np.linspace(0, data.shape[0], num=orientation_traj.shape[0]), orientation_traj[:, 1], label="ax_trajectory")
     ax = fig.add_subplot(313)
-    ax.plot(np.arange(0, data.shape[0]), orientation_target2[:, 2], label="ax_target")
+    ax.plot(np.arange(0, orientation_target.shape[0]), orientation_target[:, 2], label="ax_target")
+    ax.plot(np.arange(0, data.shape[0]), orientation_target2[:, 2], label="ax_target2")
     ax.plot(np.arange(0, data.shape[0]), orientation_actual[:, 2], label="ax_actual")
     ax.plot(np.linspace(0, data.shape[0], num=orientation_traj.shape[0]), orientation_traj[:, 2], label="ax_trajectory")
 

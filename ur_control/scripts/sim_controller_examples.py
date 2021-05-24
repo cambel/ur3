@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import sys
 import signal
+from moveit_commander import conversions
 from ur_control import utils, spalg, transformations, traj_utils
 from ur_control.constants import FORCE_TORQUE_EXCEEDED
 from ur_control.hybrid_controller import ForcePositionController
@@ -148,16 +149,16 @@ def move_to_pose():
 def spiral_trajectory():
     initial_q = [1.6626, -1.2571, 1.9806, -2.0439, -2.7765, -1.3049]  # b_bot bearing
     initial_q = [1.7095, -1.5062, 2.0365, -1.8598, -2.6038, -1.3207]  # b_bot shaft
-    initial_q = [1.6463, -1.2494, 1.7844, -2.0497, -2.6194, -1.3827]  # push # b_bot bearing with housing
+    initial_q = [0.9495, -1.6617, 1.866, -1.756, -1.538, 0.948]  # push # b_bot bearing with housing
 
     arm.set_joint_positions(initial_q, wait=True, t=2)
 
     plane = "YZ"
-    radius = 0.003
+    radius = 0.0
     radius_direction = "+Z"
     revolutions = 3
 
-    steps = 100
+    steps = 50
     duration = 10.0
 
     arm.set_wrench_offset(True)
@@ -225,10 +226,10 @@ def wiggle():
 
 def execute_trajectory(trajectory, duration, use_force_control=False, termination_criteria=None):
     if use_force_control:
-        pf_model = init_force_control([0., 0.9, 0.9, 0.9, 0.9, 0.9])
-        # pf_model = init_force_control([0., 1., 1., 1., 1., 1.])
-        target_force = np.array([-1., 0., 0., 0., 0., 0.])
-        max_force_torque = np.array([50., 50., 50., 5., 5., 5.])
+        # pf_model = init_force_control([0., 0.9, 0.9, 0.9, 0.9, 0.9])
+        pf_model = init_force_control([1., 1., 1., 1., 1., 1.])
+        target_force = np.array([0., 0., 0., 0., 0., 0.])
+        max_force_torque = np.array([500.0, 500., 500., 500., 500., 500.])
 
         def termination_criteria(current_pose, standby): return False
 
@@ -253,14 +254,14 @@ def face_towards_target():
 
 
 def init_force_control(selection_matrix, dt=0.002):
-    Kp = np.array([3., 3., 3., 5., 5., 5.])
+    Kp = np.array([3., 3., 3., 1., 1., 1.])
     Kp_pos = Kp
     Kd_pos = Kp * 0.01
     Ki_pos = Kp * 0.01
     position_pd = utils.PID(Kp=Kp_pos, Ki=Ki_pos, Kd=Kd_pos, dynamic_pid=True)
 
     # Force PID gains
-    Kp = np.array([0.05, 0.05, 0.05, 0.5, 0.5, 0.5])
+    Kp = np.array([0.05, 0.05, 0.05, 0.05, 0.05, 0.05])
     Kp_force = Kp
     Kd_force = Kp * 0.01
     Ki_force = Kp * 0.01
@@ -386,6 +387,51 @@ def move_linear():
     # may fail if IK solution is not found
     arm.move_linear(pose=cmd, t=1.0)
 
+def rotation_test_pid():
+    initial_q = [0.9495, -1.6617, 1.866, -1.756, -1.538, 0.948]  # push # b_bot bearing with housing
+
+    arm.set_joint_positions(initial_q, wait=True, t=2)
+
+    plane = "YZ"
+    radius = 0.0
+    radius_direction = "+Z"
+    revolutions = 3
+
+    steps = 50
+    duration = 5.0
+
+    arm.set_wrench_offset(True)
+
+    cpose = np.copy(arm.end_effector())
+    crot = list(transformations.euler_from_quaternion(cpose[3:], axes='rxyz'))
+    crot[0] += np.deg2rad(30)
+    target_positions = [np.concatenate([cpose[:3], transformations.quaternion_from_euler(*crot, axes='rxyz')])]
+    print("initial orientation", cpose[3:])
+    print("target orientation",target_positions[0][3:])
+    execute_trajectory(target_positions, duration=duration, use_force_control=True)
+    print("diff", np.round(spalg.translation_rotation_error(arm.end_effector(), cpose), 5))
+
+    # initial_q = [0.9495, -1.6617, 1.866, -1.756, -1.538, 0.948]  # push # b_bot bearing with housing
+    # arm.set_joint_positions(initial_q, wait=True, t=2)
+    
+    # pf_model = init_force_control([1,1,1,1,1,1.])
+    # arm.set_wrench_offset(True)  # offset the force sensor
+
+    # max_force_torque = np.array([500.0, 500., 500., 500., 500., 500.])
+
+    # target_force = np.array([0., 0., 0., 0., 0., 0.])
+
+    # cpose = arm.end_effector()
+    # crot = list(transformations.euler_from_quaternion(cpose[3:]))
+    # crot[0] += np.deg2rad(30)
+    # target_positions = np.concatenate([cpose[:3], crot])
+
+    # pf_model.set_goals(force=target_force)
+
+    # # print("STARTING Force Control with target_force:", target_force, "timeout", timeout)
+    # return arm.set_hybrid_control_trajectory(target_positions, pf_model, max_force_torque=max_force_torque, timeout=5.0)
+    # # rospy.loginfo("Force control finished with: %s" % res)  # debug
+
 def main():
     """ Main function to be run. """
     parser = argparse.ArgumentParser(description='Test force control')
@@ -415,6 +461,8 @@ def main():
                         help='Spiral rotation around a target pose')
     parser.add_argument('--face', action='store_true',
                         help='Face towards a target vector')
+    parser.add_argument('--rot', action='store_true',
+                        help='rotation test')
     parser.add_argument(
         '--namespace', type=str, help='Namespace of arm', default=None)
     args = parser.parse_args()
@@ -480,6 +528,8 @@ def main():
         wiggle()
     if args.routine:
         execute_manual_routine("bearing_orient_totb")
+    if args.rot:
+        rotation_test_pid()
     print("real time", round(timeit.default_timer() - real_start_time, 3))
     print("ros time", round(rospy.get_time() - ros_start_time, 3))
 

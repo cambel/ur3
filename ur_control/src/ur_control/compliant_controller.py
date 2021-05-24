@@ -52,7 +52,7 @@ class CompliantController(Arm):
         # data_actual = []
         # data_target2 = []
         # data_dxf = []
-        reduced_speed = np.deg2rad([50, 50, 50, 100, 100, 100])
+        reduced_speed = np.deg2rad([100, 100, 100, 250, 250, 250])
 
         xb = self.end_effector()
         failure_counter = 0
@@ -129,9 +129,9 @@ class CompliantController(Arm):
             result = self._actuate(xc, dt, q_last, reduced_speed)
 
             # For debug
-            # data_actual.append(self.end_effector(rot_type="euler"))
-            # data_target.append(xc[:3].tolist()+list(transformations.euler_from_quaternion(xc[3:], axes='rxyz' )))
-            # data_target2.append(model.target_position[:3].tolist()+list(transformations.euler_from_quaternion(model.target_position[3:], axes='rxyz')))
+            # data_actual.append(self.end_effector())
+            # data_target.append(xc)
+            # data_target2.append(model.target_position)
             # data_dxf.append(dxf_force)
 
             if result != DONE:
@@ -161,11 +161,11 @@ class CompliantController(Arm):
                 standby_last_pose = self.end_effector()
 
         # For debug
-        # np.save("actual", data_actual)
-        # np.save("target", data_target)
-        # np.save("target2", data_target2)
-        # np.save("trajectory", trajectory)
-        # np.save("data_dxf", data_dxf)
+        # np.save("/root/o2ac-ur/underlay_ws/src/ur_python_utilities/ur_control/config/actual", data_actual)
+        # np.save("/root/o2ac-ur/underlay_ws/src/ur_python_utilities/ur_control/config/target", data_target)
+        # np.save("/root/o2ac-ur/underlay_ws/src/ur_python_utilities/ur_control/config/target2", data_target2)
+        # np.save("/root/o2ac-ur/underlay_ws/src/ur_python_utilities/ur_control/config/trajectory", trajectory)
+        # np.save("/root/o2ac-ur/underlay_ws/src/ur_python_utilities/ur_control/config/data_dxf", data_dxf)
         if verbose:
             rospy.logwarn("Total # of commands ignored: %s" % log)
         return result

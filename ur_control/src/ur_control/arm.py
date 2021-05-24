@@ -73,8 +73,8 @@ class Arm(object):
         self.base_link = _base_link if joint_names_prefix is None else joint_names_prefix + _base_link
         self.ee_link = _ee_link if joint_names_prefix is None else joint_names_prefix + _ee_link
 
-        self.max_joint_speed = np.deg2rad([100, 100, 100, 200, 200, 200]) # deg/s -> rad/s
-        # self.max_joint_speed = np.deg2rad([191, 191, 191, 371, 371, 371])  
+        # self.max_joint_speed = np.deg2rad([100, 100, 100, 200, 200, 200]) # deg/s -> rad/s
+        self.max_joint_speed = np.deg2rad([191, 191, 191, 371, 371, 371])  
 
         self._init_ik_solver()
         self._init_controllers(gripper, joint_names_prefix)
