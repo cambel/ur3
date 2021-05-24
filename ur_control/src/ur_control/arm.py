@@ -339,6 +339,7 @@ class Arm(object):
                                              accelerations=accelerations)
         self.joint_traj_controller.start(delay=0.01, wait=wait)
         self.joint_traj_controller.clear_points()
+        return DONE
 
     def set_joint_trajectory(self, trajectory, velocities=None, accelerations=None, t=5.0):
         dt = float(t)/float(len(trajectory))

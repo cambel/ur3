@@ -190,7 +190,7 @@ class CompliantController(Arm):
                 rospy.logwarn_once("Exceeded reduced max speed %s deg/s, Ignoring command" % np.round(np.rad2deg(q_speed), 0))
                 result = SPEED_LIMIT_EXCEEDED
             else:
-                result = self.set_joint_positions(position=q, t=dt, wait=False)
+                result = self.set_joint_positions_flex(position=q, t=dt)
                 self.rate.sleep()
         return result
 
