@@ -192,7 +192,7 @@ See help inside the example with the '?' key for key bindings.
     robot_urdf = "ur3e_robot"
     rospackage = None
     tcp_link = None
-    if args.namespace:
+    if args.namespace in ("b_bot", "a_bot"):
         ns = args.namespace
         joints_prefix = args.namespace + "_"
         robot_urdf = args.namespace
@@ -201,8 +201,12 @@ See help inside the example with the '?' key for key bindings.
     
     use_gripper = args.gripper  
 
-    extra_ee = [0, 0, 0., 0, 0, 0, 1]
-    extra_ee = [0.0, 0.0, 0.173, 0.500, -0.500, 0.500, 0.500]
+    if args.namespace == "b_bot":
+        extra_ee = [0.0, 0.0, 0.173, 0.500, -0.500, 0.500, 0.500]
+    elif args.namespace == "a_bot":
+        extra_ee = [0.0, 0.0, 0.246, 0.500, -0.500, 0.500, 0.500]
+    else:
+        extra_ee = [0, 0, 0., 0, 0, 0, 1]
     
     global arm
     arm = Arm(ft_sensor=False, ee_transform=extra_ee, 

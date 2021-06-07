@@ -35,7 +35,7 @@ import rospkg
 
 from ur_kdl.kdl_parser import kdl_tree_from_urdf_model
 from urdf_parser_py.urdf import URDF
-from pyquaternion import Quaternion
+from ur_control import transformations
 
 # Set constants for joints
 SHOULDER_PAN_JOINT = 'shoulder_pan_joint'
@@ -65,6 +65,13 @@ LINK_NAMES = [BASE_LINK, SHOULDER_LINK, UPPER_ARM_LINK, FOREARM_LINK,
 
 import os
 
+def frame_to_list(frame):
+    pos = frame.p
+    rot = PyKDL.Rotation(frame.M)
+    rot = rot.GetQuaternion()
+    return np.array([pos[0], pos[1], pos[2],
+                        rot[0], rot[1], rot[2], rot[3]])
+
 class ur_kinematics(object):
     """
     UR Kinematics with PyKDL
@@ -74,6 +81,7 @@ class ur_kinematics(object):
         rospackage_ = rospackage if rospackage is not None else 'ur_pykdl'
         pykdl_dir = rospack.get_path(rospackage_)
         TREE_PATH = pykdl_dir + '/urdf/' + robot + '.urdf'
+        print("URDF...",  TREE_PATH)
         self._ur = URDF.from_xml_file(TREE_PATH)
         self._kdl_tree = kdl_tree_from_urdf_model(self._ur)
         self._base_link = BASE_LINK if base_link is None else base_link
@@ -132,25 +140,30 @@ class ur_kinematics(object):
                 mat[i,j] = data[i,j]
         return mat
 
-    def end_effector_transform(self, joint_values):
-        pose = self.forward_position_kinematics(joint_values)
-        translation = np.array([pose[:3]]).reshape(3,1)
-        rotation = np.array(Quaternion(np.roll(pose[3:],1)).rotation_matrix).reshape(3,3)
-
-        transform = np.concatenate((rotation, translation), axis=1)
-        transform = np.concatenate((transform, [[0,0,0,1]]))
-
+    def end_effector_transform(self, joint_values, tip_link=None):
+        pose = self.forward(joint_values, tip_link)
+        translation = np.array([pose[:3]])
+        transform = transformations.quaternion_matrix(pose[3:])
+        transform[:3, 3] = translation
         return transform
+
+    def forward(self, joint_values, tip_link=None):
+        if not tip_link or tip_link == self._tip_link:
+            return self.forward_position_kinematics(joint_values)
+        
+        arm_chain = self._kdl_tree.getChain(self._base_link,
+                                                  tip_link)
+        fk_p_kdl = PyKDL.ChainFkSolverPos_recursive(arm_chain)
+        end_frame = PyKDL.Frame()
+        fk_p_kdl.JntToCart(self.joints_to_kdl('positions',joint_values),
+                                 end_frame)
+        return frame_to_list(end_frame)
 
     def forward_position_kinematics(self,joint_values):
         end_frame = PyKDL.Frame()
         self._fk_p_kdl.JntToCart(self.joints_to_kdl('positions',joint_values),
                                  end_frame)
-        pos = end_frame.p
-        rot = PyKDL.Rotation(end_frame.M)
-        rot = rot.GetQuaternion()
-        return np.array([pos[0], pos[1], pos[2],
-                            rot[0], rot[1], rot[2], rot[3]])
+        return frame_to_list(end_frame)
 
     def forward_velocity_kinematics(self,joint_velocities):
         end_frame = PyKDL.FrameVel()

@@ -1230,7 +1230,7 @@ def pose_quaternion_from_matrix(matrix):
     if matrix.shape == (3, 4):
         matrix = numpy.concatenate((matrix, [[0, 0, 0, 1]]), axis=0)
 
-    pose = matrix[:3, 3]
+    pose = translation_from_matrix(matrix)
     quat = quaternion_from_matrix(matrix)
     return numpy.concatenate((pose, quat), axis=0)
 
@@ -1817,7 +1817,7 @@ def integrateUnitQuaternionEuler(q, w, dt):
     return (q + 0.5*qw*dt*q).normalised
 
 
-def pose_to_transform(pose):
+def pose_to_transform2(pose):
     """
     pose: translation + quaternion[x, y, z, w]
 
@@ -1830,6 +1830,15 @@ def pose_to_transform(pose):
 
     transform = numpy.concatenate((rotation, translation), axis=1)
     transform = numpy.concatenate((transform, [[0, 0, 0, 1]]))
+    return transform
+
+def pose_to_transform(pose):
+    translation = numpy.array([pose[:3]])
+    if len(pose[3:]) == 3:
+        transform = euler_matrix(pose[3:])
+    else:
+        transform = quaternion_matrix(pose[3:])
+    transform[:3,3] = translation
     return transform
 
 
