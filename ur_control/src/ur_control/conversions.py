@@ -342,3 +342,39 @@ def to_pose_stamped(frame_id, pose):
   ps.header.frame_id = frame_id
   ps.pose = to_pose(pose)
   return ps
+
+def transform_pose(target_frame, transform_matrix, ps):
+    # def transformPose(self, target_frame, ps):
+    """
+    :param target_frame: the tf target frame, a string
+    :param ps: the geometry_msgs.msg.PoseStamped message
+    :return: new geometry_msgs.msg.PoseStamped message, in frame target_frame
+    :raises: any of the exceptions that :meth:`~tf.Transformer.lookupTransform` can raise
+
+    Transforms a geometry_msgs PoseStamped message to frame target_frame, returns a new PoseStamped message.
+    """
+    # mat44 is frame-to-frame transform as a 4x4
+    mat44 = transform_matrix
+
+    # pose44 is the given pose as a 4x4
+    pose44 = np.dot(xyz_to_mat44(ps.pose.position), xyzw_to_mat44(ps.pose.orientation))
+
+    # txpose is the new pose in target_frame as a 4x4
+    txpose = np.dot(mat44, pose44)
+
+    # xyz and quat are txpose's position and orientation
+    xyz = tuple(tr.translation_from_matrix(txpose))[:3]
+    quat = tuple(tr.quaternion_from_matrix(txpose))
+
+    # assemble return value PoseStamped
+    r = PoseStamped()
+    r.header.stamp = ps.header.stamp
+    r.header.frame_id = target_frame
+    r.pose = Pose(Point(*xyz), Quaternion(*quat))
+    return r
+
+def xyz_to_mat44(pos):
+    return tr.translation_matrix((pos.x, pos.y, pos.z))
+
+def xyzw_to_mat44(ori):
+    return tr.quaternion_matrix((ori.x, ori.y, ori.z, ori.w))
