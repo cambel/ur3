@@ -1,3 +1,4 @@
+import rospy
 import numpy as np
 from ur_control import transformations
 
