@@ -81,7 +81,7 @@ def from_pose(msg):
 
 def from_pose_to_list(msg):
     """
-  Converts a C{geometry_msgs/Pose} ROS message into a numpy array (Homogeneous transformation 4x4).
+  Converts a C{geometry_msgs/Pose} ROS message into a numpy array (7 elements, xyz+xyzw).
   @type  msg: geometry_msgs/Pose
   @param msg: The ROS message to be converted
   @rtype: np.array
