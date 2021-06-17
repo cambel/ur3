@@ -1868,3 +1868,6 @@ def pose_quaternion_to_euler(pose):
 
 def pose_euler_to_quat(pose):
     return numpy.concatenate([pose[:3], list(quaternion_from_euler(*pose[3:], axes='rxyz'))])
+
+def diff_quaternion(q1, q2):
+    return quaternion_multiply(q2, quaternion_inverse(q1))
