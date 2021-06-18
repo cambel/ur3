@@ -15,6 +15,14 @@ from ur_control import transformations, spalg, utils
 from ur_control.constants import DONE, FORCE_TORQUE_EXCEEDED, SPEED_LIMIT_EXCEEDED, STOP_ON_TARGET_FORCE, TERMINATION_CRITERIA, IK_NOT_FOUND
 
 
+# Returns the new average
+# after including x
+def getAvg(prev_avg, x, n):
+    return ((prev_avg *
+             n + x) /
+            (n + 1))
+
+
 class CompliantController(Arm):
     def __init__(self,
                  relative_to_ee=False,
@@ -35,7 +43,7 @@ class CompliantController(Arm):
     def set_hybrid_control_trajectory(self, trajectory, model, max_force_torque, timeout=5.0,
                                       stop_on_target_force=False, termination_criteria=None,
                                       displacement_epsilon=0.002, check_displacement_time=2.0,
-                                      verbose=True):
+                                      verbose=True, debug=False):
         """ Move the robot according to a hybrid controller model
             trajectory: array[array[7]] or array[7], can define a single target pose or a trajectory of multiple poses.
             model: force control model, see hybrid_controller.py 
@@ -60,7 +68,7 @@ class CompliantController(Arm):
         ptp_index = 0
         q_last = self.joint_angles()
 
-        trajectory_time_compensation = model.dt * 10. # Hyperparameter
+        trajectory_time_compensation = model.dt * 10.  # Hyperparameter
 
         if trajectory.ndim == 1:  # just one point
             ptp_timeout = timeout
@@ -77,11 +85,17 @@ class CompliantController(Arm):
         standby_last_pose = self.end_effector()
         standby = False
 
+        if debug:
+            avg_step_time = 0.0
+            step_num = 0
+
         # Timeout for motion
         initime = rospy.get_time()
         sub_inittime = rospy.get_time()
         while not rospy.is_shutdown() \
                 and (rospy.get_time() - initime) < timeout:
+            if debug:
+                start_time = rospy.get_time()
 
             # Transform wrench to the base_link frame
             Wb = self.get_ee_wrench()
@@ -160,12 +174,21 @@ class CompliantController(Arm):
                 standby_timer = rospy.get_time()
                 standby_last_pose = self.end_effector()
 
+            if debug:
+                step_time = rospy.get_time() - start_time
+                avg_step_time = step_time if avg_step_time == 0 else getAvg(avg_step_time, step_time, step_num)
+                step_num += 1
+
         # For debug
         # np.save("/root/o2ac-ur/underlay_ws/src/ur_python_utilities/ur_control/config/actual", data_actual)
         # np.save("/root/o2ac-ur/underlay_ws/src/ur_python_utilities/ur_control/config/target", data_target)
         # np.save("/root/o2ac-ur/underlay_ws/src/ur_python_utilities/ur_control/config/target2", data_target2)
         # np.save("/root/o2ac-ur/underlay_ws/src/ur_python_utilities/ur_control/config/trajectory", trajectory)
         # np.save("/root/o2ac-ur/underlay_ws/src/ur_python_utilities/ur_control/config/data_dxf", data_dxf)
+        if debug:
+            rospy.loginfo(">>> Force Control Aprox. time per step: %s <<<" % str(avg_step_time))
+            hz = 1./avg_step_time if avg_step_time > 0 else 0.0
+            rospy.loginfo(">>> Force Control Aprox. Frequency: %s <<<" % str(hz))
         if verbose:
             rospy.logwarn("Total # of commands ignored: %s" % log)
         return result
