@@ -113,6 +113,12 @@ class Arm(object):
                 self.arm_ikfast = ur_ikfast.URKinematics('ur3')
             elif self._robot_urdf == 'ur3e_robot':
                 self.arm_ikfast = ur_ikfast.URKinematics('ur3e')
+            elif self._robot_urdf in ('a_bot', 'b_bot', 'ur5e'):
+                self.arm_ikfast = ur_ikfast.URKinematics('ur5e')
+            else:
+                rospy.logerr("IK solver set to IKFAST but no ikfast found for: %s. Switching to TRAC_IK")
+                self.ik_solver == TRAC_IK
+                return self._init_ik_solver()
         elif self.ik_solver == TRAC_IK:
             try:
                 if not rospy.has_param("robot_description"):
