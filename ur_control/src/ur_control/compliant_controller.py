@@ -28,7 +28,7 @@ class CompliantController(Arm):
                  relative_to_ee=False,
                  namespace='',
                  **kwargs):
-        """ Compliant controller
+        """ Compliant controllertrajectory_time_compensation
             relative_to_ee bool: if True when moving in task-space move relative to the end-effector otherwise
                             move relative to the world coordinates
         """
@@ -43,7 +43,7 @@ class CompliantController(Arm):
     def set_hybrid_control_trajectory(self, trajectory, model, max_force_torque, timeout=5.0,
                                       stop_on_target_force=False, termination_criteria=None,
                                       displacement_epsilon=0.002, check_displacement_time=2.0,
-                                      verbose=True, debug=False):
+                                      verbose=True, debug=False, time_compensation=True):
         """ Move the robot according to a hybrid controller model
             trajectory: array[array[7]] or array[7], can define a single target pose or a trajectory of multiple poses.
             model: force control model, see hybrid_controller.py 
@@ -68,13 +68,13 @@ class CompliantController(Arm):
         ptp_index = 0
         q_last = self.joint_angles()
 
-        trajectory_time_compensation = model.dt * 10.  # Hyperparameter
+        trajectory_time_compensation = model.dt * 10. if time_compensation else 0.0 # Hyperparameter
 
         if trajectory.ndim == 1:  # just one point
             ptp_timeout = timeout
             model.set_goals(position=trajectory)
         else:  # trajectory
-            ptp_timeout = timeout / len(trajectory) - trajectory_time_compensation
+            ptp_timeout = timeout / float(len(trajectory)) - trajectory_time_compensation
             model.set_goals(position=trajectory[ptp_index])
 
         log = {SPEED_LIMIT_EXCEEDED: 0, IK_NOT_FOUND: 0}
