@@ -11,7 +11,7 @@ from geometry_msgs.msg import (Wrench)
 from ur_control import utils, spalg, conversions, transformations
 from ur_control.constants import JOINT_ORDER, JOINT_PUBLISHER_ROBOT, FT_SUBSCRIBER, IKFAST, TRAC_IK, \
     DONE, FORCE_TORQUE_EXCEEDED, SPEED_LIMIT_EXCEEDED, IK_NOT_FOUND, get_arm_joint_names, \
-    BASE_LINK, EE_LINK
+    BASE_LINK, EE_LINK, FT_LINK
 
 try:
     from ur_ikfast import ur_kinematics as ur_ikfast
@@ -107,8 +107,8 @@ class Arm(object):
             self.gripper = GripperController(namespace=self.ns, prefix=self.joint_names_prefix, timeout=2.0)
 
     def _init_ik_solver(self, base_link, ee_link):
-        self.base_link = _base_link
-        self.ee_link = _ee_link
+        self.base_link = base_link
+        self.ee_link = ee_link
         if rospy.has_param("robot_description"):
             self.kdl = ur_kinematics(base_link=base_link, ee_link=ee_link)
         else:
