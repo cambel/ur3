@@ -318,8 +318,8 @@ def force_control():
 
     timeout = 10.0
 
-    selection_matrix = [1., 0., 1., 1., 1., 1.]
-    target_force = np.array([5., 5., 0., 0., 0., 0.])
+    selection_matrix = [0., 0., 0., 1., 1., 1.]
+    target_force = np.array([0., 0., 0., 0., 0., 0.])
 
     full_force_control(target_force, selection_matrix=selection_matrix, timeout=timeout, relative_to_ee=False)
 

@@ -69,10 +69,11 @@ class Arm(object):
 
         _base_link = base_link if base_link is not None else BASE_LINK
         _ee_link = ee_link if ee_link is not None else EE_LINK
-        self.ft_frame = ft_link if ft_link is not None else FT_LINK
+        _ft_frame = ft_link if ft_link is not None else FT_LINK
 
         self.base_link = _base_link if joint_names_prefix is None else joint_names_prefix + _base_link
         self.ee_link = _ee_link if joint_names_prefix is None else joint_names_prefix + _ee_link
+        self.ft_frame = _ft_frame if joint_names_prefix is None else joint_names_prefix + _ft_frame
 
         # self.max_joint_speed = np.deg2rad([100, 100, 100, 200, 200, 200]) # deg/s -> rad/s
         self.max_joint_speed = np.deg2rad([191, 191, 191, 371, 371, 371])
@@ -246,7 +247,7 @@ class Arm(object):
 
         # compute force transformation?
         # # # Transform of EE
-        pose = self.end_effector()
+        pose = self.end_effector(tip_link=self.ft_frame)
 
         ee_wrench_force = spalg.convert_wrench(wrench_force, pose)
 
