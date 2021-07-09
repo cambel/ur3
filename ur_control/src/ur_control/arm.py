@@ -39,7 +39,8 @@ class Arm(object):
                  joint_names_prefix=None,
                  ft_topic=None,
                  base_link=None,
-                 ee_link=None):
+                 ee_link=None,
+                 ft_link=None):
         """ ft_sensor bool: whether or not to try to load ft sensor information
             ee_transform array [x,y,z,ax,ay,az,w]: optional transformation to the end-effector
                                                   that is applied before doing any operation in task-space
@@ -69,14 +70,15 @@ class Arm(object):
 
         _base_link = base_link if base_link is not None else BASE_LINK
         _ee_link = ee_link if ee_link is not None else EE_LINK
+        self.ft_frame = ft_link if ft_link is not None else FT_LINK
 
         self.base_link = _base_link if joint_names_prefix is None else joint_names_prefix + _base_link
         self.ee_link = _ee_link if joint_names_prefix is None else joint_names_prefix + _ee_link
 
         # self.max_joint_speed = np.deg2rad([100, 100, 100, 200, 200, 200]) # deg/s -> rad/s
-        self.max_joint_speed = np.deg2rad([191, 191, 191, 371, 371, 371])  
+        self.max_joint_speed = np.deg2rad([191, 191, 191, 371, 371, 371])
 
-        self._init_ik_solver()
+        self._init_ik_solver(self.base_link, self.ee_link)
         self._init_controllers(gripper, joint_names_prefix)
         if ft_sensor:
             self._init_ft_sensor()
@@ -104,8 +106,13 @@ class Arm(object):
         if gripper:
             self.gripper = GripperController(namespace=self.ns, prefix=self.joint_names_prefix, timeout=2.0)
 
-    def _init_ik_solver(self):
-        self.kdl = ur_kinematics(self._robot_urdf, base_link=self.base_link, ee_link=self.ee_link, prefix=self.joint_names_prefix, rospackage=self._robot_urdf_package)
+    def _init_ik_solver(self, base_link, ee_link):
+        self.base_link = _base_link
+        self.ee_link = _ee_link
+        if rospy.has_param("robot_description"):
+            self.kdl = ur_kinematics(base_link=base_link, ee_link=ee_link)
+        else:
+            self.kdl = ur_kinematics(base_link=base_link, ee_link=ee_link, robot=self._robot_urdf, prefix=self.joint_names_prefix, rospackage=self._robot_urdf_package)
 
         if self.ik_solver == IKFAST:
             # IKfast libraries
@@ -113,8 +120,6 @@ class Arm(object):
                 self.arm_ikfast = ur_ikfast.URKinematics('ur3')
             elif self._robot_urdf == 'ur3e_robot':
                 self.arm_ikfast = ur_ikfast.URKinematics('ur3e')
-            elif self._robot_urdf in ('a_bot', 'b_bot', 'ur5e'):
-                self.arm_ikfast = ur_ikfast.URKinematics('ur5e')
             else:
                 rospy.logerr("IK solver set to IKFAST but no ikfast found for: %s. Switching to TRAC_IK")
                 self.ik_solver == TRAC_IK
@@ -122,10 +127,10 @@ class Arm(object):
         elif self.ik_solver == TRAC_IK:
             try:
                 if not rospy.has_param("robot_description"):
-                    self.trac_ik = IK(base_link=self.base_link, tip_link=self.ee_link, solve_type="Distance", timeout=0.002, epsilon=1e-5,
+                    self.trac_ik = IK(base_link=base_link, tip_link=ee_link, solve_type="Distance", timeout=0.002, epsilon=1e-5,
                                       urdf_string=utils.load_urdf_string(self._robot_urdf_package, self._robot_urdf))
                 else:
-                    self.trac_ik = IK(base_link=self.base_link, tip_link=self.ee_link, solve_type="Distance")
+                    self.trac_ik = IK(base_link=base_link, tip_link=ee_link, solve_type="Distance")
             except Exception as e:
                 rospy.logerr("Could not instantiate TRAC_IK" + str(e))
         else:
@@ -245,8 +250,8 @@ class Arm(object):
 
         # compute force transformation?
         # # # Transform of EE
-        pose = self.end_effector()
-        
+        pose = self.end_effector(tip_link=self.ft_frame)
+
         if self.ee_transform is not None:
             pose = conversions.inverse_transformation(pose, self.ee_transform)
             ee_wrench_force = spalg.convert_wrench(wrench_force, pose)
@@ -266,17 +271,15 @@ class Arm(object):
 
     def end_effector(self,
                      joint_angles=None,
-                     rot_type='quaternion'):
+                     rot_type='quaternion',
+                     tip_link=None):
         """ Return End Effector Pose """
 
         joint_angles = self.joint_angles() if joint_angles is None else joint_angles
 
         if rot_type == 'quaternion':
             # forward kinematics
-            if self.ik_solver == IKFAST:
-                x = self.arm_ikfast.forward(joint_angles)
-            else:
-                x = self.kdl.forward_position_kinematics(joint_angles)
+            x = self.kdl.forward(joint_angles, tip_link)
 
             # apply extra transformation of end-effector
             if self.ee_transform is not None:

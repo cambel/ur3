@@ -17,6 +17,7 @@ WRIST_3_JOINT = 'wrist_3_joint'
 
 BASE_LINK = 'base_link'
 EE_LINK = 'tool0'
+FT_LINK = 'tool0'
 
 JOINT_ORDER = [
     SHOULDER_PAN_JOINT, SHOULDER_LIFT_JOINT, ELBOW_JOINT, WRIST_1_JOINT,
