@@ -41,13 +41,13 @@ class GripperController(object):
         elif self.gripper_type == "85":
             self._max_gap = 0.085
             self._to_open = self._max_gap
-            self._to_close = 0.0
-            self._max_angle = np.deg2rad(46.0)
+            self._to_close = 0.001
+            self._max_angle = 0.8028
         elif self.gripper_type == "140":
             self._max_gap = 0.140
             self._to_open = self._max_gap
-            self._to_close = 0.0
-            self._max_angle = np.deg2rad(41.0)
+            self._to_close = 0.001
+            self._max_angle = 0.69
         self._js_sub = rospy.Subscriber('joint_states', JointState, self.joint_states_cb, queue_size=1)
 
         retry = False
