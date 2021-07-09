@@ -76,7 +76,8 @@ class ForcePositionController(object):
             :return: list, angular velocity 
         """
         # Force PD compensator
-        Fe = -1.*self.target_force - fc  # error
+        # print("fc", fc, " ===  self.target_force", self.target_force)
+        Fe = -1*self.target_force - fc  # error
         dxf_force = self.force_pd.update(error=Fe, dt=self.dt)
 
         # Position PD compensator

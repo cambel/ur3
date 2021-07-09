@@ -117,7 +117,7 @@ class CompliantController(Arm):
                 elif not trajectory.ndim == 1:  # For some reason the timeout validation is not robust enough
                     model.set_goals(position=trajectory[ptp_index])
 
-            Fb = -1 * Wb
+            Fb = Wb # Move in the opposite direction of the force
             if stop_on_target_force and np.all(np.abs(Fb)[model.target_force != 0] > np.abs(model.target_force)[model.target_force != 0]):
                 rospy.loginfo('Target F/T reached {}'.format(np.round(Wb, 3)) + ' Stopping!')
                 self.set_target_pose_flex(pose=xb, t=model.dt)

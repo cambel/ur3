@@ -30,7 +30,6 @@ class Arm(object):
 
     def __init__(self,
                  ft_sensor=False,
-                 ee_transform=None,
                  robot_urdf='ur3e_robot',
                  robot_urdf_package=None,
                  ik_solver=TRAC_IK,
@@ -49,7 +48,7 @@ class Arm(object):
             gripper bool: enable gripper control
         """
 
-        cprint.ok("ft_sensor: {}, ee_transform: {}, \n robot_urdf: {}".format(ft_sensor, ee_transform, robot_urdf))
+        cprint.ok("ft_sensor: {}, ee_link: {}, \n robot_urdf: {}".format(ft_sensor, ee_link, robot_urdf))
 
         self._joint_angle = dict()
         self._joint_velocity = dict()
@@ -63,7 +62,7 @@ class Arm(object):
         self.ft_topic = ft_topic if ft_topic is not None else FT_SUBSCRIBER
 
         self.ik_solver = ik_solver
-        self.ee_transform = ee_transform
+        
         assert namespace is not None, "namespace cannot be None"
         self.ns = namespace
         self.joint_names_prefix = joint_names_prefix
@@ -174,9 +173,6 @@ class Arm(object):
         self._flex_trajectory_pub.publish(action_msg)
 
     def _solve_ik(self, pose, q_guess=None, attempts=5, verbose=True):
-        if self.ee_transform is not None:
-            pose = conversions.inverse_transformation(pose, self.ee_transform)
-
         q_guess_ = q_guess if q_guess is not None else self.joint_angles()
         # TODO(cambel): weird it shouldn't happen but...
         if isinstance(q_guess, np.float64):
@@ -250,13 +246,9 @@ class Arm(object):
 
         # compute force transformation?
         # # # Transform of EE
-        pose = self.end_effector(tip_link=self.ft_frame)
+        pose = self.end_effector()
 
-        if self.ee_transform is not None:
-            pose = conversions.inverse_transformation(pose, self.ee_transform)
-            ee_wrench_force = spalg.convert_wrench(wrench_force, pose)
-        else:
-            ee_wrench_force = spalg.convert_wrench(wrench_force, pose)
+        ee_wrench_force = spalg.convert_wrench(wrench_force, pose)
 
         return ee_wrench_force
 
@@ -279,12 +271,7 @@ class Arm(object):
 
         if rot_type == 'quaternion':
             # forward kinematics
-            x = self.kdl.forward(joint_angles, tip_link)
-
-            # apply extra transformation of end-effector
-            if self.ee_transform is not None:
-                x = np.array(conversions.transform_end_effector(x, self.ee_transform))
-            return x
+            return self.kdl.forward(joint_angles, tip_link)
 
         elif rot_type == 'euler':
             x = self.end_effector(joint_angles)

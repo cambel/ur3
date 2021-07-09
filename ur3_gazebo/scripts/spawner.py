@@ -32,6 +32,15 @@ def place_ball():
     spawner.load_models(models)
 
 
+def place_board():
+    cube_lenght = "0.1"
+    obj = BOX % ("box", cube_lenght, cube_lenght, 0.01, "Red", cube_lenght, cube_lenght, 0.01)
+    model_names = ["box"]
+    objpose = [[0.18,  0.15,  0.85], [0, 0.0, 0, 0.0]]
+
+    models = [Model(model_names[0], objpose[0], file_type='string', string_model=obj, reference_frame="world")]
+    spawner.load_models(models)
+
 def place_cube():
     cube_lenght = "0.2"
     obj = BOX % ("box", cube_lenght, cube_lenght, cube_lenght, "Yellow", cube_lenght, cube_lenght, cube_lenght)
@@ -105,6 +114,8 @@ def main():
                         help='Place ball with collision')
     parser.add_argument('--cube', action='store_true',
                         help='Place cube with collision')
+    parser.add_argument('--board', action='store_true',
+                        help='Place board with collision')
     parser.add_argument('--taskboard', action='store_true',
                         help='Place taskboard with collision')
     args = parser.parse_args()
@@ -125,5 +136,7 @@ def main():
         place_cube()
     if args.taskboard:
         place_taskboard()
+    if args.board:
+        place_board()
 if __name__ == "__main__":
     main()

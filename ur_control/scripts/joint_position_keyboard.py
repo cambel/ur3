@@ -39,6 +39,8 @@ def map_keyboard():
     def print_robot_state():
         print("Joint angles:", np.round(arm.joint_angles(), 4).tolist())
         print("EE Pose:", np.round(arm.end_effector(), 5).tolist())
+        print("EE Pose tool0:", np.round(arm.end_effector(tip_link='b_bot_tool0'), 5).tolist())
+        print("EE Pose ee_link:", np.round(arm.end_effector(tip_link='b_bot_ee_link'), 5).tolist())
         if arm.gripper:
             print("Gripper position:", np.round(arm.gripper.get_position(), 4))
 
@@ -197,25 +199,25 @@ See help inside the example with the '?' key for key bindings.
         joints_prefix = args.namespace + "_"
         robot_urdf = args.namespace
         rospackage = "o2ac_scene_description"
-        # tcp_link='tool0'
+        tcp_link='gripper_tip_link'
     
     use_gripper = args.gripper  
 
-    if args.namespace == "b_bot":
-        extra_ee = [0.0, 0.0, 0.173, 0.500, -0.500, 0.500, 0.500]
-    elif args.namespace == "a_bot":
-        extra_ee = [0.0, 0.0, 0.246, 0.500, -0.500, 0.500, 0.500]
-    else:
-        extra_ee = [0, 0, 0., 0, 0, 0, 1]
+    # if args.namespace == "b_bot":
+    #     extra_ee = [0.0, 0.0, 0.173, 0.500, -0.500, 0.500, 0.500]
+    # elif args.namespace == "a_bot":
+    #     extra_ee = [0.0, 0.0, 0.246, 0.500, -0.500, 0.500, 0.500]
+    # else:
+    #     extra_ee = [0, 0, 0., 0, 0, 0, 1]
     
     global arm
-    arm = Arm(ft_sensor=False, ee_transform=extra_ee, 
+    arm = Arm(ft_sensor=False, ee_transform=None, 
               gripper=use_gripper, namespace=ns, 
               joint_names_prefix=joints_prefix, 
               robot_urdf=robot_urdf, robot_urdf_package=rospackage,
               ee_link=tcp_link)
 
-    print("Extra ee", extra_ee)
+    # print("Extra ee", extra_ee)
 
     map_keyboard()
     print("Done.")

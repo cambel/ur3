@@ -34,7 +34,13 @@ def move_joints(wait=True):
     q = [1.6626, -1.2571, 1.9806, -2.0439, -2.7765, -1.3049]  # b_bot bearing
     # q = [1.6241, -1.2576, 2.0085, -2.1514, -2.7841, -1.408] # b_bot grasp bearing
     q = [1.6288, -1.3301, 1.8391, -2.0612, -1.5872, -1.5548]  # b_bot
-    q = [1.5837, -1.2558, 1.826, -2.194, -2.6195, -1.5081]  # push
+    q = [1.6944, -1.697, 2.1605, -2.0188, -1.5658, 0.1337]  # push from up
+
+    q = [1.8301, -1.4344, 1.9283, -2.049, -1.5634, 0.2701] # safe pose before side push
+    arm.set_joint_positions(position=q, wait=wait, t=2.0)
+
+    q = [1.898, -1.5329, 2.1112, -2.1337, -1.5627, 0.3383]  # push from side x
+    q = [1.6869, -1.4745, 2.0504, -2.131, -1.5658, 0.1272]  # push from side y
     # go to desired joint configuration
     # in t time (seconds)
     # wait is for waiting to finish the motion before executing
@@ -274,7 +280,7 @@ def init_force_control(selection_matrix, dt=0.002):
 def full_force_control(
         target_force=None, target_positions=None, model=None,
         selection_matrix=[1., 1., 1., 1., 1., 1.], 
-        relative_to_ee=False, timeout=10.0, max_force_torque=[50., 50., 50., 5., 5., 5.],
+        relative_to_ee=False, timeout=10.0, max_force_torque=[200., 200., 200., 5., 5., 5.],
         termination_criteria=None):
     """ 
       Use with caution!! 
@@ -312,8 +318,8 @@ def force_control():
 
     timeout = 10.0
 
-    selection_matrix = [1., 1., 1., 0., 1., 1.]
-    target_force = np.array([0., 0., 0., 0., 0., 0.])
+    selection_matrix = [1., 0., 1., 1., 1., 1.]
+    target_force = np.array([5., 5., 0., 0., 0., 0.])
 
     full_force_control(target_force, selection_matrix=selection_matrix, timeout=timeout, relative_to_ee=False)
 
@@ -483,21 +489,15 @@ def main():
         joints_prefix = args.namespace + "_"
         robot_urdf = args.namespace
         rospackage = "o2ac_scene_description"
-        tcp_link='tool0'
+        tcp_link='gripper_tip_link'
 
     use_gripper = args.gripper
 
-    extra_ee = [0, 0, 0.] + transformations.quaternion_from_euler(*[np.pi/4, 0, 0]).tolist()
-    extra_ee = [0.0, 0.0, 0.173, 0., 0., 0., 1.]
-    extra_ee = [0.0, 0.0, 0.173, 0.500, -0.500, 0.500, 0.500]
-
     global arm
-    arm = CompliantController(ft_sensor=True, ee_transform=extra_ee,
-                              gripper=use_gripper, namespace=ns,
+    arm = CompliantController(ft_sensor=True, gripper=use_gripper, namespace=ns,
                               joint_names_prefix=joints_prefix,
                               robot_urdf=robot_urdf, robot_urdf_package=rospackage, 
                               ee_link=tcp_link)
-    print("Extra ee", extra_ee)
 
     real_start_time = timeit.default_timer()
     ros_start_time = rospy.get_time()

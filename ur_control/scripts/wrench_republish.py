@@ -26,13 +26,14 @@ def main():
         joints_prefix = args.namespace + "_"
         robot_urdf = args.namespace
         rospackage = "o2ac_scene_description"
+        tcp_link='gripper_tip_link'
     
-    extra_ee = [0,0,0.] + transformations.quaternion_from_euler(*[np.pi/4,0,0]).tolist()
-    extra_ee = [0.0, 0.0, 0.173, 0.500, -0.500, 0.500, 0.500]
+    # extra_ee = [0,0,0.] + transformations.quaternion_from_euler(*[np.pi/4,0,0]).tolist()
+    # extra_ee = [0.0, 0.0, 0.173, 0.500, -0.500, 0.500, 0.500]
     # extra_ee = [0.0, 0.0, 0.173, 0., 0., 0., 1.]
 
     global arm
-    arm = CompliantController(ft_sensor=True, ee_transform=extra_ee, 
+    arm = CompliantController(ft_sensor=True, ee_transform=None, 
               namespace=ns, 
               joint_names_prefix=joints_prefix, 
               robot_urdf=robot_urdf, robot_urdf_package=rospackage, relative_to_ee=args.relative)
