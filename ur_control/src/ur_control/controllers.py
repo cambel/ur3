@@ -93,7 +93,7 @@ class GripperController(object):
         rospy.loginfo('GripperCommandAction initialized. ns: {0}'.format(self.ns))
 
     def close(self, wait=True):
-        self.command(0.0, percentage=True, wait=wait)
+        return self.command(0.0, percentage=True, wait=wait)
 
     def command(self, value, percentage=False, wait=True):
         """ assume command given in percentage otherwise meters 
@@ -102,11 +102,9 @@ class GripperController(object):
                              If False value value assume to be from 0.0 to max_gap
         """
         if value == "close":
-            self.close()
-            return
+            return self.close()
         elif value == "open":
-            self.open()
-            return
+            return self.open()
         
         if self.gripper_type == "85" or self.gripper_type == "140":
             if percentage:
@@ -131,6 +129,7 @@ class GripperController(object):
         else:
             self._client.send_goal(self.goal)
         rospy.sleep(0.05)
+        return True
 
     def _distance_to_angle(self, distance):
         distance = np.clip(distance, 0, self._max_gap)
@@ -160,7 +159,7 @@ class GripperController(object):
         return res.ok
 
     def open(self, wait=True):
-        self.command(1.0, percentage=True, wait=wait)
+        return self.command(1.0, percentage=True, wait=wait)
 
     def release(self, link_name):
         parent = self.attach_link.rsplit('::')
