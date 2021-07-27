@@ -211,7 +211,7 @@ See help inside the example with the '?' key for key bindings.
     #     extra_ee = [0, 0, 0., 0, 0, 0, 1]
     
     global arm
-    arm = Arm(ft_sensor=False, ee_transform=None, 
+    arm = Arm(ft_sensor=False,
               gripper=use_gripper, namespace=ns, 
               joint_names_prefix=joints_prefix, 
               robot_urdf=robot_urdf, robot_urdf_package=rospackage,
