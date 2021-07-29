@@ -143,7 +143,7 @@ def main():
     for j in robot.joints:
         if robot.joints[j].joint_type != 'fixed':
             num_non_fixed_joints += 1
-    print("URDF non-fixed joints: %d;" % num_non_fixed_joints, end=' ')
+    print("URDF non-fixed joints: %d;" % num_non_fixed_joints)
     print("KDL joints: %d" % tree.getNrOfJoints())
     print("URDF joints: %d; KDL segments: %d" %(len(robot.joints),
                                                 tree.getNrofSegments()))

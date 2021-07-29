@@ -19,7 +19,6 @@ catkin_package(
   sensor_msgs
   tf
   DEPENDS
-  python_orocos_kdl
 )
 
 install(
