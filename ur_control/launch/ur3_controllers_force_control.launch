@@ -29,7 +29,7 @@
         args="shoulder_pan_joint shoulder_lift_joint elbow_joint wrist_1_joint wrist_2_joint wrist_3_joint"/>
 
   <!-- TF -->
-  <node pkg="robot_state_publisher" type="state_publisher" name="state_publisher"> 
+  <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher"> 
     <param name="publish_frequency"  type="double" value="50" />
   </node>
 </launch>
