@@ -3,6 +3,7 @@ import actionlib
 import copy
 import collections
 import rospy
+import rostopic
 from ur_control import utils, filters, conversions, constants
 import os
 import numpy as np
@@ -433,6 +434,8 @@ class JointTrajectoryController(JointControllerBase):
         self._client = actionlib.SimpleActionClient(action_server, FollowJointTrajectoryAction)
         self._goal = FollowJointTrajectoryGoal()
         rospy.logdebug('Waiting for [%s] action server' % action_server)
+        if action_server not in rostopic.get_topic_list():
+            raise rospy.ROSException("Action server not found")
         server_up = self._client.wait_for_server(timeout=rospy.Duration(timeout))
         if not server_up:
             rospy.logerr('Timed out waiting for Joint Trajectory'
