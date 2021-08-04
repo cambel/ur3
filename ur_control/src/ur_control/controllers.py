@@ -434,7 +434,8 @@ class JointTrajectoryController(JointControllerBase):
         self._client = actionlib.SimpleActionClient(action_server, FollowJointTrajectoryAction)
         self._goal = FollowJointTrajectoryGoal()
         rospy.logdebug('Waiting for [%s] action server' % action_server)
-        if action_server not in rostopic.get_topic_list():
+        topics = [item for sublist in rospy.get_published_topics() for item in sublist]
+        if action_server+"/goal" not in topics:
             raise rospy.ROSException("Action server not found")
         server_up = self._client.wait_for_server(timeout=rospy.Duration(timeout))
         if not server_up:
