@@ -8,10 +8,12 @@
   <arg name="paused"     default="false"/>
   <arg name="debug"      default="false"/>
   <arg name="gui"        default="true"/>
-  <arg name="rate"       default="125" />
-  <!-- <arg name="world_name" default="$(find ur3_gazebo)/worlds/bunri.world" /> -->
-  <arg name="effort_interface" default="false"/>
+  <arg name="rate"       default="500" />
+  <arg name="grasp_plugin" default="false"/>
 
+  <!--Robot description and related parameter files -->
+  <arg name="robot_description_file" default="$(dirname)/inc/load_ur_e.launch.xml" doc="Launch file which populates the 'robot_description' parameter."/>
+  <arg name="ur_robot" default="ur3e"/>
   
   <!-- Start up simulated world -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -22,14 +24,14 @@
     <!-- <arg name="physics"    value="bullet"/> -->
   </include>
 
-  <include file="$(find ur_control)/launch/ur3_controllers.launch">
-      <arg name="effort_interface" value="$(arg effort_interface)"/>
+  <include file="$(find ur_control)/launch/ur_e_controllers.launch">
   </include>
 
-  <!-- Send robot urdf to param server -->
-  <param name="robot_description" 
-         command="$(find xacro)/xacro '$(find ur3_description)/urdf/ur3e/ur3e_robotiq_hande_gripper.urdf.xacro' 
-                                                 use_effort_interface:=$(arg effort_interface)" />
+  <!-- Load urdf on the parameter server -->
+  <include file="$(arg robot_description_file)">
+    <arg name="ur_robot" value="$(arg ur_robot)"/>
+    <arg name="grasp_plugin" value="$(arg grasp_plugin)"/>
+  </include>
   <!-- Spawn robot in gazebo (and move it upwards):
        better initial values should be -2.355 and 1.57 but the robot does
        something strange when unpausing it

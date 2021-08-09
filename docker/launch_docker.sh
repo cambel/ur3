@@ -1,4 +1,4 @@
-docker stop ros-ur3
+docker stop ros-ur3-melodic
 docker create -it \
     --gpus all \
     --runtime=nvidia --rm -it \
@@ -8,10 +8,11 @@ docker create -it \
     -v /etc/timezone:/etc/timezone:ro \
     -v /etc/localtime:/etc/localtime:ro \
     -v /dev:/dev \
+    -v ~/temp/ur3:/root/ros_ws/src/ros_ur3 \
     --network host \
-    -w '/root/dev/' \
-    --name=ros-ur3 \
-    ros-ur3 \
+    -w '/root/' \
+    --name=ros-ur3-melodic \
+    ros-ur3:melodic \
     && export containerId=$(docker ps -l -q) \
     && xhost +local:`docker inspect --format='{{ .Config.Hostname }}' $containerId` \
     && docker start $containerId

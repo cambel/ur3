@@ -1,35 +1,33 @@
 <?xml version="1.0"?>
 <launch>
   <!-- Launch file parameters -->
-  <arg name="debug"     default="true" />
-  <arg name="effort_interface"     default="false" />
-
-  <arg if=      "$(arg debug)"  name="DEBUG" value="screen"/>
-  <arg unless = "$(arg debug)"  name="DEBUG" value="log"/>
-
+  <arg name="debug"                  default="true" />
   <arg name="gripper_robotiq_85"     default="false" />
   <arg name="gripper_robotiq_hande"  default="false" />
   <arg if="$(eval gripper_robotiq_85 or gripper_robotiq_hande)"  name="gripper_controller" value="gripper_controller"/>
   <arg unless="$(eval gripper_robotiq_85 or gripper_robotiq_hande)"  name="gripper_controller" value=""/>
 
+  <arg if=      "$(arg debug)"  name="DEBUG" value="screen"/>
+  <arg unless = "$(arg debug)"  name="DEBUG" value="log"/>
+
   <!-- Controllers config -->
-  <rosparam unless = "$(arg effort_interface)" file="$(find ur_control)/config/ur3_controllers.yaml" command="load" />
-  <rosparam if =     "$(arg effort_interface)" file="$(find ur_control)/config/ur3_controllers_effort.yaml" command="load" />
+  <rosparam file="$(find ur_control)/config/ur_e_controllers.yaml" command="load"/>
 
   <group if="$(arg gripper_robotiq_85)">
-    <rosparam file="$(find robotiq_control)/config/gripper_85_controller.yaml" command="load" />
+    <rosparam file="$(find ur_control)/config/gripper_85_controller.yaml" command="load" />
   </group>
   <group if="$(arg gripper_robotiq_hande)">
     <rosparam file="$(find robotiq_control)/config/gripper_hande_controller.yaml" command="load" />
   </group>
+  <!-- stuff that will only be evaluated if foo is true -->
 
   <!-- Load controllers -->
   <node name="robot_controllers" pkg="controller_manager" type="spawner" respawn="false"
         output="$(arg DEBUG)"
-        args="joint_state_controller arm_controller gripper_controller"/>
+        args="joint_state_controller scaled_pos_joint_traj_controller $(arg gripper_controller)"/>
 
   <!-- TF -->
-  <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher"> 
-    <param name="publish_frequency"  type="double" value="50" />
+  <node pkg="robot_state_publisher" type="robot_state_publisher" name="state_publisher"> 
+    <param name="publish_frequency"  type="double" value="500" />
   </node>
 </launch>

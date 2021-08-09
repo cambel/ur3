@@ -3,8 +3,7 @@ import actionlib
 import copy
 import collections
 import rospy
-from ur_control import utils, filters, conversions
-import os
+from ur_control import utils, filters, conversions, constants
 import numpy as np
 from std_msgs.msg import Float64
 from controller_manager_msgs.srv import ListControllers
@@ -16,24 +15,58 @@ from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryG
 # Gripper action
 from control_msgs.msg import GripperCommandAction, GripperCommandGoal
 # Link attacher
-from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
-
+try:
+    from gazebo_ros_link_attacher.srv import Attach, AttachRequest
+except ImportError:
+    print("Grasping pluging can't be loaded")
 
 class GripperController(object):
-    def __init__(self, namespace='', timeout=5.0, attach_link='robot::wrist_3_link'):
+    def __init__(self, namespace='', prefix=None, timeout=5.0, attach_link='robot::wrist_3_link'):
         self.ns = utils.solve_namespace(namespace)
-        self.gripper_type = str(rospy.get_param(self.ns + "gripper_type"))
-        
+        self.prefix = prefix if prefix is not None else ''
+        node_name = "gripper_controller"
+        self.gripper_type = str(rospy.get_param(self.ns + node_name + "/gripper_type"))
+        self.valid_joint_names = []
+        if rospy.has_param(self.ns + node_name + "/joint"):
+            self.valid_joint_names = [rospy.get_param(self.ns + node_name + "/joint")]
+        elif rospy.has_param(self.ns + node_name + "/joint"):
+            self.valid_joint_names = rospy.get_param(self.ns + node_name + "/joints")
+        else:
+            rospy.logerr("Couldn't find valid joints params in %s" % (self.ns + node_name))
+            return
+
         if self.gripper_type == "hand-e":
             self._max_gap = 0.025 * 2.0
             self._to_open = 0.0
             self._to_close = self._max_gap
-        if self.gripper_type == "85":
+        elif self.gripper_type == "85":
             self._max_gap = 0.085
             self._to_open = self._max_gap
-            self._to_close = 0.0
+            self._to_close = 0.001
+            self._max_angle = 0.8028
+        elif self.gripper_type == "140":
+            self._max_gap = 0.140
+            self._to_open = self._max_gap
+            self._to_close = 0.001
+            self._max_angle = 0.69
+        self._js_sub = rospy.Subscriber('joint_states', JointState, self.joint_states_cb, queue_size=1)
 
-        self._js_sub = rospy.Subscriber('%sjoint_states' % self.ns, JointState, self.joint_states_cb, queue_size=1)
+        retry = False
+        rospy.logdebug('Waiting for [%sjoint_states] topic' % self.ns)
+        start_time = rospy.get_time()
+        while not hasattr(self, '_joint_names'):
+            if (rospy.get_time() - start_time) > timeout and not retry:
+                # Re-try with namespace
+                self._js_sub = rospy.Subscriber('%sjoint_states' % self.ns, JointState, self.joint_states_cb, queue_size=1)
+                start_time = rospy.get_time()
+                retry = True
+                continue
+            elif (rospy.get_time() - start_time) > timeout and retry:
+                rospy.logerr('Timed out waiting for joint_states topic')
+                return
+            rospy.sleep(0.01)
+            if rospy.is_shutdown():
+                return
 
         attach_plugin = rospy.get_param("grasp_plugin", default=False)
         if attach_plugin:
@@ -47,7 +80,7 @@ class GripperController(object):
             self.detach_srv.wait_for_service()
 
         # Gripper action server
-        action_server = self.ns + 'gripper_controller/gripper_cmd'
+        action_server = self.ns + node_name + '/gripper_cmd'
         self._client = actionlib.SimpleActionClient(action_server, GripperCommandAction)
         self._goal = GripperCommandGoal()
         rospy.logdebug('Waiting for [%s] action server' % action_server)
@@ -60,16 +93,21 @@ class GripperController(object):
         rospy.logdebug('Successfully connected to [%s]' % action_server)
         rospy.loginfo('GripperCommandAction initialized. ns: {0}'.format(self.ns))
 
-    def close(self):
-        self.command(0.0, percentage=True)
+    def close(self, wait=True):
+        return self.command(0.0, percentage=True, wait=wait)
 
-    def command(self, value, percentage=False):
+    def command(self, value, percentage=False, wait=True):
         """ assume command given in percentage otherwise meters 
             percentage bool: If True value value assumed to be from 0.0 to 1.0
                                      where 1.0 is open and 0.0 is close
                              If False value value assume to be from 0.0 to max_gap
         """
-        if self.gripper_type == "85":
+        if value == "close":
+            return self.close()
+        elif value == "open":
+            return self.open()
+
+        if self.gripper_type == "85" or self.gripper_type == "140":
             if percentage:
                 value = np.clip(value, 0.0, 1.0)
                 cmd = (value) * self._max_gap
@@ -87,17 +125,21 @@ class GripperController(object):
                 cmd = np.clip(value, 0.0, self._max_gap)
                 cmd = (self._max_gap - value) / 2.0
             self._goal.command.position = cmd
-        self._client.send_goal_and_wait(self._goal)
+        if wait:
+            self._client.send_goal_and_wait(self._goal, execute_timeout=rospy.Duration(2))
+        else:
+            self._client.send_goal(self._goal)
         rospy.sleep(0.05)
+        return True
 
     def _distance_to_angle(self, distance):
         distance = np.clip(distance, 0, self._max_gap)
-        angle = (self._max_gap - distance) * np.deg2rad(46) / self._max_gap
+        angle = (self._max_gap - distance) * self._max_angle / self._max_gap
         return angle
 
     def _angle_to_distance(self, angle):
-        angle = np.clip(angle, 0, np.deg2rad(46))
-        distance = (np.deg2rad(46) - angle) * self._max_gap / np.deg2rad(46)
+        angle = np.clip(angle, 0, self._max_angle)
+        distance = (self._max_angle - angle) * self._max_gap / self._max_angle
         return distance
 
     def get_result(self):
@@ -117,8 +159,8 @@ class GripperController(object):
         res = self.attach_srv.call(req)
         return res.ok
 
-    def open(self):
-        self.command(1.0, percentage=True)
+    def open(self, wait=True):
+        return self.command(1.0, percentage=True, wait=wait)
 
     def release(self, link_name):
         parent = self.attach_link.rsplit('::')
@@ -154,26 +196,21 @@ class GripperController(object):
         @type  msg: sensor_msgs/JointState
         @param msg: The JointState message published by the RT hardware interface.
         """
-        valid_joint_names = []
-        if self.gripper_type == "hand-e":
-            valid_joint_names = ['hande_right_finger_joint']
-        elif self.gripper_type == "85":
-            valid_joint_names = ['robotiq_85_left_knuckle_joint']
-        else:
-            return
 
         position = []
         velocity = []
         effort = []
         name = []
-        for joint_name in valid_joint_names:
+
+        for joint_name in self.valid_joint_names:
             if joint_name in msg.name:
                 idx = msg.name.index(joint_name)
                 name.append(msg.name[idx])
                 effort.append(msg.effort[idx])
                 velocity.append(msg.velocity[idx])
                 position.append(msg.position[idx])
-        if set(name) == set(valid_joint_names):
+
+        if set(name) == set(self.valid_joint_names):
             self._current_jnt_positions = np.array(position)
             self._current_jnt_velocities = np.array(velocity)
             self._current_jnt_efforts = np.array(effort)
@@ -185,7 +222,7 @@ class JointControllerBase(object):
     Base class for the Joint Position Controllers. It subscribes to the C{joint_states} topic by default.
     """
 
-    def __init__(self, namespace, timeout):
+    def __init__(self, namespace, timeout, joint_names=None):
         """
         JointControllerBase constructor. It subscribes to the C{joint_states} topic and informs after 
         successfully reading a message from the topic.
@@ -195,20 +232,29 @@ class JointControllerBase(object):
         @param timeout: Time in seconds that will wait for the controller
         from the same node.
         """
+        self.valid_joint_names = constants.JOINT_ORDER if joint_names is None else joint_names
+
         self.ns = utils.solve_namespace(namespace)
         self._jnt_positions_hist = collections.deque(maxlen=24)
         # Set-up publishers/subscribers
-        self._js_sub = rospy.Subscriber('%sjoint_states' % self.ns, JointState, self.joint_states_cb, queue_size=1)
+        self._js_sub = rospy.Subscriber('joint_states', JointState, self.joint_states_cb, queue_size=1)
+        retry = False
         rospy.logdebug('Waiting for [%sjoint_states] topic' % self.ns)
         start_time = rospy.get_time()
         while not hasattr(self, '_joint_names'):
-            if (rospy.get_time() - start_time) > timeout:
+            if (rospy.get_time() - start_time) > timeout and not retry:
+                # Re-try with namespace
+                self._js_sub = rospy.Subscriber('%sjoint_states' % self.ns, JointState, self.joint_states_cb, queue_size=1)
+                start_time = rospy.get_time()
+                retry = True
+                continue
+            elif (rospy.get_time() - start_time) > timeout and retry:
                 rospy.logerr('Timed out waiting for joint_states topic')
                 return
             rospy.sleep(0.01)
             if rospy.is_shutdown():
                 return
-        self.rate = utils.read_parameter('{0}joint_state_controller/publish_rate'.format(self.ns), 125)
+        self.rate = utils.read_parameter('{0}joint_state_controller/publish_rate'.format(self.ns), 500)
         self._num_joints = len(self._joint_names)
         rospy.logdebug('Topic [%sjoint_states] found' % self.ns)
 
@@ -256,19 +302,20 @@ class JointControllerBase(object):
         @type  msg: sensor_msgs/JointState
         @param msg: The JointState message published by the RT hardware interface.
         """
-        valid_joint_names = ['shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_joint', 'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint']
         position = []
         velocity = []
         effort = []
         name = []
-        for joint_name in valid_joint_names:
+        for joint_name in self.valid_joint_names:
             if joint_name in msg.name:
                 idx = msg.name.index(joint_name)
                 name.append(msg.name[idx])
-                effort.append(msg.effort[idx])
-                velocity.append(msg.velocity[idx])
+                if msg.effort:
+                    effort.append(msg.effort[idx])
+                if msg.velocity:
+                    velocity.append(msg.velocity[idx])
                 position.append(msg.position[idx])
-        if set(name) == set(valid_joint_names):
+        if set(name) == set(self.valid_joint_names):
             self._current_jnt_positions = np.array(position)
             self._jnt_positions_hist.append(self._current_jnt_positions)
             self._current_jnt_velocities = np.array(velocity)
@@ -283,7 +330,7 @@ class JointPositionController(JointControllerBase):
     it will move at its maximum speed/acceleration and will even move the base of the robot, so, B{use with caution}.
     """
 
-    def __init__(self, namespace='', timeout=5.0):
+    def __init__(self, namespace='', timeout=5.0, joint_names=None):
         """
         C{JointPositionController} constructor. It creates the required publishers for controlling 
         the UR robot. Given that it inherits from C{JointControllerBase} it subscribes 
@@ -294,7 +341,7 @@ class JointPositionController(JointControllerBase):
         @type  timeout: float
         @param timeout: Time in seconds that will wait for the controller
         """
-        super(JointPositionController, self).__init__(namespace, timeout=timeout)
+        super(JointPositionController, self).__init__(namespace, timeout=timeout, joint_names=joint_names)
         if not hasattr(self, '_joint_names'):
             raise rospy.ROSException('JointPositionController timed out waiting joint_states topic: {0}'.format(namespace))
         self._cmd_pub = dict()
@@ -306,7 +353,7 @@ class JointPositionController(JointControllerBase):
         rospy.logdebug('Waiting for the joint position controllers...')
         rospy.wait_for_service(controller_list_srv, timeout=timeout)
         list_controllers = rospy.ServiceProxy(controller_list_srv, ListControllers)
-        expected_controllers = (['shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_joint', 'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint'])
+        expected_controllers = (joint_names if joint_names is not None else constants.JOINT_ORDER)
         start_time = rospy.get_time()
         while not rospy.is_shutdown():
             if (rospy.get_time() - start_time) > timeout:
@@ -373,7 +420,7 @@ class JointTrajectoryController(JointControllerBase):
         the acceleration level.
     """
 
-    def __init__(self, publisher_name='arm_controller', namespace='', timeout=5.0):
+    def __init__(self, publisher_name='arm_controller', namespace='', timeout=5.0, joint_names=None):
         """
         JointTrajectoryController constructor. It creates the C{SimpleActionClient}.
         @type namespace: string
@@ -382,11 +429,14 @@ class JointTrajectoryController(JointControllerBase):
         @type  timeout: float
         @param timeout: Time in seconds that will wait for the controller
         """
-        super(JointTrajectoryController, self).__init__(namespace, timeout=timeout)
+        super(JointTrajectoryController, self).__init__(namespace, timeout=timeout, joint_names=joint_names)
         action_server = self.ns + publisher_name + '/follow_joint_trajectory'
         self._client = actionlib.SimpleActionClient(action_server, FollowJointTrajectoryAction)
         self._goal = FollowJointTrajectoryGoal()
         rospy.logdebug('Waiting for [%s] action server' % action_server)
+        topics = [item for sublist in rospy.get_published_topics() for item in sublist]
+        if action_server+"/goal" not in topics:
+            raise rospy.ROSException("Action server not found")
         server_up = self._client.wait_for_server(timeout=rospy.Duration(timeout))
         if not server_up:
             rospy.logerr('Timed out waiting for Joint Trajectory'
@@ -529,7 +579,7 @@ class FTsensor(object):
             rospy.logerr('Timed out waiting for {0} topic'.format(ns))
             return
         rospy.loginfo('FTSensor successfully initialized')
-        rospy.sleep(0.5)
+        rospy.sleep(1.0)
 
     def add_wrench_observation(self, wrench):
         self.wrench_queue.append(np.array(wrench))
@@ -541,7 +591,6 @@ class FTsensor(object):
     # function to filter out high frequency signal
     def get_filtered_wrench(self, hist_size=1):
         if len(self.wrench_queue) < self.wrench_window:
-            print("why???",len(self.wrench_queue))
             return None
         wrench_filtered = self.wrench_filter(np.array(self.wrench_queue))
         if hist_size == 1:

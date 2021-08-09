@@ -1,15 +1,22 @@
 #! /usr/bin/env python
 
 import numpy as np
-import ur_control.transformations as tr
+
+from ur_control import transformations as tr
+
 from ur_control import spalg
 # Messages
-from geometry_msgs.msg import (Point, Quaternion, Pose, Vector3, Transform,
+from geometry_msgs.msg import (Point, Quaternion, Pose, PoseStamped, Vector3, Transform,
                                Wrench)
 from sensor_msgs.msg import CameraInfo, Image, RegionOfInterest
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+from math import pi, cos, sin
+
 import pyquaternion
+
 # OpenRAVE types <--> Numpy types
+
+
 def from_dict(transform_dict):
     """
   Converts a dictionary with the fields C{rotation} and C{translation}
@@ -73,6 +80,17 @@ def from_pose(msg):
     T = tr.quaternion_matrix(from_quaternion(msg.orientation))
     T[:3, 3] = from_point(msg.position)
     return T
+
+
+def from_pose_to_list(msg):
+    """
+  Converts a C{geometry_msgs/Pose} ROS message into a numpy array (7 elements, xyz+xyzw).
+  @type  msg: geometry_msgs/Pose
+  @param msg: The ROS message to be converted
+  @rtype: np.array
+  @return: The resulting numpy array
+  """
+    return np.concatenate([from_point(msg.position), from_quaternion(msg.orientation)])
 
 
 def from_quaternion(msg):
@@ -160,21 +178,17 @@ def to_pose(T):
   @rtype: geometry_msgs/Pose
   @return: The resulting ROS message
   """
-    pos = Point(*T[:3, 3])
-    quat = Quaternion(*tr.quaternion_from_matrix(T))
+    if len(T) == 6:
+        pos = Point(*T[:3])
+        quat = Quaternion(*tr.quaternion_from_euler(*T[3:]))
+    elif len(T) == 7:
+        pos = Point(*T[:3])
+        quat = to_quaternion(T[3:])
+    else:
+        pos = Point(*T[:3, 3])
+        quat = Quaternion(*tr.quaternion_from_matrix(T))
     return Pose(pos, quat)
 
-def to_pose_msg(pose):
-    """
-  Converts a 1x7 list into a C{geometry_msgs/Pose} ROS message.
-  @type  pose: np.array
-  @param pose: position, quaternion
-  @rtype: geometry_msgs/Pose
-  @return: The resulting ROS message
-  """
-    pos = Point(*pose[:3])
-    quat = to_quaternion(pose[3:])
-    return Pose(pos, quat)
 
 def to_roi(top_left, bottom_right):
     msg = RegionOfInterest()
@@ -194,8 +208,12 @@ def to_transform(T):
   @rtype: geometry_msgs/Transform
   @return: The resulting ROS message
   """
-    translation = Vector3(*T[:3, 3])
-    rotation = Quaternion(*tr.quaternion_from_matrix(T))
+    if len(T) == 7:
+        translation = Vector3(*T[:3])
+        rotation = to_quaternion(T[3:])
+    else:
+        translation = Vector3(*T[:3, 3])
+        rotation = Quaternion(*tr.quaternion_from_matrix(T))
     return Transform(translation, rotation)
 
 
@@ -273,7 +291,8 @@ def euler_transformation_matrix(euler):
                   [0, np.sin(r), np.cos(r) * np.cos(p)]])
     return T
 
-def transform_end_effector(pose, extra_pose, rot_type='quaternion'):
+
+def transform_end_effector(pose, extra_pose, rot_type='quaternion', inverse=False):
     """
     Transform end effector pose
       pose: current pose [x, y, z, ax, ay, az, w]
@@ -285,19 +304,88 @@ def transform_end_effector(pose, extra_pose, rot_type='quaternion'):
     extra_rot = tr.vector_to_pyquaternion(extra_pose[3:]).rotation_matrix
 
     c_trans = np.array(pose[:3]).reshape(3, 1)
-    c_rot = tr.vector_to_pyquaternion(pose[3:]).rotation_matrix  
+    c_rot = tr.vector_to_pyquaternion(pose[3:]).rotation_matrix
     # BE CAREFUL!! Pose from KDL is ax ay az aw
     #              Pose from IKfast is aw ax ay az
 
-    n_trans = np.matmul(c_rot, extra_translation) + c_trans
     n_rot = np.matmul(c_rot, extra_rot)
 
-    if rot_type=='matrix':
+    if inverse:
+        n_trans = np.matmul(n_rot, extra_translation) + c_trans
+    else:
+        n_trans = np.matmul(c_rot, extra_translation) + c_trans
+
+    if rot_type == 'matrix':
         return n_trans.flatten(), n_rot
-    
+
     quat_rot = np.roll(pyquaternion.Quaternion(matrix=n_rot).normalised.elements, -1)
-    if rot_type=='euler':
-      euler = np.array(tr.euler_from_quaternion(quat_rot, axes='rxyz'))
-      return np.concatenate((n_trans.flatten(), euler))
+    if rot_type == 'euler':
+        euler = np.array(tr.euler_from_quaternion(quat_rot, axes='rxyz'))
+        return np.concatenate((n_trans.flatten(), euler))
     elif rot_type == 'quaternion':
-      return np.concatenate((n_trans.flatten(), quat_rot))
+        return np.concatenate((n_trans.flatten(), quat_rot))
+
+
+def inverse_transformation(pose, transform):
+    inv_ee_transform = np.copy(transform)
+    inv_ee_transform[:3] *= -1
+    inv_ee_transform[3:] = tr.quaternion_inverse(transform[3:])
+
+    return np.array(transform_end_effector(pose, inv_ee_transform, inverse=True))
+
+
+def to_float(val):
+    if isinstance(val, float):
+        return val
+    elif isinstance(val, str):
+        return (float(eval(val)))
+    elif isinstance(val, list):
+        return [to_float(o) for o in val]
+    else:
+        return (float(val))
+
+
+def to_pose_stamped(frame_id, pose):
+    ps = PoseStamped()
+    ps.header.frame_id = frame_id
+    ps.pose = to_pose(pose)
+    return ps
+
+
+def transform_pose(target_frame, transform_matrix, ps):
+    # def transformPose(self, target_frame, ps):
+    """
+    :param target_frame: the tf target frame, a string
+    :param ps: the geometry_msgs.msg.PoseStamped message
+    :return: new geometry_msgs.msg.PoseStamped message, in frame target_frame
+    :raises: any of the exceptions that :meth:`~tf.Transformer.lookupTransform` can raise
+
+    Transforms a geometry_msgs PoseStamped message to frame target_frame, returns a new PoseStamped message.
+    """
+    # mat44 is frame-to-frame transform as a 4x4
+    mat44 = transform_matrix
+
+    # pose44 is the given pose as a 4x4
+    pose44 = np.dot(xyz_to_mat44(ps.pose.position), xyzw_to_mat44(ps.pose.orientation))
+
+    # txpose is the new pose in target_frame as a 4x4
+    txpose = np.dot(mat44, pose44)
+
+    # xyz and quat are txpose's position and orientation
+    xyz = tuple(tr.translation_from_matrix(txpose))[:3]
+    quat = tuple(tr.quaternion_from_matrix(txpose))
+
+    # assemble return value PoseStamped
+    r = PoseStamped()
+    r.header.stamp = ps.header.stamp
+    r.header.frame_id = target_frame
+    r.pose = Pose(Point(*xyz), Quaternion(*quat))
+    return r
+
+
+def xyz_to_mat44(pos):
+    return tr.translation_matrix((pos.x, pos.y, pos.z))
+
+
+def xyzw_to_mat44(ori):
+    return tr.quaternion_matrix((ori.x, ori.y, ori.z, ori.w))

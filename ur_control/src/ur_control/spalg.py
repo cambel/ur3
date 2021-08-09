@@ -498,6 +498,7 @@ def quaternions_orientation_error(Qd, Qc):
         q2 = tr.vector_to_pyquaternion(Qc)
         return quaternions_orientation_error(q1, q2)
 
+
 def translation_rotation_error(to_pose, from_pose):
     position_error = to_pose[:3] - from_pose[:3]
     orientation_error = quaternions_orientation_error(to_pose[3:], from_pose[3:])
@@ -505,7 +506,7 @@ def translation_rotation_error(to_pose, from_pose):
 
 
 def convert_wrench(wrench_force, pose):
-    ee_transform = tr.vector_to_pyquaternion(pose[3:]).transformation_matrix
+    ee_transform = tr.pose_to_transform(pose)
 
     # # # Wrench force transformation
     wFtS = force_frame_transform(ee_transform)
@@ -513,18 +514,20 @@ def convert_wrench(wrench_force, pose):
 
     return wrench
 
-def face_towards(target_position, current_position, up_vector=[0, 0, 1]):
+
+def face_towards(target_position, current_pose, up_vector=[0, 0, 1]):
     """
         Compute orientation to "face towards" a point in space 
         given the current position and the initial vector representing "up"
         default is z as is the outward direction from the end-effector
     """
-    direction = tr.unit_vector(target_position-current_position)
+    cposition = current_pose[:3]
+    direction = tr.unit_vector(target_position-cposition)
 
     cmd_rot = look_rotation(direction, up=up_vector)
     target_quat = tr.vector_from_pyquaternion(cmd_rot)
 
-    return np.concatenate([current_position, target_quat])
+    return np.concatenate([cposition, target_quat])
 
 
 def look_rotation(forward, up=[0, 0, 1]):
@@ -582,16 +585,22 @@ def look_rotation(forward, up=[0, 0, 1]):
     return quaternion
 
 
-def angle_between(v1, v2):
-    """ Returns the angle in radians between vectors 'v1' and 'v2'::
+def jump_threshold(trajectory, dt, threshold):
+    traj = np.copy(trajectory)
+    speed = np.abs((traj - np.roll(traj, -1)) / dt)
+    speed[-1] = 0.0  # ignore last point
 
-            >>> angle_between((1, 0, 0), (0, 1, 0))
-            1.5707963267948966
-            >>> angle_between((1, 0, 0), (1, 0, 0))
-            0.0
-            >>> angle_between((1, 0, 0), (-1, 0, 0))
-            3.141592653589793
-    """
-    v1_u = unit_vector(v1)
-    v2_u = unit_vector(v2)
-    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+    mean = np.mean(speed[:-1], 0)
+    std = np.std(speed[:-1], 0)
+
+    # print("mean:", np.round(mean, 2))
+    # print("std:", np.round(std, 2))
+    for i, s in enumerate(speed[:-1]):
+        if np.any(s > mean + threshold*std):
+            # print("### spike:", i, np.round(s-mean,2))
+            # TODO(cambel): fix for cases where spikes are consecutive 
+            traj[i] = (traj[i-1] + traj[i+1]) / 2.0
+        # else:
+        #     print("usual:", i, np.round(s-mean,2))
+
+    return traj
