@@ -116,14 +116,12 @@ class Arm(object):
 
         if self.ik_solver == IKFAST:
             # IKfast libraries
-            if self._robot_urdf == 'ur3_robot':
-                self.arm_ikfast = ur_ikfast.URKinematics('ur3')
-            elif self._robot_urdf == 'ur3e_robot':
-                self.arm_ikfast = ur_ikfast.URKinematics('ur3e')
-            else:
-                rospy.logerr("IK solver set to IKFAST but no ikfast found for: %s. Switching to TRAC_IK")
+            try:
+                self.arm_ikfast = ur_ikfast.URKinematics(self._robot_urdf)
+            except Exception:
+                rospy.logerr("IK solver set to IKFAST but no ikfast found for: %s. Switching to TRAC_IK" % self._robot_urdf)
                 self.ik_solver == TRAC_IK
-                return self._init_ik_solver()
+                return self._init_ik_solver(base_link, ee_link)
         elif self.ik_solver == TRAC_IK:
             try:
                 if not rospy.has_param("robot_description"):
