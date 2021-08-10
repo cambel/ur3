@@ -1,10 +1,10 @@
-Universal Robot UR3/UR3e
+Universal Robot UR/URe
 ===
 <img src="https://github.com/cambel/ur3/blob/master/wiki/ur3e.gif?raw=true" alt="UR3e & Robotiq Hand-e" width="250"><img src="https://github.com/cambel/ur3/blob/master/wiki/ur3.gif?raw=true" alt="UR3 & Robotiq 85" width="250">
 
 
 Custom ROS packages for the UR3 Robot with a gripper Robotiq 85 and the UR3e robot with a gripper Robotiq Hand-e. 
-Tested on ROS Noetic Ubuntu 20.04 with Python 3.6.
+Tested on ROS Melodic Ubuntu 18.04 with Python 3.6.
 
 ## Installation 
 
@@ -28,11 +28,11 @@ You can then use the sliders to change the joint values and the gripper values.
 
 To simulate the robot launch the following:
   ```
-  $ roslaunch ur3_gazebo ur3_cubes.launch grasp_plugin:=1
+  $ roslaunch ur3_gazebo ur_cubes.launch ur_robot:=ur3 grasp_plugin:=1
   ```
 or using ur3e:
   ```
-  $ roslaunch ur3_gazebo ur3e_cubes.launch grasp_plugin:=1
+  $ roslaunch ur3_gazebo ur_e_cubes.launch ur_robot:=ur3e grasp_plugin:=1
   ```
 
 By default the simulation starts paused. Unpause the simulation. You can then send commands to the
@@ -60,9 +60,9 @@ To have access to the gripper controller include the option `--gripper`
 Another option of easy control is using `rqt`
 
 ## MoveIt
-To test the MoveIt configuration with the UR3/UR3e start one of the gazebo environments, such as:
+To test the MoveIt configuration with any UR/URe robot, start one of the gazebo environments, such as:
 ```
-roslaunch ur3_gazebo ur3e_cubes.launch
+roslaunch ur3_gazebo ur_e_cubes.launch ur_robot:=ur3e
 ```
 
 Then load the MoveIt configuration
