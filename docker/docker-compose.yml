@@ -1,0 +1,41 @@
+version: "2.4"
+
+################################################################################
+
+services:
+  ros_ur3:
+    hostname: ros_ur3
+    runtime: ${DOCKER_RUNTIME}
+    privileged: true
+    environment:
+      # Pass host user information.
+      - HOST_USER=${USER}
+      - HOST_UID=1000
+      - HOST_GID=1000
+      # Display X Server GUI.
+      - DISPLAY
+      - QT_X11_NO_MITSHM=1
+      # Configure Nvidia Docker interface.
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - NVIDIA_REQUIRE_CUDA=cuda>=9.0
+      - DOCKER_RUNTIME=${DOCKER_RUNTIME}
+    image: ros-ur3:melodic
+    tty: true
+    build:
+      context: ../
+      dockerfile: ./docker/Dockerfile
+      args:
+        - DOCKERFILE_COMMIT_SHORT_SHA
+    volumes:
+      # Map ROS workspace folders.
+      - ../:/root/ros_ws/src/ros_ur3
+      # Grant display access to X Server.
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      # Grant bus access to FlexBE App.
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+      # Grant access to serial usb ports for u2d2
+      - /dev/:/dev/
+    network_mode: host
+    command: tail -f /dev/null
+

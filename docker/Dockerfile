@@ -94,7 +94,7 @@ RUN apt-get update && apt-get install -q -y \
     libgazebo9-dev \
     && rm -rf /var/lib/apt/lists/*
 
-ADD orocos_kinematics_dynamics /root/orocos_kinematics_dynamics
+ADD orocos_kinematics_dynamics.tar.xz /root/
 
 # Install SIP 4.19.8
 ADD sip-4.19.8.tar.gz /root/
@@ -196,10 +196,6 @@ RUN apt-get update && apt-get install -y \
     ros-melodic-moveit-python \
     ros-melodic-moveit-resources \
     && rm -rf /var/lib/apt/lists/*
-
-# Fix the MoveIt Rviz controllers *use ur3e_load_moveit_planner.launch on ur3_gripper_moveit_config pkg*
-ADD ur3e_move_group.launch /root/ros_ws/src/universal_robot/ur3_e_moveit_config/launch/move_group.launch
-ADD ur3_e_moveit_execution.launch /root/ros_ws/src/universal_robot/ur3_e_moveit_config/launch/ur3_e_moveit_planning_execution.launch
 
 # Workaround for python3 + tf2
 RUN pip install --extra-index-url https://rospypi.github.io/simple/ tf2_ros --ignore-installed
