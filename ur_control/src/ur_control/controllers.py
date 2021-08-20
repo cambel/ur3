@@ -17,8 +17,10 @@ from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryG
 # Gripper action
 from control_msgs.msg import GripperCommandAction, GripperCommandGoal
 # Link attacher
-# from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
-
+try:
+    from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
+except:
+    print('grasp plugin not found!!')
 
 class GripperController(object):
     def __init__(self, namespace='', prefix=None, timeout=5.0, attach_link='robot::wrist_3_link'):
@@ -68,16 +70,19 @@ class GripperController(object):
             if rospy.is_shutdown():
                 return
 
-        attach_plugin = rospy.get_param("grasp_plugin", default=False)
-        if attach_plugin:
-            # gazebo_ros link attacher
-            self.attach_link = attach_link
-            self.attach_srv = rospy.ServiceProxy('/link_attacher_node/attach', Attach)
-            self.detach_srv = rospy.ServiceProxy('/link_attacher_node/detach', Attach)
-            rospy.logdebug('Waiting for service: {0}'.format(self.attach_srv.resolved_name))
-            rospy.logdebug('Waiting for service: {0}'.format(self.detach_srv.resolved_name))
-            self.attach_srv.wait_for_service()
-            self.detach_srv.wait_for_service()
+        try:
+            attach_plugin = rospy.get_param("grasp_plugin", default=False)
+            if attach_plugin:
+                # gazebo_ros link attacher
+                self.attach_link = attach_link
+                self.attach_srv = rospy.ServiceProxy('/link_attacher_node/attach', Attach)
+                self.detach_srv = rospy.ServiceProxy('/link_attacher_node/detach', Attach)
+                rospy.logdebug('Waiting for service: {0}'.format(self.attach_srv.resolved_name))
+                rospy.logdebug('Waiting for service: {0}'.format(self.detach_srv.resolved_name))
+                self.attach_srv.wait_for_service(2.0)
+                self.detach_srv.wait_for_service(2.0)
+        except:
+            rospy.logerr("Fail to load grasp plugin")
 
         # Gripper action server
         action_server = self.ns + node_name + '/gripper_cmd'
