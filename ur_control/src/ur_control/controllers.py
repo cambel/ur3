@@ -133,7 +133,7 @@ class GripperController(object):
         if wait:
             self._client.send_goal_and_wait(self._goal, execute_timeout=rospy.Duration(2))
         else:
-            self._client.send_goal(self.goal)
+            self._client.send_goal(self._goal)
         rospy.sleep(0.05)
         return True
 
@@ -164,7 +164,9 @@ class GripperController(object):
         res = self.attach_srv.call(req)
         return res.ok
 
-    def open(self, wait=True):
+    def open(self, opening_width=None, wait=True):
+        if opening_width:
+            return self.command(opening_width, percentage=False, wait=wait)
         return self.command(1.0, percentage=True, wait=wait)
 
     def release(self, link_name):
