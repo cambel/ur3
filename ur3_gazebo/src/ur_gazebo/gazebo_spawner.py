@@ -31,6 +31,11 @@ class GazeboModels:
         self._pub_model_state = rospy.Publisher('/gazebo/set_model_state',
                                                 ModelState, queue_size=10)
         rospy.Subscriber("/gazebo/model_states", ModelStates, self._gazebo_callback)
+        self.spawn_sdf = rospy.ServiceProxy('/gazebo/spawn_sdf_model', SpawnModel)
+        self.spawn_urdf = rospy.ServiceProxy('/gazebo/spawn_urdf_model', SpawnModel)
+        rospy.wait_for_service('/gazebo/spawn_sdf_model')
+        rospy.wait_for_service('/gazebo/spawn_urdf_model')
+
         rospy.sleep(0.5)
         delete_gazebo_models(self.loaded_models)
         rospy.sleep(1.0)
@@ -83,11 +88,9 @@ class GazeboModels:
 
     def load_urdf_model(self, model):
         # Spawn Block URDF
-        rospy.wait_for_service('/gazebo/spawn_urdf_model')
         try:
             m_id = model.model_id if model.model_id is not None else model.name
-            spawn_urdf = rospy.ServiceProxy('/gazebo/spawn_urdf_model', SpawnModel)
-            spawn_urdf(m_id+"_tmp", self.load_xml(model.name, filetype="urdf"), "/",
+            self.spawn_urdf(m_id+"_tmp", self.load_xml(model.name, filetype="urdf"), "/",
                        model.pose, model.reference_frame)
         except IOError:
             self.load_sdf_model(model)
@@ -96,15 +99,14 @@ class GazeboModels:
 
     def load_sdf_model(self, model):
         # Spawn model SDF
-        rospy.wait_for_service('/gazebo/spawn_sdf_model')
+        print("???s",model.pose, model.name, model.model_id, model.reference_frame)
         try:
-            spawn_sdf = rospy.ServiceProxy('/gazebo/spawn_sdf_model', SpawnModel)
             m_id = model.model_id if model.model_id is not None else model.name
             if model.string_model is None:
-                spawn_sdf(m_id+"_tmp", self.load_xml(model.name), "/",
+                self.spawn_sdf(m_id+"_tmp", self.load_xml(model.name), "/",
                           model.pose, model.reference_frame)
             else:
-                spawn_sdf(m_id+"_tmp", model.string_model, "/",
+                self.spawn_sdf(m_id+"_tmp", model.string_model, "/",
                           model.pose, model.reference_frame)
         except rospy.ServiceException as e:
             rospy.logerr("Spawn SDF service call failed: {0}".format(e))
