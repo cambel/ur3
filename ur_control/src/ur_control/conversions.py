@@ -97,7 +97,7 @@ def from_quaternion(msg):
   @rtype: np.array
   @return: The resulting numpy array
   """
-    return np.array([msg.x, msg.y, msg.z, msg.w])
+    return np.array([msg.x, msg.y, msg.z, msg.w], dtype=float)
 
 
 def from_roi(msg):
@@ -127,7 +127,7 @@ def from_vector3(msg):
   @rtype: np.array
   @return: The resulting numpy array
   """
-    return np.array([msg.x, msg.y, msg.z])
+    return np.array([msg.x, msg.y, msg.z], dtype=float)
 
 
 def from_wrench(msg):
@@ -174,6 +174,7 @@ def to_pose(T):
   @rtype: geometry_msgs/Pose
   @return: The resulting ROS message
   """
+    T = np.array(T, dtype=float)
     if len(T) == 6:
         pos = Point(*T[:3])
         quat = Quaternion(*tr.quaternion_from_euler(*T[3:]))
