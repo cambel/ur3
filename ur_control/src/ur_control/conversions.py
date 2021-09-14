@@ -15,8 +15,6 @@ from math import pi, cos, sin
 import pyquaternion
 
 # OpenRAVE types <--> Numpy types
-
-
 def from_dict(transform_dict):
     """
   Converts a dictionary with the fields C{rotation} and C{translation}
@@ -81,7 +79,6 @@ def from_pose(msg):
     T[:3, 3] = from_point(msg.position)
     return T
 
-
 def from_pose_to_list(msg):
     """
   Converts a C{geometry_msgs/Pose} ROS message into a numpy array (7 elements, xyz+xyzw).
@@ -92,7 +89,6 @@ def from_pose_to_list(msg):
   """
     return np.concatenate([from_point(msg.position), from_quaternion(msg.orientation)])
 
-
 def from_quaternion(msg):
     """
   Converts a C{geometry_msgs/Quaternion} ROS message into a numpy array.
@@ -101,7 +97,7 @@ def from_quaternion(msg):
   @rtype: np.array
   @return: The resulting numpy array
   """
-    return np.array([msg.x, msg.y, msg.z, msg.w])
+    return np.array([msg.x, msg.y, msg.z, msg.w], dtype=float)
 
 
 def from_roi(msg):
@@ -131,7 +127,7 @@ def from_vector3(msg):
   @rtype: np.array
   @return: The resulting numpy array
   """
-    return np.array([msg.x, msg.y, msg.z])
+    return np.array([msg.x, msg.y, msg.z], dtype=float)
 
 
 def from_wrench(msg):
@@ -178,6 +174,7 @@ def to_pose(T):
   @rtype: geometry_msgs/Pose
   @return: The resulting ROS message
   """
+    T = np.array(T, dtype=float)
     if len(T) == 6:
         pos = Point(*T[:3])
         quat = Quaternion(*tr.quaternion_from_euler(*T[3:]))
@@ -291,7 +288,6 @@ def euler_transformation_matrix(euler):
                   [0, np.sin(r), np.cos(r) * np.cos(p)]])
     return T
 
-
 def transform_end_effector(pose, extra_pose, rot_type='quaternion', inverse=False):
     """
     Transform end effector pose
@@ -304,35 +300,33 @@ def transform_end_effector(pose, extra_pose, rot_type='quaternion', inverse=Fals
     extra_rot = tr.vector_to_pyquaternion(extra_pose[3:]).rotation_matrix
 
     c_trans = np.array(pose[:3]).reshape(3, 1)
-    c_rot = tr.vector_to_pyquaternion(pose[3:]).rotation_matrix
+    c_rot = tr.vector_to_pyquaternion(pose[3:]).rotation_matrix  
     # BE CAREFUL!! Pose from KDL is ax ay az aw
     #              Pose from IKfast is aw ax ay az
 
     n_rot = np.matmul(c_rot, extra_rot)
 
     if inverse:
-        n_trans = np.matmul(n_rot, extra_translation) + c_trans
+      n_trans = np.matmul(n_rot, extra_translation) + c_trans
     else:
-        n_trans = np.matmul(c_rot, extra_translation) + c_trans
+      n_trans = np.matmul(c_rot, extra_translation) + c_trans
 
-    if rot_type == 'matrix':
+    if rot_type=='matrix':
         return n_trans.flatten(), n_rot
-
+    
     quat_rot = np.roll(pyquaternion.Quaternion(matrix=n_rot).normalised.elements, -1)
-    if rot_type == 'euler':
-        euler = np.array(tr.euler_from_quaternion(quat_rot, axes='rxyz'))
-        return np.concatenate((n_trans.flatten(), euler))
+    if rot_type=='euler':
+      euler = np.array(tr.euler_from_quaternion(quat_rot, axes='rxyz'))
+      return np.concatenate((n_trans.flatten(), euler))
     elif rot_type == 'quaternion':
-        return np.concatenate((n_trans.flatten(), quat_rot))
-
+      return np.concatenate((n_trans.flatten(), quat_rot))
 
 def inverse_transformation(pose, transform):
     inv_ee_transform = np.copy(transform)
     inv_ee_transform[:3] *= -1
     inv_ee_transform[3:] = tr.quaternion_inverse(transform[3:])
-
+    
     return np.array(transform_end_effector(pose, inv_ee_transform, inverse=True))
-
 
 def to_float(val):
     if isinstance(val, float):
@@ -344,13 +338,11 @@ def to_float(val):
     else:
         return (float(val))
 
-
 def to_pose_stamped(frame_id, pose):
-    ps = PoseStamped()
-    ps.header.frame_id = frame_id
-    ps.pose = to_pose(pose)
-    return ps
-
+  ps = PoseStamped()
+  ps.header.frame_id = frame_id
+  ps.pose = to_pose(pose)
+  return ps
 
 def transform_pose(target_frame, transform_matrix, ps):
     # def transformPose(self, target_frame, ps):
@@ -382,10 +374,8 @@ def transform_pose(target_frame, transform_matrix, ps):
     r.pose = Pose(Point(*xyz), Quaternion(*quat))
     return r
 
-
 def xyz_to_mat44(pos):
     return tr.translation_matrix((pos.x, pos.y, pos.z))
-
 
 def xyzw_to_mat44(ori):
     return tr.quaternion_matrix((ori.x, ori.y, ori.z, ori.w))

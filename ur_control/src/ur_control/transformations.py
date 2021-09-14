@@ -1743,7 +1743,6 @@ def pose_euler_to_quaternion(pose, delta, ee_rotation=False, axes='rxyz'):
 
     return pose_cmd
 
-
 def pose_from_angular_velocity_euler(pose, velocity, dt=1.0):
     """
         Transform an action translation + euler [x, y, z, rx, ry, rz] into
@@ -1769,7 +1768,6 @@ def pose_from_angular_velocity_euler(pose, velocity, dt=1.0):
     pose_cmd[3:] = new_orientation
 
     return pose_cmd
-
 
 def pose_from_angular_velocity(pose, velocity, dt=1.0, ee_rotation=False):
     """
@@ -1819,13 +1817,28 @@ def integrateUnitQuaternionEuler(q, w, dt):
     return (q + 0.5*qw*dt*q).normalised
 
 
+def pose_to_transform2(pose):
+    """
+    pose: translation + quaternion[x, y, z, w]
+
+    Note: the rest of this package use convention [x, y, z, w] but pyquaternion uses [w, x, y, z]
+    so we roll the quaternion before transform
+
+    """
+    translation = numpy.array([pose[:3]]).reshape(3, 1)
+    rotation = numpy.array(Quaternion(numpy.roll(pose[3:], 1)).rotation_matrix).reshape(3, 3)
+
+    transform = numpy.concatenate((rotation, translation), axis=1)
+    transform = numpy.concatenate((transform, [[0, 0, 0, 1]]))
+    return transform
+
 def pose_to_transform(pose):
     translation = numpy.array([pose[:3]])
     if len(pose[3:]) == 3:
         transform = euler_matrix(*pose[3:])
     else:
         transform = quaternion_matrix(pose[3:])
-    transform[:3, 3] = translation
+    transform[:3,3] = translation
     return transform
 
 
@@ -1850,14 +1863,11 @@ def vector_to_pyquaternion(vector):
 def vector_from_pyquaternion(quat):
     return numpy.roll(quat.elements, -1)
 
-
 def pose_quaternion_to_euler(pose):
     return numpy.concatenate([pose[:3], list(euler_from_quaternion(pose[3:], axes='rxyz'))])
 
-
 def pose_euler_to_quat(pose):
     return numpy.concatenate([pose[:3], list(quaternion_from_euler(*pose[3:], axes='rxyz'))])
-
 
 def diff_quaternion(q1, q2):
     return quaternion_multiply(q2, quaternion_inverse(q1))
