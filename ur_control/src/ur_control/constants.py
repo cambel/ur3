@@ -2,7 +2,6 @@ IKFAST = 'ikfast'
 TRAC_IK = 'trac_ik'
 
 JOINT_PUBLISHER_ROBOT = 'scaled_pos_joint_traj_controller'
-
 JOINT_SUBSCRIBER = '/arm_controller/state'
 JOINT_STATE_SUBSCRIBER = 'joint_states'
 FT_SUBSCRIBER = 'wrench'

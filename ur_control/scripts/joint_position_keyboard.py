@@ -17,6 +17,7 @@ import numpy as np
 np.set_printoptions(linewidth=np.inf)
 np.set_printoptions(suppress=True)
 
+
 def map_keyboard():
     def record_playback_sequence():
         filepath = "/root/o2ac-ur/catkin_ws/src/o2ac_routines/config/playback_sequences/shaft_move_to_taskboard.yaml"
@@ -66,9 +67,9 @@ def map_keyboard():
 
         x = arm.end_effector()
         delta = np.zeros(6)
-        
+
         n = 500
-        dt =  0.25/float(n)
+        dt = 0.25/float(n)
 
         if dim <= 2:  # position
             delta[dim] += delta_x * sign / 0.25
@@ -76,14 +77,19 @@ def map_keyboard():
             delta[dim] += delta_q * sign / 0.25
         
         for _ in range(n): 
+            x = transformations.pose_from_angular_veloticy(x, delta, dt=dt, ee_rotation=relative_ee)
+
+        for _ in range(n):
             x = transformations.pose_from_angular_velocity(x, delta, dt=dt, ee_rotation=relative_ee)
 
         arm.set_target_pose_flex(pose=x, t=0.25)
 
     def open_gripper():
         arm.gripper.open()
+
     def close_gripper():
         arm.gripper.close()
+
     def move_gripper(delta):
         cpose = arm.gripper.get_position()
         cpose += delta
@@ -95,7 +101,6 @@ def map_keyboard():
     delta_x = 0.005
 
     bindings = {
-        #'shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_joint', 'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint'
         #   key: (function, args, description)
         'z': (set_j, [0, 1], "shoulder_pan_joint increase"),
         'v': (set_j, [0, -1], "shoulder_pan_joint decrease"),
@@ -131,11 +136,10 @@ def map_keyboard():
         '7': (update_d, ['x', -0.0001], "delta_x decrease"),
 
         # Gripper
-        '5': (move_gripper, [0.002], "open a bit gripper"),
+        '5': (move_gripper, [0.002], "open gripper a bit"),
         't': (open_gripper, [], "open gripper"),
         'g': (close_gripper, [], "close gripper"),
         'b': (move_gripper, [-0.002], "close a bit gripper"),        
-        '4': (record_playback_sequence, [], "storing playback sequence point"),        
     }
     done = False
     print("Controlling joints. Press ? for help, Esc to quit.")
@@ -189,33 +193,22 @@ See help inside the example with the '?' key for key bindings.
     global relative_ee
     relative_ee = args.relative
 
-    ns = ''
-    joints_prefix = None
-    robot_urdf = "ur3e_robot"
-    rospackage = None
-    tcp_link = None
-    if args.namespace in ("b_bot", "a_bot"):
-        ns = args.namespace
-        joints_prefix = args.namespace + "_"
-        robot_urdf = args.namespace
-        rospackage = "o2ac_scene_description"
-        tcp_link='gripper_tip_link'
+    if args.robot:
+        driver = ROBOT_UR_RTDE_DRIVER
+    elif args.old:
+        driver = ROBOT_UR_MODERN_DRIVER
+    elif args.left:
+        driver = ROBOT_GAZEBO_DUAL_LEFT
+    elif args.right:
+        driver = ROBOT_GAZEBO_DUAL_RIGHT
     
     use_gripper = args.gripper  
 
-    # if args.namespace == "b_bot":
-    #     extra_ee = [0.0, 0.0, 0.173, 0.500, -0.500, 0.500, 0.500]
-    # elif args.namespace == "a_bot":
-    #     extra_ee = [0.0, 0.0, 0.246, 0.500, -0.500, 0.500, 0.500]
-    # else:
-    #     extra_ee = [0, 0, 0., 0, 0, 0, 1]
-    
+    extra_ee = [0, 0, 0.21, 0, 0, 0, 1]
+
     global arm
-    arm = Arm(ft_sensor=False,
-              gripper=use_gripper, namespace=ns, 
-              joint_names_prefix=joints_prefix, 
-              robot_urdf=robot_urdf, robot_urdf_package=rospackage,
-              ee_link=tcp_link)
+    arm = Arm(ft_sensor=False, driver=driver, ee_transform=extra_ee, gripper=use_gripper)
+    print("Extra ee", extra_ee)
 
     # print("Extra ee", extra_ee)
 

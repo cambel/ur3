@@ -11,7 +11,7 @@
 
   <!-- TF -->
   <node pkg="robot_state_publisher" type="robot_state_publisher" 
-        name="state_publisher"> 
+        name="robot_state_publisher"> 
     <param name="publish_frequency"  type="double" value="500" />
   </node>
 

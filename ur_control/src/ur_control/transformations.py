@@ -1835,7 +1835,7 @@ def pose_to_transform2(pose):
 def pose_to_transform(pose):
     translation = numpy.array([pose[:3]])
     if len(pose[3:]) == 3:
-        transform = euler_matrix(pose[3:])
+        transform = euler_matrix(*pose[3:])
     else:
         transform = quaternion_matrix(pose[3:])
     transform[:3,3] = translation

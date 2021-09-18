@@ -20,7 +20,7 @@ from control_msgs.msg import GripperCommandAction, GripperCommandGoal
 try:
     from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
 except:
-    print('grasp plugin not found!!')
+    print("Grasping pluging can't be loaded")
 
 class GripperController(object):
     def __init__(self, namespace='', prefix=None, timeout=5.0, attach_link='robot::wrist_3_link'):
@@ -111,7 +111,7 @@ class GripperController(object):
             return self.close()
         elif value == "open":
             return self.open()
-        
+
         if self.gripper_type == "85" or self.gripper_type == "140":
             if percentage:
                 value = np.clip(value, 0.0, 1.0)
@@ -164,6 +164,7 @@ class GripperController(object):
         res = self.attach_srv.call(req)
         return res.ok
 
+        return self.command(1.0, percentage=True, wait=wait)
     def open(self, opening_width=None, wait=True):
         if opening_width:
             return self.command(opening_width, percentage=False, wait=wait)
@@ -203,7 +204,7 @@ class GripperController(object):
         @type  msg: sensor_msgs/JointState
         @param msg: The JointState message published by the RT hardware interface.
         """
-        
+
         position = []
         velocity = []
         effort = []

@@ -2,7 +2,6 @@
 
 import argparse
 import rospy
-import numpy as np
 from ur_control.arm import Arm
 
 from ur_control.constants import ROBOT_GAZEBO, ROBOT_UR_RTDE_DRIVER

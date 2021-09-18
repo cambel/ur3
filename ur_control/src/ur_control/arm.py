@@ -1,3 +1,27 @@
+# The MIT License (MIT)
+#
+# Copyright (c) 2018, 2019 Cristian Beltran
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+# Author: Cristian Beltran
+
 import numpy as np
 from pyquaternion import Quaternion
 
@@ -30,7 +54,7 @@ class Arm(object):
 
     def __init__(self,
                  ft_sensor=False,
-                 robot_urdf='ur3e_robot',
+                 robot_urdf='ur3e',
                  robot_urdf_package=None,
                  ik_solver=TRAC_IK,
                  namespace='',
@@ -100,7 +124,7 @@ class Arm(object):
                                                     queue_size=10)
 
         self.joint_traj_controller = JointTrajectoryController(
-            publisher_name=traj_publisher, namespace=self.ns, joint_names=self.joint_names, timeout=2.0)
+            publisher_name=traj_publisher, namespace=self.ns, joint_names=self.joint_names, timeout=10.0)
 
         self.gripper = None
         if gripper:
@@ -116,14 +140,12 @@ class Arm(object):
 
         if self.ik_solver == IKFAST:
             # IKfast libraries
-            if self._robot_urdf == 'ur3_robot':
-                self.arm_ikfast = ur_ikfast.URKinematics('ur3')
-            elif self._robot_urdf == 'ur3e_robot':
-                self.arm_ikfast = ur_ikfast.URKinematics('ur3e')
-            else:
-                rospy.logerr("IK solver set to IKFAST but no ikfast found for: %s. Switching to TRAC_IK")
+            try:
+                self.arm_ikfast = ur_ikfast.URKinematics(self._robot_urdf)
+            except Exception:
+                rospy.logerr("IK solver set to IKFAST but no ikfast found for: %s. Switching to TRAC_IK" % self._robot_urdf)
                 self.ik_solver == TRAC_IK
-                return self._init_ik_solver()
+                return self._init_ik_solver(base_link, ee_link)
         elif self.ik_solver == TRAC_IK:
             try:
                 if not rospy.has_param("robot_description"):

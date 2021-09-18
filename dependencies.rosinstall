@@ -1,11 +1,11 @@
 - git:
     local-name: robotiq
     uri: https://github.com/cambel/robotiq.git
-    version: master
+    version: melodic-devel
 - git:  
     local-name: gazebo_ros_link_attacher
     uri: https://github.com/pal-robotics/gazebo_ros_link_attacher.git
-    version: master
+    version: melodic-devel
 - git:  
     local-name: robotiq_urcap_control
     uri: https://github.com/cambel/ros_robotiq_urcap_control.git

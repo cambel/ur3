@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
   <include file="$(find ur_gazebo)/launch/ur_cubes.launch">
-    <arg name="ur_robot" value="ur3"/>
+    <arg name="ur_robot" value="ur5"/>
   </include>
 </launch>
