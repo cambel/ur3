@@ -4,7 +4,7 @@ version: "2.4"
 
 services:
   ros_ur3:
-    hostname: ros_ur3
+    hostname: localhost
     runtime: ${DOCKER_RUNTIME}
     privileged: true
     environment:
