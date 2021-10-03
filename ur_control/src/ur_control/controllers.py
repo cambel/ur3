@@ -70,15 +70,17 @@ class GripperController(object):
 
         attach_plugin = rospy.get_param("grasp_plugin", default=False)
         if attach_plugin:
-            # gazebo_ros link attacher
-            self.attach_link = attach_link
-            self.attach_srv = rospy.ServiceProxy('/link_attacher_node/attach', Attach)
-            self.detach_srv = rospy.ServiceProxy('/link_attacher_node/detach', Attach)
-            rospy.logdebug('Waiting for service: {0}'.format(self.attach_srv.resolved_name))
-            rospy.logdebug('Waiting for service: {0}'.format(self.detach_srv.resolved_name))
-            self.attach_srv.wait_for_service()
-            self.detach_srv.wait_for_service()
-
+            try:
+                # gazebo_ros link attacher
+                self.attach_link = attach_link
+                self.attach_srv = rospy.ServiceProxy('/link_attacher_node/attach', Attach)
+                self.detach_srv = rospy.ServiceProxy('/link_attacher_node/detach', Attach)
+                rospy.logdebug('Waiting for service: {0}'.format(self.attach_srv.resolved_name))
+                rospy.logdebug('Waiting for service: {0}'.format(self.detach_srv.resolved_name))
+                self.attach_srv.wait_for_service()
+                self.detach_srv.wait_for_service()
+            except Exception:
+                rospy.logerr("Fail to load grasp plugin services. Make sure to launch the right Gazebo world!")
         # Gripper action server
         action_server = self.ns + node_name + '/gripper_cmd'
         self._client = actionlib.SimpleActionClient(action_server, GripperCommandAction)
