@@ -1,9 +1,11 @@
 <?xml version="1.0"?>
 <launch>
   <arg name="gui" default="True" />
-  
-  <param name="robot_description" command="$(find xacro)/xacro --inorder $(find ur_description)/urdf/ur3_joint_limited_robot.urdf.xacro" />
-  
+
+  <!-- <include file="$(find ur_description)/launch/load_ur3e.launch"/> -->
+  <!-- <include file="$(find ur_gazebo)/launch/inc/load_ur3e.launch.xml"/> -->
+  <include file="$(find ur3_gazebo)/launch/inc/load_ur.launch.xml"/>
+
   <param name="use_gui" value="$(arg gui)"/>
   <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
   

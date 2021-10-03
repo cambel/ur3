@@ -2,7 +2,7 @@
 <launch>
 
   <!--Parameter files -->
-  <arg name="ur_robot" default="ur3"/>
+  <arg name="ur_robot" default="ur3e"/>
   <arg name="grasp_plugin" default="false"/>
 
   <!--Common parameters -->
