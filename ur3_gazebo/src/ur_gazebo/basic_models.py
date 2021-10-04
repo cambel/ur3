@@ -13,7 +13,7 @@ SPHERE = '<?xml version="1.0" ?> \
         </geometry> \
         <material> \
           <script> \
-            <uri>file://media/materials/scripts/gazebo.material</uri> \
+            <uri>model://media/materials/scripts/gazebo.material</uri> \
             <name>Gazebo/%s</name> \
           </script> \
         </material> \
@@ -37,7 +37,7 @@ SPHERE_COLLISION = '<?xml version="1.0" ?> \
         </geometry> \
         <material> \
           <script> \
-            <uri>file://media/materials/scripts/gazebo.material</uri> \
+            <uri>model://media/materials/scripts/gazebo.material</uri> \
             <name>Gazebo/{}</name> \
           </script> \
         </material> \
@@ -106,7 +106,7 @@ BOX = '<?xml version="1.0" ?> \
         </geometry> \
         <material> \
           <script> \
-            <uri>file://media/materials/scripts/gazebo.material</uri> \
+            <uri>model://media/materials/scripts/gazebo.material</uri> \
             <name>Gazebo/%s</name> \
           </script> \
         </material> \

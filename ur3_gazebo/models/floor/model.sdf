@@ -32,7 +32,7 @@
         </geometry>
         <material>
           <script>
-            <uri>file://floor/materials/scripts/checkboard.material</uri>
+            <uri>model://floor/materials/scripts/checkboard.material</uri>
             <name>CheckerTexture</name>
           </script>
         </material>

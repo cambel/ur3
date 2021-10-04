@@ -30,7 +30,7 @@
         </geometry>
         <material>
           <script>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <uri>model://media/materials/scripts/gazebo.material</uri>
             <name>Gazebo/Red</name>
           </script>
         </material>

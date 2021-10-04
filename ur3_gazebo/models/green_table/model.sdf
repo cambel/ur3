@@ -26,7 +26,7 @@
         </geometry>
         <material>
           <script>
-            <uri>file://green_table/materials/scripts/repeated.material</uri>
+            <uri>model://green_table/materials/scripts/repeated.material</uri>
             <name>RepeatedTexture</name>
           </script>
         </material>
@@ -42,7 +42,7 @@
         </geometry>
         <material>
           <script>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <uri>model://media/materials/scripts/gazebo.material</uri>
             <name>Gazebo/Grey</name>
           </script>
         </material>
@@ -65,7 +65,7 @@
         </geometry>
         <material>
           <script>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <uri>model://media/materials/scripts/gazebo.material</uri>
             <name>Gazebo/Grey</name>
           </script>
         </material>
@@ -88,7 +88,7 @@
         </geometry>
         <material>
           <script>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <uri>model://media/materials/scripts/gazebo.material</uri>
             <name>Gazebo/Grey</name>
           </script>
         </material>
@@ -111,7 +111,7 @@
         </geometry>
         <material>
           <script>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <uri>model://media/materials/scripts/gazebo.material</uri>
             <name>Gazebo/Grey</name>
           </script>
         </material>
