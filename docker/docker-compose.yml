@@ -20,6 +20,8 @@ services:
       - NVIDIA_DRIVER_CAPABILITIES=all
       - NVIDIA_REQUIRE_CUDA=cuda>=9.0
       - DOCKER_RUNTIME=${DOCKER_RUNTIME}
+      # Needs to be explicitly define
+      - ROS_HOSTNAME=localhost
     image: ros-ur3:melodic
     tty: true
     build:
