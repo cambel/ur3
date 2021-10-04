@@ -14,29 +14,28 @@ Tested on ROS Melodic Ubuntu 18.04 with Python 3.6.
 
 ## Examples
 
-### Visualization of UR3 in RViz
+### Visualization of Universal Robot in RViz
 
 To visualize the model of the robot with a gripper, launch the following:
   ```
-  $ roslaunch ur3_description display_with_gripper.launch
+  $ roslaunch ur3_description display_with_gripper_hande.launch ur_robot:=ur5e
   ```
-You can then use the sliders to change the joint values and the gripper values.
+You can then use the sliders to change the joint values and the gripper values. 
+Change the value of ur_robot to any other valid robot (ur3e, ur5e, ...)
 
-### Simulation in Gazebo 7/9
+### Simulation in Gazebo 9
 <img src="https://github.com/cambel/ur3/blob/master/wiki/ur3-e.png?raw=true" width="500">
-<!-- ![ur3/ur3e gazebo simulator](https://github.com/cambel/ur3/blob/master/wiki/ur3-e.png?raw=true) -->
 
 To simulate the robot launch the following:
   ```
-  $ roslaunch ur3_gazebo ur_cubes.launch ur_robot:=ur3 grasp_plugin:=1
+  $ roslaunch ur3_gazebo ur_gripper_85_cubes.launch ur_robot:=ur3 grasp_plugin:=1
   ```
 or using ur3e:
   ```
-  $ roslaunch ur3_gazebo ur_e_cubes.launch ur_robot:=ur3e grasp_plugin:=1
+  $ roslaunch ur3_gazebo ur_gripper_hande_cubes.launch ur_robot:=ur3e grasp_plugin:=1
   ```
 
-By default the simulation starts paused. Unpause the simulation. You can then send commands to the
-joints or to the gripper.
+You can then send commands to the joints or to the gripper.
 
 An example of sending joints values to the robot can be executed as follows:
   ```
@@ -62,7 +61,7 @@ Another option of easy control is using `rqt`
 ## MoveIt
 To test the MoveIt configuration with any UR/URe robot, start one of the gazebo environments, such as:
 ```
-roslaunch ur3_gazebo ur_e_cubes.launch ur_robot:=ur3e
+roslaunch ur3_gazebo ur_gripper_hande_cubes.launch ur_robot:=ur3e grasp_plugin:=1
 ```
 
 Then load the MoveIt configuration
