@@ -6,7 +6,6 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /TF1
       Splitter Ratio: 0.5
     Tree Height: 425
   - Class: rviz/Selection
@@ -71,16 +70,33 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        base_link_inertia:
+          Value: true
+        ee_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        flange:
+        forearm_link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
-        forearm_link:
+          Value: true
+        hand_e_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        hande_left_finger:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        hande_right_finger:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        robotiq_coupler:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -99,6 +115,10 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
+        ur3_robotiq_hande_gripper:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
         world:
           Alpha: 1
           Show Axes: false
@@ -124,57 +144,6 @@ Visualization Manager:
       Update Interval: 0
       Value: true
       Visual Enabled: true
-    - Class: rviz/TF
-      Enabled: true
-      Frame Timeout: 15
-      Frames:
-        All Enabled: true
-        base:
-          Value: true
-        base_link:
-          Value: true
-        base_link_inertia:
-          Value: true
-        flange:
-          Value: true
-        forearm_link:
-          Value: true
-        shoulder_link:
-          Value: true
-        tool0:
-          Value: true
-        upper_arm_link:
-          Value: true
-        world:
-          Value: true
-        wrist_1_link:
-          Value: true
-        wrist_2_link:
-          Value: true
-        wrist_3_link:
-          Value: true
-      Marker Scale: 0.20000000298023224
-      Name: TF
-      Show Arrows: true
-      Show Axes: true
-      Show Names: true
-      Tree:
-        world:
-          base_link:
-            base:
-              {}
-            base_link_inertia:
-              shoulder_link:
-                upper_arm_link:
-                  forearm_link:
-                    wrist_1_link:
-                      wrist_2_link:
-                        wrist_3_link:
-                          flange:
-                            tool0:
-                              {}
-      Update Interval: 0
-      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -203,25 +172,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.0886789560317993
+      Distance: 1.4697394371032715
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.4410038888454437
-        Y: 0.2872985303401947
-        Z: 0.17643091082572937
+        X: -0.03250257670879364
+        Y: -0.014312098734080791
+        Z: 0.15210093557834625
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.25039801001548767
+      Pitch: 0.2603979706764221
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.6554002165794373
+      Yaw: 1.4803974628448486
     Saved: ~
 Window Geometry:
   Displays:

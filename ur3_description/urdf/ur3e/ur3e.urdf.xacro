@@ -19,12 +19,15 @@
   </xacro:macro>
 
   <xacro:macro name="ur3e_robot" params="prefix joint_limited
-     shoulder_pan_lower_limit:=${-pi}    shoulder_pan_upper_limit:=${pi}
-     shoulder_lift_lower_limit:=${-pi}    shoulder_lift_upper_limit:=${pi}
-     elbow_joint_lower_limit:=${-pi}    elbow_joint_upper_limit:=${pi}
-     wrist_1_lower_limit:=${-pi}    wrist_1_upper_limit:=${pi}
-     wrist_2_lower_limit:=${-pi}    wrist_2_upper_limit:=${pi}
-     wrist_3_lower_limit:=${-pi}    wrist_3_upper_limit:=${pi}">
+    shoulder_pan_lower_limit:=${-pi}    shoulder_pan_upper_limit:=${pi}
+    shoulder_lift_lower_limit:=${-pi}    shoulder_lift_upper_limit:=${pi}
+    elbow_joint_lower_limit:=${-pi}    elbow_joint_upper_limit:=${pi}
+    wrist_1_lower_limit:=${-pi}    wrist_1_upper_limit:=${pi}
+    wrist_2_lower_limit:=${-pi}    wrist_2_upper_limit:=${pi}
+    wrist_3_lower_limit:=${-pi}    wrist_3_upper_limit:=${pi}
+    transmission_hw_interface:=hardware_interface/PositionJointInterface
+    safety_limits:=false safety_pos_margin:=0.15
+    safety_k_position:=20">
 
     <!-- Inertia parameters -->
     <xacro:property name="base_mass" value="2.0" />  <!-- This mass might be incorrect -->
@@ -70,7 +73,7 @@
     <link name="${prefix}base_link" >
       <visual>
         <geometry>
-          <mesh filename="package://ur_e_description/meshes/ur3e/visual/base.dae"/>
+          <mesh filename="package://ur_description/meshes/ur3e/visual/base.dae"/>
         </geometry>
         <material name="LightGrey">
           <color rgba="0.7 0.7 0.7 1.0"/>
@@ -78,7 +81,7 @@
       </visual>
       <collision>
         <geometry>
-          <mesh filename="package://ur_e_description/meshes/ur3e/collision/base.stl"/>
+          <mesh filename="package://ur_description/meshes/ur3e/collision/base.stl"/>
         </geometry>
       </collision>
       <xacro:cylinder_inertial radius="0.075" length="0.038" mass="${base_mass}">
@@ -93,9 +96,15 @@
       <axis xyz="0 0 1" />
       <xacro:unless value="${joint_limited}">
         <limit lower="${-2.0 * pi}" upper="${2.0 * pi}" effort="330.0" velocity="3.14"/>
+        <xacro:if value="${safety_limits}">
+          <safety_controller soft_lower_limit="${-2.0 * pi + safety_pos_margin}" soft_upper_limit="${2.0 * pi - safety_pos_margin}" k_position="${safety_k_position}" k_velocity="0.0"/>
+        </xacro:if>
       </xacro:unless>
       <xacro:if value="${joint_limited}">
         <limit lower="${shoulder_pan_lower_limit}" upper="${shoulder_pan_upper_limit}" effort="330.0" velocity="3.14"/>
+        <xacro:if value="${safety_limits}">
+          <safety_controller soft_lower_limit="${shoulder_pan_lower_limit + safety_pos_margin}" soft_upper_limit="${shoulder_pan_upper_limit - safety_pos_margin}" k_position="${safety_k_position}" k_velocity="0.0"/>
+        </xacro:if>
       </xacro:if>
       <dynamics damping="0.0" friction="0.0"/>
     </joint>
@@ -103,7 +112,7 @@
     <link name="${prefix}shoulder_link">
       <visual>
         <geometry>
-          <mesh filename="package://ur_e_description/meshes/ur3e/visual/shoulder.dae"/>
+          <mesh filename="package://ur_description/meshes/ur3e/visual/shoulder.dae"/>
         </geometry>
         <material name="LightGrey">
           <color rgba="0.7 0.7 0.7 1.0"/>
@@ -111,7 +120,7 @@
       </visual>
       <collision>
         <geometry>
-          <mesh filename="package://ur_e_description/meshes/ur3e/collision/shoulder.stl"/>
+          <mesh filename="package://ur_description/meshes/ur3e/collision/shoulder.stl"/>
         </geometry>
       </collision>
       <xacro:cylinder_inertial radius="0.075" length="0.178" mass="${shoulder_mass}">
@@ -126,9 +135,15 @@
       <axis xyz="0 1 0" />
       <xacro:unless value="${joint_limited}">
         <limit lower="${-2.0 * pi}" upper="${2.0 * pi}" effort="330.0" velocity="3.14"/>
+        <xacro:if value="${safety_limits}">
+          <safety_controller soft_lower_limit="${-2.0 * pi + safety_pos_margin}" soft_upper_limit="${2.0 * pi - safety_pos_margin}" k_position="${safety_k_position}" k_velocity="0.0"/>
+        </xacro:if>
       </xacro:unless>
       <xacro:if value="${joint_limited}">
         <limit lower="${shoulder_lift_lower_limit}" upper="${shoulder_lift_upper_limit}" effort="330.0" velocity="3.14"/>
+        <xacro:if value="${safety_limits}">
+          <safety_controller soft_lower_limit="${shoulder_lift_lower_limit + safety_pos_margin}" soft_upper_limit="${shoulder_lift_upper_limit - safety_pos_margin}" k_position="${safety_k_position}" k_velocity="0.0"/>
+        </xacro:if> 
       </xacro:if>
       <dynamics damping="0.0" friction="0.0"/>
     </joint>
@@ -136,7 +151,7 @@
     <link name="${prefix}upper_arm_link">
       <visual>
         <geometry>
-          <mesh filename="package://ur_e_description/meshes/ur3e/visual/upperarm.dae"/>
+          <mesh filename="package://ur_description/meshes/ur3e/visual/upperarm.dae"/>
         </geometry>
         <material name="LightGrey">
           <color rgba="0.7 0.7 0.7 1.0"/>
@@ -144,7 +159,7 @@
       </visual>
       <collision>
         <geometry>
-          <mesh filename="package://ur_e_description/meshes/ur3e/collision/upperarm.stl"/>
+          <mesh filename="package://ur_description/meshes/ur3e/collision/upperarm.stl"/>
         </geometry>
       </collision>
       <xacro:cylinder_inertial radius="0.075" length="${-a2}" mass="${upper_arm_mass}">
@@ -159,9 +174,15 @@
       <axis xyz="0 1 0" />
       <xacro:unless value="${joint_limited}">
         <limit lower="${-pi}" upper="${pi}" effort="150.0" velocity="3.14"/>
+        <xacro:if value="${safety_limits}">
+          <safety_controller soft_lower_limit="${-2.0 * pi + safety_pos_margin}" soft_upper_limit="${2.0 * pi - safety_pos_margin}" k_position="${safety_k_position}" k_velocity="0.0"/>
+        </xacro:if>
       </xacro:unless>
       <xacro:if value="${joint_limited}">
         <limit lower="${elbow_joint_lower_limit}" upper="${elbow_joint_upper_limit}" effort="150.0" velocity="3.14"/>
+        <xacro:if value="${safety_limits}">
+          <safety_controller soft_lower_limit="${elbow_joint_lower_limit + safety_pos_margin}" soft_upper_limit="${elbow_joint_upper_limit - safety_pos_margin}" k_position="${safety_k_position}" k_velocity="0.0"/>
+        </xacro:if>
       </xacro:if>
       <dynamics damping="0.0" friction="0.0"/>
     </joint>
@@ -169,7 +190,7 @@
     <link name="${prefix}forearm_link">
       <visual>
          <geometry>
-          <mesh filename="package://ur_e_description/meshes/ur3e/visual/forearm.dae"/>
+          <mesh filename="package://ur_description/meshes/ur3e/visual/forearm.dae"/>
         </geometry>
         <material name="LightGrey">
           <color rgba="0.7 0.7 0.7 1.0"/>
@@ -177,7 +198,7 @@
       </visual>
       <collision>
         <geometry>
-          <mesh filename="package://ur_e_description/meshes/ur3e/collision/forearm.stl"/>
+          <mesh filename="package://ur_description/meshes/ur3e/collision/forearm.stl"/>
         </geometry>
       </collision>
       <xacro:cylinder_inertial radius="0.075" length="${-a3}" mass="${forearm_mass}">
@@ -192,9 +213,15 @@
       <axis xyz="0 1 0" />
       <xacro:unless value="${joint_limited}">
         <limit lower="${-2.0 * pi}" upper="${2.0 * pi}" effort="54.0" velocity="6.28"/>
+        <xacro:if value="${safety_limits}">
+          <safety_controller soft_lower_limit="${-2.0 * pi + safety_pos_margin}" soft_upper_limit="${2.0 * pi - safety_pos_margin}" k_position="${safety_k_position}" k_velocity="0.0"/>
+        </xacro:if>
       </xacro:unless>
       <xacro:if value="${joint_limited}">
         <limit lower="${wrist_1_lower_limit}" upper="${wrist_1_upper_limit}" effort="54.0" velocity="6.28"/>
+        <xacro:if value="${safety_limits}">
+          <safety_controller soft_lower_limit="${wrist_1_lower_limit + safety_pos_margin}" soft_upper_limit="${wrist_1_upper_limit - safety_pos_margin}" k_position="${safety_k_position}" k_velocity="0.0"/>
+        </xacro:if>
       </xacro:if>
       <dynamics damping="0.0" friction="0.0"/>
     </joint>
@@ -202,7 +229,7 @@
     <link name="${prefix}wrist_1_link">
       <visual>
         <geometry>
-          <mesh filename="package://ur_e_description/meshes/ur3e/visual/wrist1.dae"/>
+          <mesh filename="package://ur_description/meshes/ur3e/visual/wrist1.dae"/>
         </geometry>
         <material name="LightGrey">
           <color rgba="0.7 0.7 0.7 1.0"/>
@@ -210,11 +237,11 @@
       </visual>
       <collision>
         <geometry>
-          <mesh filename="package://ur_e_description/meshes/ur3e/collision/wrist1.stl"/>
+          <mesh filename="package://ur_description/meshes/ur3e/collision/wrist1.stl"/>
         </geometry>
       </collision>
       <xacro:cylinder_inertial radius="0.075" length="0.12" mass="${wrist_1_mass}">
-        <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
+        <origin xyz="0.0 ${wrist_1_length} 0.0" rpy="0 0 0" />
       </xacro:cylinder_inertial>
     </link>
 
@@ -225,9 +252,15 @@
       <axis xyz="0 0 1" />
       <xacro:unless value="${joint_limited}">
         <limit lower="${-2.0 * pi}" upper="${2.0 * pi}" effort="54.0" velocity="6.28"/>
+        <xacro:if value="${safety_limits}">
+          <safety_controller soft_lower_limit="${-2.0 * pi + safety_pos_margin}" soft_upper_limit="${2.0 * pi - safety_pos_margin}" k_position="${safety_k_position}" k_velocity="0.0"/>
+        </xacro:if>
       </xacro:unless>
       <xacro:if value="${joint_limited}">
         <limit lower="${wrist_2_lower_limit}" upper="${wrist_2_upper_limit}" effort="54.0" velocity="6.28"/>
+        <xacro:if value="${safety_limits}">
+          <safety_controller soft_lower_limit="${wrist_2_lower_limit + safety_pos_margin}" soft_upper_limit="${wrist_2_upper_limit - safety_pos_margin}" k_position="${safety_k_position}" k_velocity="0.0"/>
+        </xacro:if>
       </xacro:if>
       <dynamics damping="0.0" friction="0.0"/>
     </joint>
@@ -235,7 +268,7 @@
     <link name="${prefix}wrist_2_link">
       <visual>
         <geometry>
-          <mesh filename="package://ur_e_description/meshes/ur3e/visual/wrist2.dae"/>
+          <mesh filename="package://ur_description/meshes/ur3e/visual/wrist2.dae"/>
         </geometry>
         <material name="LightGrey">
           <color rgba="0.7 0.7 0.7 1.0"/>
@@ -243,11 +276,11 @@
       </visual>
       <collision>
         <geometry>
-          <mesh filename="package://ur_e_description/meshes/ur3e/collision/wrist2.stl"/>
+          <mesh filename="package://ur_description/meshes/ur3e/collision/wrist2.stl"/>
         </geometry>
       </collision>
       <xacro:cylinder_inertial radius="0.075" length="0.12" mass="${wrist_2_mass}">
-        <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
+        <origin xyz="0.0 0.0 ${wrist_2_length}" rpy="0 0 0" />
       </xacro:cylinder_inertial>
     </link>
 
@@ -258,9 +291,15 @@
       <axis xyz="0 1 0" />
       <xacro:unless value="${joint_limited}">
         <limit lower="${-2.0 * pi}" upper="${2.0 * pi}" effort="54.0" velocity="6.28"/>
+        <xacro:if value="${safety_limits}">
+          <safety_controller soft_lower_limit="${-2.0 * pi + safety_pos_margin}" soft_upper_limit="${2.0 * pi - safety_pos_margin}" k_position="${safety_k_position}" k_velocity="0.0"/>
+        </xacro:if>
       </xacro:unless>
       <xacro:if value="${joint_limited}">
         <limit lower="${wrist_3_lower_limit}" upper="${wrist_3_upper_limit}" effort="54.0" velocity="6.28"/>
+        <xacro:if value="${safety_limits}">
+          <safety_controller soft_lower_limit="${wrist_3_lower_limit + safety_pos_margin}" soft_upper_limit="${wrist_3_upper_limit - safety_pos_margin}" k_position="${safety_k_position}" k_velocity="0.0"/>
+        </xacro:if>
       </xacro:if>
       <dynamics damping="0.0" friction="0.0"/>
     </joint>
@@ -268,7 +307,7 @@
     <link name="${prefix}wrist_3_link">
       <visual>
         <geometry>
-          <mesh filename="package://ur_e_description/meshes/ur3e/visual/wrist3.dae"/>
+          <mesh filename="package://ur_description/meshes/ur3e/visual/wrist3.dae"/>
         </geometry>
         <material name="LightGrey">
           <color rgba="0.7 0.7 0.7 1.0"/>
@@ -276,11 +315,11 @@
       </visual>
       <collision>
         <geometry>
-          <mesh filename="package://ur_e_description/meshes/ur3e/collision/wrist3.stl"/>
+          <mesh filename="package://ur_description/meshes/ur3e/collision/wrist3.stl"/>
         </geometry>
       </collision>
-      <xacro:cylinder_inertial radius="0.075" length="0.12" mass="${wrist_3_mass}">
-        <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
+      <xacro:cylinder_inertial radius="0.032" length="0.042" mass="${wrist_3_mass}">
+        <origin xyz="0.0 ${wrist_3_length - 0.021} 0.0" rpy="${pi/2} 0 0" />
       </xacro:cylinder_inertial>
     </link>
 
@@ -299,13 +338,7 @@
       </collision>
     </link>
 
-    <xacro:if value="$(arg use_effort_interface)">
-      <xacro:ur_arm_transmission prefix="${prefix}" joint_interface="EffortJointInterface" />
-    </xacro:if>
-    <xacro:unless value="$(arg use_effort_interface)">
-      <xacro:ur_arm_transmission prefix="${prefix}" joint_interface="PositionJointInterface" />
-      <!-- <xacro:ur_arm_transmission prefix="${prefix}" joint_interface="VelocityJointInterface" /> -->
-    </xacro:unless>
+    <xacro:ur_arm_transmission prefix="${prefix}" hw_interface="${transmission_hw_interface}"/>
     <xacro:ur_arm_gazebo prefix="${prefix}" />
 
     <!-- ROS base_link to UR 'Base' Coordinates transform -->

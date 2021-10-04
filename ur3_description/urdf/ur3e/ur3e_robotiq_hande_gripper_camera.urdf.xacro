@@ -8,6 +8,54 @@
 
   <xacro:include filename="$(find ur3_description)/urdf/ur3e/ur3e_joint_limited_robot.urdf.xacro" />
   <xacro:include filename="$(find robotiq_description)/urdf/robotiq_hande_gripper.urdf.xacro" />
+  <xacro:include filename="$(find robotiq_description)/urdf/kosmek_manual_exchanger.urdf.xacro" />
+  <xacro:include filename="$(find ur3_description)/urdf/camera/realsense_rs435_wrist.urdf.xacro" />
+
+  <!-- tool exchanger -->
+  <xacro:kosmek_exchanger prefix="" parent="tool0">
+    <origin xyz="0 0.001 0.003" rpy="0 ${pi/2.0} 0" />
+  </xacro:kosmek_exchanger>
+
+  <!-- Camera wrist -->
+  <xacro:wrist_camera_base prefix="" parent="tool0">
+    <origin xyz="0 -0.0848 0.05908421" rpy="0 ${-pi/2-pi/12} ${-pi/2}"/>
+    <!-- 0.03808421 -->
+  </xacro:wrist_camera_base>
+
+  <!-- Camera wrist coupler TODO -->
+  <link name="camera_coupler">
+    <visual>
+      <geometry>
+        <mesh filename="package://ur3_description/meshes/camera/camera_coupler.stl" />
+      </geometry>
+      <material name="DarkGray">
+        <color rgba="0.4 0.04 0.04 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="package://ur3_description/meshes/camera/camera_coupler.stl" />
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="-0.000000 0.013064 -0.028192" rpy="0 0 0" />
+      <mass value="0.001" />
+      <inertia ixx="1.000000" ixy="0.0" ixz="0.0" iyy="0.929938" iyz="-0.367716" izz="0.929938"/>
+    </inertial>
+  </link>
+
+  <joint name="camera_coupler_joint" type="fixed">
+    <origin xyz="0.0 0 0.009" rpy="${-pi/2.0} ${pi} 0" />
+    <parent link="tool0"/>
+    <child link="camera_coupler"/>
+  </joint>
+  <gazebo reference="camera_coupler">
+    <mu1>0.9</mu1>
+    <mu2>0.9</mu2>
+    <material>Gazebo/Grey</material>
+  </gazebo>
+
+
 
   <!-- Robotiq Coupler -->
   <!--  + Height added by the coupler: 8mm -->
@@ -32,7 +80,7 @@
   </link>
 
   <joint name="robotiq_coupler_joint" type="fixed">
-    <origin xyz="0 0 0.004" rpy="0 0 ${-pi/2.0}" />
+    <origin xyz="0 0 0.048" rpy="0 0 ${-pi/2.0}" />
     <parent link="tool0"/>
     <child link="robotiq_coupler"/>
   </joint>
@@ -55,13 +103,13 @@
     <origin xyz="0 0 0.004" rpy="0 0 ${pi/2}"/>
   </xacro:robotiq_hande_gripper>
 
-  <!-- <group if = "$(arg aruco_marker)">
+  <group if = "$(arg aruco_marker)">
     <link name="aruco_marker">
-        <visual>
-          <geometry>
-            <box size="0.1 0.1 0.01"/>
-          </geometry>
-        </visual>
+      <visual>
+        <geometry>
+          <box size="0.1 0.1 0.01"/>
+        </geometry>
+      </visual>
     </link>
     <joint name="aruco_dummy_joint" type="fixed">
       <origin xyz="0 0 0.20" rpy="0 ${pi/2} ${pi/2}" />
@@ -70,8 +118,8 @@
     </joint>
     <gazebo reference="aruco_marker">
       <material>CB/Apriltag36_11_00000</material>
-    </gazebo> -->
-  <!-- </group> -->
+    </gazebo>
+  </group>
   <!-- Gazebo FT sensor plugin -->
   <gazebo reference="wrist_3_link-tool0_fixed_joint">
     <provideFeedback>true</provideFeedback>
@@ -124,5 +172,6 @@
   </xacro:unless>
 
   <!-- Gazebo grasping plugin -->
+
 
 </robot>

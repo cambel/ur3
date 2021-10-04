@@ -2,14 +2,7 @@
 <launch>
   <arg name="gui" default="true" />
 
-  <arg name="robot_description_file" default="$(find ur3_gazebo)/launch/inc/load_ur_gripper_hande.launch.xml" 
-                                     doc="Launch file which populates the 'robot_description' parameter."/>
-  <arg name="ur_robot" default="ur3"/>
-
-  <!-- Load urdf on the parameter server -->
-  <include file="$(arg robot_description_file)">
-    <arg name="ur_robot" value="$(arg ur_robot)"/>
-  </include>
+  <param name="robot_description" command="$(find xacro)/xacro --inorder $(find ur3_description)/urdf/ur3e/ur3e_robotiq_hande_gripper_camera.urdf.xacro" />
   
   <param name="use_gui" value="$(arg gui)"/>
   <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />

@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <launch>
-  <arg name="gui" default="true" />
-
-  <arg name="robot_description_file" default="$(find ur3_gazebo)/launch/inc/load_ur_gripper_hande.launch.xml" 
+  <arg name="gui" default="True" />
+  
+  <arg name="robot_description_file" default="$(find ur3_gazebo)/launch/inc/load_ur_gripper_85.launch.xml" 
                                      doc="Launch file which populates the 'robot_description' parameter."/>
   <arg name="ur_robot" default="ur3"/>
 
@@ -10,7 +10,7 @@
   <include file="$(arg robot_description_file)">
     <arg name="ur_robot" value="$(arg ur_robot)"/>
   </include>
-  
+
   <param name="use_gui" value="$(arg gui)"/>
   <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
   
