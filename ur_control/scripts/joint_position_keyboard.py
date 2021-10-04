@@ -1,12 +1,35 @@
 #!/usr/bin/env python
+
+# The MIT License (MIT)
+#
+# Copyright (c) 2018-2021 Cristian Beltran
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+# Author: Cristian Beltran
+
 """
 UR Joint Position Example: keyboard
 """
 import argparse
 
 import rospy
-import yaml
-import os
 
 from ur_control.arm import Arm
 from ur_control import transformations
@@ -160,9 +183,12 @@ See help inside the example with the '?' key for key bindings.
     parser.add_argument(
         '--relative', action='store_true', help='Motion Relative to ee')
     parser.add_argument(
-        '--namespace', type=str, help='Namespace of arm', default=None)
+        '--namespace', type=str, help='Namespace of arm (useful when having multiple arms)', default=None)
     parser.add_argument(
         '--gripper', action='store_true', help='enable gripper commands')
+    parser.add_argument(
+        '--robot', type=str, help='Version of Universal Robot arm. Default="ur3e"', default='ur3e')
+
     args = parser.parse_args(rospy.myargv()[1:])
 
     rospy.init_node("joint_position_keyboard", log_level=rospy.INFO)

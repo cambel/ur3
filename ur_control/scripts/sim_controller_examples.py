@@ -1,6 +1,30 @@
 #!/usr/bin/env python
-from ur_control import utils, spalg, transformations, traj_utils
-from ur_control.constants import ROBOT_GAZEBO, ROBOT_UR_MODERN_DRIVER, ROBOT_UR_RTDE_DRIVER
+
+# The MIT License (MIT)
+#
+# Copyright (c) 2018-2021 Cristian Beltran
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+# Author: Cristian Beltran
+ 
+from ur_control import spalg, transformations, traj_utils
 from ur_control.arm import Arm
 import argparse
 import rospy
@@ -13,7 +37,9 @@ np.set_printoptions(linewidth=np.inf)
 
 def move_joints(wait=True):
     # desired joint configuration 'q'
-    q = [2.37191, -1.88688, -1.82035,  0.4766,  2.31206,  3.18758]
+    q = [0, 0, 0, 0, 0, 0]
+    q = [3.2317, -1.979, 1.3969, -0.4844, -0.1151, -1.7565]
+    q = [1.5353, -1.211, -1.4186, -0.546, 1.6476, -0.0237]
 
     # go to desired joint configuration
     # in t time (seconds)
@@ -234,9 +260,7 @@ def main():
     global arm
     arm = Arm(
         ft_sensor=True,  # get Force/Torque data or not
-        driver=ROBOT_GAZEBO,  # which controller (sim?, robot?)
-        ee_transform=[0., 0., tcp_z, 0, 0., 0., 1.],  # transformation for the tip of the robot
-        gripper=True,  # Enable gripper
+        gripper=args.gripper,  # Enable gripper
         )
 
     real_start_time = timeit.default_timer()
