@@ -1,4 +1,0 @@
-<?xml version="1.0"?>
-<launch>
-  <include file="$(find ur_gazebo)/launch/ur3e_bringup.launch" />
-</launch>

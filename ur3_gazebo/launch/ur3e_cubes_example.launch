@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<launch>
+  <include file="$(find ur3e_gazebo)/launch/ur_gripper_hande_cubes.launch">
+    <arg name="ur_robot" value="ur3e"/>
+  </include>
+</launch>

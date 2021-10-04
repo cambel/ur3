@@ -2,7 +2,7 @@
 <launch>
 
   <!--Parameter files -->
-  <arg name="ur_robot" default="ur3"/>
+  <arg name="ur_robot" default="ur3e"/>
   <arg name="grasp_plugin" default="false"/>
 
   <!--Common parameters -->
@@ -11,7 +11,7 @@
   <arg name="safety_pos_margin" default="0.15" doc="The lower/upper limits in the safety controller" />
   <arg name="safety_k_position" default="20" doc="Used to set k position in the safety controller" />
 
-  <param name="robot_description" command="$(find xacro)/xacro '$(find ur3_gazebo)/urdf/ur_with_gripper.xacro'
+  <param name="robot_description" command="$(find xacro)/xacro '$(find ur3_gazebo)/urdf/ur_gripper_hande.xacro'
     joint_limit_params:='$(find ur_description)/config/$(arg ur_robot)/joint_limits.yaml'
     kinematics_params:='$(find ur_description)/config/$(arg ur_robot)/default_kinematics.yaml'
     physical_params:='$(find ur_description)/config/$(arg ur_robot)/physical_parameters.yaml'
