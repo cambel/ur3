@@ -1,4 +1,6 @@
 <launch>
+  <!-- Specific ur robot -->
+  <arg name="ur_robot" default="ur3e"/>
 
   <!-- By default, we do not start a database (it can be large) -->
   <arg name="db" default="false" />
@@ -34,13 +36,6 @@
   <remap from="/follow_joint_trajectory" to="/arm_controller/follow_joint_trajectory"/>
   <!-- <include file="$(find ur3e_hande_moveit_config)/launch/ros_controllers.launch"/> -->
 
-
-  <!-- Load the URDF, SRDF and other .yaml configuration files on the param server -->
-  <include file="$(find ur3e_hande_moveit_config)/launch/planning_context.launch">
-    <arg name="load_robot_description" value="false"/>
-    <arg name="robot_description" value="robot_description"/>
-  </include>
-
   <!-- If needed, broadcast static tf for robot root -->
   <!-- <include file="$(find ur3e_hande_moveit_config)/launch/gazebo_static_tf.launch"/> -->
 
@@ -57,6 +52,7 @@
   <!-- <group ns=""> -->
   <!-- <group ns="test"> -->
   <include file="$(find ur3e_hande_moveit_config)/launch/move_group.launch">
+    <arg name="ur_robot" default="$(arg ur_robot)"/>
     <arg name="allow_trajectory_execution" value="true"/>
     <arg name="fake_execution" value="false"/>
     <arg name="info" value="true"/>

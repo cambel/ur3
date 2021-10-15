@@ -1,7 +1,17 @@
 moveit_setup_assistant_config:
   URDF:
-    package: ur3e_hande_moveit_config
-    relative_path: config/ur3e.urdf
+    package: ur3_gazebo
+    relative_path: urdf/ur_gripper_hande.xacro
+    xacro_args: joint_limit_params:='$(find ur_description)/config/ur3e/joint_limits.yaml' 
+                kinematics_params:='$(find ur_description)/config/ur3e/default_kinematics.yaml'
+                physical_params:='$(find ur_description)/config/ur3e/physical_parameters.yaml'
+                visual_params:='$(find ur_description)/config/ur3e/visual_parameters.yaml'
+                transmission_hw_interface:=hardware_interface/PositionJointInterface
+                safety_limits:=false
+                safety_pos_margin:=0.15
+                safety_k_position:=20
+                dual_arm:=true
+                grasp_plugin:=false
   SRDF:
     relative_path: config/ur_robot_gazebo.srdf
   CONFIG:
