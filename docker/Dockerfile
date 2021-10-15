@@ -94,10 +94,10 @@ RUN apt-get update && apt-get install -q -y \
     libgazebo9-dev \
     && rm -rf /var/lib/apt/lists/*
 
-ADD orocos_kinematics_dynamics.tar.xz /root/
+ADD ./docker/orocos_kinematics_dynamics.tar.xz /root/
 
 # Install SIP 4.19.8
-ADD sip-4.19.8.tar.gz /root/
+ADD ./docker/sip-4.19.8.tar.gz /root/
 
 RUN /bin/bash -c "cd ~/ \
                && cd sip-4.19.8 \
@@ -116,7 +116,7 @@ RUN /bin/bash -c "cd ~/orocos_kinematics_dynamics/python_orocos_kdl \
                && cmake -DCMAKE_BUILD_TYPE=Release -DPYTHON_INCLUDE_DIR=$(python -c "from distutils.sysconfig import get_python_inc; print(get_python_inc())")  -DPYTHON_LIBRARY=$(python -c "import distutils.sysconfig as sysconfig; print(sysconfig.get_config_var('LIBDIR'))") -DPYTHON_VERSION=3 .. \
                && make -j4"
 
-COPY bashrc /etc/bash.bashrc
+COPY ./docker/bashrc /etc/bash.bashrc
 RUN chmod a+rwx /etc/bash.bashrc
 
 ### Ros Workspace ###
@@ -224,7 +224,3 @@ RUN echo 'source ~/ros_ws/devel/setup.bash' >> ~/.bashrc
 RUN echo 'source /usr/share/gazebo/setup.sh' >> ~/.bashrc
 RUN echo 'export PYTHONPATH=/root/orocos_kinematics_dynamics/python_orocos_kdl/build:$PYTHONPATH' >> ~/.bashrc
 RUN echo 'export GAZEBO_RESOURCE_PATH=$GAZEBO_RESOURCE_PATH:~/ros_ws/src/ros-universal-robots/ur3_gazebo/models/' >> ~/.bashrc
-RUN echo "alias ur3e_dual_sim='roslaunch ur3_gazebo ur3e_dual_gripper.launch pause:=0'" >> ~/.bashrc
-RUN echo "alias ur3e_sim='roslaunch ur3_gazebo ur3e_cubes.launch'" >> ~/.bashrc
-RUN echo 'function ur3e_robot { roslaunch ur_robot_driver ur3e_bringup.launch robot_ip:="$1" kinematics_config:=/root/dev/tools/my_robot_calibration.yaml; }'  >> ~/.bashrc
-RUN echo 'function ur3_robot { roslaunch ur_robot_driver ur3_bringup.launch robot_ip:="$1" kinematics_config:=/root/dev/tools/my_robot_calibration.yaml; }'  >> ~/.bashrc
