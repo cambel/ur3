@@ -66,7 +66,7 @@ roslaunch ur3_gazebo ur_gripper_hande_cubes.launch ur_robot:=ur3e grasp_plugin:=
 
 Then load the MoveIt configuration
 ```
-roslaunch ur3e_hande_moveit_config start_moveit.launch
+roslaunch ur_hande_moveit_config start_moveit.launch
 ```
 
 Then execute the tutorial
