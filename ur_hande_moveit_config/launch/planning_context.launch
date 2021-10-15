@@ -21,17 +21,17 @@
                                                                                            '$(find ur3_gazebo)/urdf/ur_gripper_hande.xacro'"/>
 
   <!-- The semantic description that corresponds to the URDF -->
-  <param name="$(arg robot_description)_semantic" textfile="$(find ur3e_hande_moveit_config)/config/ur_robot_gazebo.srdf" />
+  <param name="$(arg robot_description)_semantic" textfile="$(find ur_hande_moveit_config)/config/ur_robot_gazebo.srdf" />
 
   <!-- Load updated joint limits (override information from URDF) -->
   <group ns="$(arg robot_description)_planning">
-    <rosparam command="load" file="$(find ur3e_hande_moveit_config)/config/joint_limits.yaml"/>
-    <rosparam command="load" file="$(find ur3e_hande_moveit_config)/config/cartesian_limits.yaml"/>
+    <rosparam command="load" file="$(find ur_hande_moveit_config)/config/joint_limits.yaml"/>
+    <rosparam command="load" file="$(find ur_hande_moveit_config)/config/cartesian_limits.yaml"/>
   </group>
 
   <!-- Load default settings for kinematics; these settings are overridden by settings in a node's namespace -->
   <group ns="$(arg robot_description)_kinematics">
-    <rosparam command="load" file="$(find ur3e_hande_moveit_config)/config/kinematics.yaml"/>
+    <rosparam command="load" file="$(find ur_hande_moveit_config)/config/kinematics.yaml"/>
 
   </group>
 
