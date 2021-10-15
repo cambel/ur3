@@ -6,7 +6,7 @@
   <arg name="robot_description" default="robot_description"/>
 
   <!-- Load universal robot description format (URDF) -->
-  <param if="$(arg load_robot_description)" name="$(arg robot_description)" command="xacro joint_limit_params:='/root/ros_ws/src/universal_robot/ur_description/config/ur3e/joint_limits.yaml' kinematics_params:='/root/ros_ws/src/universal_robot/ur_description/config/ur3e/default_kinematics.yaml' physical_params:='/root/ros_ws/src/universal_robot/ur_description/config/ur3e/physical_parameters.yaml' visual_params:='/root/ros_ws/src/universal_robot/ur_description/config/ur3e/visual_parameters.yaml' transmission_hw_interface:=hardware_interface/PositionJointInterface safety_limits:=false safety_pos_margin:=0.15 safety_k_position:=20 dual_arm:=true grasp_plugin:=false '$(find ur3_gazebo)/urdf/ur_gripper_hande.xacro'"/>
+  <param if="$(arg load_robot_description)" name="$(arg robot_description)" textfile="$(find ur3e_hande_moveit_config)/config/ur3e.urdf"/>
 
   <!-- The semantic description that corresponds to the URDF -->
   <param name="$(arg robot_description)_semantic" textfile="$(find ur3e_hande_moveit_config)/config/ur_robot_gazebo.srdf" />

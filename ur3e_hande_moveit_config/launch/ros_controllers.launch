@@ -6,6 +6,6 @@
 
   <!-- Load the controllers -->
   <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
-    output="screen" args="scaled_pos_joint_traj_controller "/>
+    output="screen" args=""/>
 
 </launch>
