@@ -5,14 +5,7 @@
   <rosparam file="$(find ur3e_hande_moveit_config)/config/ros_controllers.yaml" command="load"/>
 
   <!-- Load the controllers -->
-  <node name="robot_controllers" pkg="controller_manager" type="spawner" respawn="false"
-        output="screen"
-        args="joint_state_controller arm_controller gripper_controller"/>
-
-  <!-- TF -->
-  <node pkg="robot_state_publisher" type="robot_state_publisher" 
-        name="robot_state_publisher"> 
-    <param name="publish_frequency"  type="double" value="500" />
-  </node>
+  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
+    output="screen" args="scaled_pos_joint_traj_controller "/>
 
 </launch>

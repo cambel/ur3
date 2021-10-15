@@ -15,6 +15,7 @@
   <arg name="pipeline" default="ompl" />
   <arg name="allow_trajectory_execution" default="true"/>
   <arg name="fake_execution" default="false"/>
+  <arg name="execution_type" default="interpolate"/> <!-- set to 'last point' to skip intermediate trajectory in fake execution -->
   <arg name="max_safe_path_cost" default="1"/>
   <arg name="jiggle_fraction" default="0.05" />
   <arg name="publish_monitored_planning_scene" default="true"/>
@@ -46,18 +47,21 @@
   <!-- Planning Functionality -->
   <include ns="move_group" file="$(find ur3e_hande_moveit_config)/launch/planning_pipeline.launch.xml">
     <arg name="pipeline" value="$(arg pipeline)" />
+    <param name="capabilities" value="$(arg capabilities)"/>
+    <param name="disable_capabilities" value="$(arg disable_capabilities)"/>
   </include>
 
   <!-- Trajectory Execution Functionality -->
   <include ns="move_group" file="$(find ur3e_hande_moveit_config)/launch/trajectory_execution.launch.xml" if="$(arg allow_trajectory_execution)">
     <arg name="moveit_manage_controllers" value="true" />
-    <arg name="moveit_controller_manager" value="ur3" unless="$(arg fake_execution)"/>
+    <arg name="moveit_controller_manager" value="ur_robot_gazebo" unless="$(arg fake_execution)"/>
     <arg name="moveit_controller_manager" value="fake" if="$(arg fake_execution)"/>
+    <arg name="execution_type" value="$(arg execution_type)" />
   </include>
 
   <!-- Sensors Functionality -->
   <include ns="move_group" file="$(find ur3e_hande_moveit_config)/launch/sensor_manager.launch.xml" if="$(arg allow_trajectory_execution)">
-    <arg name="moveit_sensor_manager" value="ur3" />
+    <arg name="moveit_sensor_manager" value="ur_robot_gazebo" />
   </include>
 
   <!-- Start the actual move_group node/action server -->
@@ -68,8 +72,6 @@
     <param name="allow_trajectory_execution" value="$(arg allow_trajectory_execution)"/>
     <param name="max_safe_path_cost" value="$(arg max_safe_path_cost)"/>
     <param name="jiggle_fraction" value="$(arg jiggle_fraction)" />
-    <param name="capabilities" value="$(arg capabilities)"/>
-    <param name="disable_capabilities" value="$(arg disable_capabilities)"/>
 
 
     <!-- Publish the planning scene of the physical robot so that rviz plugin can know actual robot -->

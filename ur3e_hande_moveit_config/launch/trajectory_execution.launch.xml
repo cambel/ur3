@@ -2,6 +2,8 @@
 
   <!-- This file makes it easy to include the settings for trajectory execution  -->
 
+  <arg name="execution_type" default="interpolate" />
+
   <!-- Flag indicating whether MoveIt! is allowed to load/unload  or switch controllers -->
   <arg name="moveit_manage_controllers" default="true"/>
   <param name="moveit_manage_controllers" value="$(arg moveit_manage_controllers)"/>
@@ -14,7 +16,9 @@
   <param name="trajectory_execution/allowed_start_tolerance" value="0.01"/> <!-- default 0.01 -->
 
   <!-- Load the robot specific controller manager; this sets the moveit_controller_manager ROS parameter -->
-  <arg name="moveit_controller_manager" default="ur3" />
-  <include file="$(find ur3e_hande_moveit_config)/launch/$(arg moveit_controller_manager)_moveit_controller_manager.launch.xml" />
+  <arg name="moveit_controller_manager" default="ur_robot_gazebo" />
+  <include file="$(find ur3e_hande_moveit_config)/launch/$(arg moveit_controller_manager)_moveit_controller_manager.launch.xml">
+    <arg name="execution_type" value="$(arg execution_type)" />
+  </include>
 
 </launch>

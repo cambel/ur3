@@ -1,10 +1,28 @@
-# Joint state controller
+# Simulation settings for using moveit_sim_controllers
+moveit_sim_hw_interface:
+  joint_model_group: todo_group_name
+  joint_model_group_pose: todo_state_name
+# Settings for ros_control_boilerplate control loop
+generic_hw_control_loop:
+  loop_hz: 300
+  cycle_time_error_threshold: 0.01
+# Settings for ros_control hardware interface
+hardware_interface:
+  joints:
+    - shoulder_pan_joint
+    - shoulder_lift_joint
+    - elbow_joint
+    - wrist_1_joint
+    - wrist_2_joint
+    - wrist_3_joint
+  sim_control_mode: 1  # 0: position, 1: velocity
+# Publish all joint states
+# Creates the /joint_states topic necessary in ROS
 joint_state_controller:
-  publish_rate: 500
   type: joint_state_controller/JointStateController
-
+  publish_rate: 50
 controller_list:
-  - name: arm_controller
+  - name: scaled_pos_joint_traj_controller
     action_ns: follow_joint_trajectory
     default: True
     type: FollowJointTrajectory
@@ -15,66 +33,43 @@ controller_list:
       - wrist_1_joint
       - wrist_2_joint
       - wrist_3_joint
-
-arm_controller:
+scaled_pos_joint_traj_controller:
   type: position_controllers/JointTrajectoryController
   joints:
-     - shoulder_pan_joint
-     - shoulder_lift_joint
-     - elbow_joint
-     - wrist_1_joint
-     - wrist_2_joint
-     - wrist_3_joint
-  constraints:
-    # Default is 0
-    goal_time: 0.1
-    # Default is 0.01, but is 0 for due to the movegroup/follow_joint_trajectory/goal tolerance is empty
-    stopped_velocity_tolerance: 0
+    - shoulder_pan_joint
+    - shoulder_lift_joint
+    - elbow_joint
+    - wrist_1_joint
+    - wrist_2_joint
+    - wrist_3_joint
+  gains:
     shoulder_pan_joint:
-      trajectory: 0
-      goal: 0.01
+      p: 100
+      d: 1
+      i: 1
+      i_clamp: 1
     shoulder_lift_joint:
-      trajectory: 0
-      goal: 0.01
+      p: 100
+      d: 1
+      i: 1
+      i_clamp: 1
     elbow_joint:
-      trajectory: 0
-      goal: 0.01
+      p: 100
+      d: 1
+      i: 1
+      i_clamp: 1
     wrist_1_joint:
-      trajectory: 0
-      goal: 0.01
+      p: 100
+      d: 1
+      i: 1
+      i_clamp: 1
     wrist_2_joint:
-      trajectory: 0
-      goal: 0.01
+      p: 100
+      d: 1
+      i: 1
+      i_clamp: 1
     wrist_3_joint:
-      trajectory: 0
-      goal: 0.01
-  
-shoulder_pan_joint:
-  type: position_controllers/JointPositionController
-  joint: shoulder_pan_joint
-shoulder_lift_joint:
-  type: position_controllers/JointPositionController
-  joint: shoulder_lift_joint
-elbow_joint:
-  type: position_controllers/JointPositionController
-  joint: elbow_joint
-wrist_1_joint:
-  type: position_controllers/JointPositionController
-  joint: wrist_1_joint
-wrist_2_joint:
-  type: position_controllers/JointPositionController
-  joint: wrist_2_joint
-wrist_3_joint:
-  type: position_controllers/JointPositionController
-  joint: wrist_3_joint
-
-gripper_controller:
-  # Define the type of gripper to config on "ur_control/controllers.py > GripperController"
-  gripper_type: 'hand-e'
-  type: position_controllers/GripperActionController
-  joint: hande_right_finger_joint
-  action_monitor_rate: 20
-  goal_tolerance: 0.002
-  max_effort: 100
-  stall_velocity_threshold: 0.001
-  stall_timeout: 1.0
+      p: 100
+      d: 1
+      i: 1
+      i_clamp: 1
