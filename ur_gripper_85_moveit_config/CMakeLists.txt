@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.1.3)
-project(ur3e_hande_moveit_config)
+project(ur_gripper_85_moveit_config)
 
 find_package(catkin REQUIRED)
 

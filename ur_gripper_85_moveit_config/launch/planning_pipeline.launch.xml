@@ -11,7 +11,7 @@
   <!-- inhibit capabilites (space seperated) -->
   <arg name="disable_capabilities" default=""/>
 
-  <include file="$(find ur3e_hande_moveit_config)/launch/$(arg pipeline)_planning_pipeline.launch.xml">
+  <include file="$(find ur_gripper_85_moveit_config)/launch/$(arg pipeline)_planning_pipeline.launch.xml">
     <arg name="capabilities" value="$(arg capabilities)"/>
     <arg name="disable_capabilities" value="$(arg disable_capabilities)"/>
   </include>

@@ -1,6 +1,6 @@
 <package>
 
-  <name>ur3e_hande_moveit_config</name>
+  <name>ur_gripper_85_moveit_config</name>
   <version>0.3.0</version>
   <description>
      An automatically generated package with all the configuration and launch files for using the ur_robot_gazebo with the MoveIt! Motion Planning Framework

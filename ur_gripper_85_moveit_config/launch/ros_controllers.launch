@@ -2,7 +2,7 @@
 <launch>
 
   <!-- Load joint controller configurations from YAML file to parameter server -->
-  <rosparam file="$(find ur3e_hande_moveit_config)/config/ros_controllers.yaml" command="load"/>
+  <rosparam file="$(find ur_gripper_85_moveit_config)/config/ros_controllers.yaml" command="load"/>
 
   <!-- Load the controllers -->
   <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
