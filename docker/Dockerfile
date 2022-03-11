@@ -123,32 +123,21 @@ RUN /bin/bash -c "cd ~/ \
 # ##### Easy hand-eye calibration libs
 # RUN apt-get update && apt-get install -y \
 #     ros-$ROS_DISTRO-apriltag-ros \
-#     ros-$ROS_DISTRO-handeye \
-#     ros-$ROS_DISTRO-rqt-joint-trajectory-controller \
-#     ros-$ROS_DISTRO-rqt-tf-tree \
-#     ros-$ROS_DISTRO-rqt-multiplot \
+#     ros-$ROS_DISTRO-handeye 
 #     && rm -rf /var/lib/apt/lists/*
 
-# RUN apt-get update && apt-get install -y \
-#     ros-$ROS_DISTRO-moveit \
-#     ros-$ROS_DISTRO-moveit-runtime \
-#     ros-$ROS_DISTRO-moveit-python3 \
-#     ros-$ROS_DISTRO-moveit-resources \
-#     && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    ros-$ROS_DISTRO-rqt-joint-trajectory-controller \
+    ros-$ROS_DISTRO-rqt-tf-tree \
+    ros-$ROS_DISTRO-rqt-multiplot \
+    && rm -rf /var/lib/apt/lists/*
 
-# # Fix the MoveIt Rviz controllers *use ur3e_load_moveit_planner.launch on ur3_gripper_moveit_config pkg*
-# ADD ur3e_move_group.launch /root/ros_ws/src/universal_robot/ur3_e_moveit_config/launch/move_group.launch
-# ADD ur3_e_moveit_execution.launch /root/ros_ws/src/universal_robot/ur3_e_moveit_config/launch/ur3_e_moveit_planning_execution.launch
-
-# # Workaround for python3 + tf2
-# RUN pip install --extra-index-url https://rospypi.github.io/simple/ tf2_ros --ignore-installed
-# RUN pip install --upgrade pip
-
-# # Compiling ros workspace
-# RUN /bin/bash -c "source /opt/ros/$ROS_DISTRO/setup.bash \
-#                && cd ~/ros_ws/ \
-#                && rm -rf build \
-#                && catkin build -DPYTHON_EXECUTABLE=/usr/bin/python3 -DPYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.6m.so -DPYTHON_VERSION=3"
+RUN apt-get update && apt-get install -y \
+    ros-$ROS_DISTRO-moveit \
+    ros-$ROS_DISTRO-moveit-runtime \
+    ros-$ROS_DISTRO-moveit-python3 \
+    ros-$ROS_DISTRO-moveit-resources \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV NVIDIA_VISIBLE_DEVICES ${NVIDIA_VISIBLE_DEVICES:-all}
 ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
