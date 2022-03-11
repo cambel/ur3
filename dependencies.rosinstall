@@ -1,7 +1,7 @@
 - git:
     local-name: robotiq
     uri: https://github.com/cambel/robotiq.git
-    version: melodic-devel
+    version: noetic-devel
 - git:  
     local-name: gazebo_ros_link_attacher
     uri: https://github.com/pal-robotics/gazebo_ros_link_attacher.git
