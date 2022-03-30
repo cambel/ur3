@@ -3,7 +3,9 @@
   <!-- Export env variable so that gazebo finds our models -->
   <env name="GAZEBO_MODEL_PATH"
        value="$(find ur3_gazebo)/models:$(optenv GAZEBO_MODEL_PATH)" />
-  
+  <!-- Ignore online database -->
+  <env name="GAZEBO_MODEL_DATABASE_URI"
+       value="/" />
   <!-- Launch file parameters -->
   <arg name="paused"     default="true"/>
   <arg name="debug"      default="false"/>

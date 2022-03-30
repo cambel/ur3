@@ -212,6 +212,10 @@ RUN /bin/bash -c "source /opt/ros/$ROS_DISTRO/setup.bash \
                && rm -rf build \
                && catkin build -DPYTHON_EXECUTABLE=/usr/bin/python3 -DPYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.6m.so -DPYTHON_VERSION=3"
 
+RUN mkdir -p ~/.gazebo
+RUN git clone https://github.com/osrf/gazebo_models ~/.gazebo/models
+RUN pip install netifaces
+
 ENV NVIDIA_VISIBLE_DEVICES ${NVIDIA_VISIBLE_DEVICES:-all}
 ENV NVIDIA_DRIVER_CAPABILITIES ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
 
