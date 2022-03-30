@@ -134,7 +134,7 @@
   <gazebo>
     <plugin name="ft_sensor" filename="libgazebo_ros_ft_sensor.so">
       <updateRate>125.0</updateRate>
-      <topicName>ft_sensor/raw</topicName>
+      <topicName>wrench</topicName>
       <gaussianNoise>0.0</gaussianNoise>
       <jointName>wrist_3_joint</jointName>
     </plugin>
