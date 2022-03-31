@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 #
-# Copyright (c) 2018, 2019 Cristian Beltran
+# Copyright (c) 2018-2021 Cristian Beltran
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,7 @@ from geometry_msgs.msg import (Wrench)
 
 from ur_control import utils, spalg, conversions, transformations
 from ur_control.constants import JOINT_ORDER, JOINT_PUBLISHER_ROBOT, FT_SUBSCRIBER, IKFAST, TRAC_IK, \
-    DONE, FORCE_TORQUE_EXCEEDED, SPEED_LIMIT_EXCEEDED, IK_NOT_FOUND, get_arm_joint_names, \
+    DONE, SPEED_LIMIT_EXCEEDED, IK_NOT_FOUND, get_arm_joint_names, \
     BASE_LINK, EE_LINK, FT_LINK
 
 try:
@@ -460,3 +460,4 @@ class Arm(object):
         dt = t/float(len(joint_trajectory))
         # TODO(cambel): is this good enough to catch big jumps due to IK solutions?
         return spalg.jump_threshold(np.array(joint_trajectory), dt, 2.5)
+

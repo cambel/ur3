@@ -1,12 +1,35 @@
 #!/usr/bin/env python
+
+# The MIT License (MIT)
+#
+# Copyright (c) 2018-2021 Cristian Beltran
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+# Author: Cristian Beltran
+
 """
 UR Joint Position Example: keyboard
 """
 import argparse
 
 import rospy
-import yaml
-import os
 
 from ur_control.arm import Arm
 from ur_control import transformations
@@ -19,29 +42,9 @@ np.set_printoptions(suppress=True)
 
 
 def map_keyboard():
-    def record_playback_sequence():
-        filepath = "/root/o2ac-ur/catkin_ws/src/o2ac_routines/config/playback_sequences/shaft_move_to_taskboard.yaml"
-        playback_sequence = {}
-        new_point = {"pose": arm.joint_angles().tolist(), 
-                    "pose_type": 'joint-space-goal-cartesian-lin-motion',
-                    "speed": 0.8}
-        if os.path.exists(filepath):
-            with open(filepath, 'r') as f:
-              playback_sequence = yaml.load(f)
-            
-            playback_sequence["waypoints"].append(new_point)
-        else:
-            playback_sequence["robot_name"] = "b_bot"
-            playback_sequence["waypoints"] = [new_point] 
-
-        with open(filepath, 'w') as f:
-            yaml.dump(playback_sequence, f)
-
     def print_robot_state():
         print("Joint angles:", np.round(arm.joint_angles(), 4).tolist())
         print("EE Pose:", np.round(arm.end_effector(), 5).tolist())
-        print("EE Pose tool0:", np.round(arm.end_effector(tip_link='b_bot_tool0'), 5).tolist())
-        print("EE Pose ee_link:", np.round(arm.end_effector(tip_link='b_bot_ee_link'), 5).tolist())
         if arm.gripper:
             print("Gripper position:", np.round(arm.gripper.get_position(), 4))
 
@@ -75,9 +78,6 @@ def map_keyboard():
             delta[dim] += delta_x * sign / 0.25
         else:  # rotation
             delta[dim] += delta_q * sign / 0.25
-        
-        for _ in range(n): 
-            x = transformations.pose_from_angular_veloticy(x, delta, dt=dt, ee_rotation=relative_ee)
 
         for _ in range(n):
             x = transformations.pose_from_angular_velocity(x, delta, dt=dt, ee_rotation=relative_ee)
@@ -139,7 +139,7 @@ def map_keyboard():
         '5': (move_gripper, [0.002], "open gripper a bit"),
         't': (open_gripper, [], "open gripper"),
         'g': (close_gripper, [], "close gripper"),
-        'b': (move_gripper, [-0.002], "close a bit gripper"),        
+        'b': (move_gripper, [-0.002], "close gripper a bit"),
     }
     done = False
     print("Controlling joints. Press ? for help, Esc to quit.")
@@ -183,9 +183,12 @@ See help inside the example with the '?' key for key bindings.
     parser.add_argument(
         '--relative', action='store_true', help='Motion Relative to ee')
     parser.add_argument(
-        '--namespace', type=str, help='Namespace of arm', default=None)
+        '--namespace', type=str, help='Namespace of arm (useful when having multiple arms)', default=None)
     parser.add_argument(
         '--gripper', action='store_true', help='enable gripper commands')
+    parser.add_argument(
+        '--robot', type=str, help='Version of Universal Robot arm. Default="ur3e"', default='ur3e')
+
     args = parser.parse_args(rospy.myargv()[1:])
 
     rospy.init_node("joint_position_keyboard", log_level=rospy.INFO)
@@ -193,24 +196,19 @@ See help inside the example with the '?' key for key bindings.
     global relative_ee
     relative_ee = args.relative
 
-    if args.robot:
-        driver = ROBOT_UR_RTDE_DRIVER
-    elif args.old:
-        driver = ROBOT_UR_MODERN_DRIVER
-    elif args.left:
-        driver = ROBOT_GAZEBO_DUAL_LEFT
-    elif args.right:
-        driver = ROBOT_GAZEBO_DUAL_RIGHT
-    
-    use_gripper = args.gripper  
-
-    extra_ee = [0, 0, 0.21, 0, 0, 0, 1]
+    ns = ''
+    joints_prefix = None
+    robot_urdf = "ur3e"
+    rospackage = None
+    tcp_link = None
+    use_gripper = args.gripper
 
     global arm
-    arm = Arm(ft_sensor=False, driver=driver, ee_transform=extra_ee, gripper=use_gripper)
-    print("Extra ee", extra_ee)
-
-    # print("Extra ee", extra_ee)
+    arm = Arm(ft_sensor=False,
+              gripper=use_gripper, namespace=ns,
+              joint_names_prefix=joints_prefix,
+              robot_urdf=robot_urdf, robot_urdf_package=rospackage,
+              ee_link=tcp_link)
 
     map_keyboard()
     print("Done.")

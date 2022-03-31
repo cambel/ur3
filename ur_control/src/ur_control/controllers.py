@@ -3,9 +3,7 @@ import actionlib
 import copy
 import collections
 import rospy
-import rostopic
 from ur_control import utils, filters, conversions, constants
-import os
 import numpy as np
 from std_msgs.msg import Float64
 from controller_manager_msgs.srv import ListControllers
@@ -18,8 +16,8 @@ from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryG
 from control_msgs.msg import GripperCommandAction, GripperCommandGoal
 # Link attacher
 try:
-    from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
-except:
+    from gazebo_ros_link_attacher.srv import Attach, AttachRequest
+except ImportError:
     print("Grasping pluging can't be loaded")
 
 class GripperController(object):
@@ -70,20 +68,19 @@ class GripperController(object):
             if rospy.is_shutdown():
                 return
 
-        try:
-            attach_plugin = rospy.get_param("grasp_plugin", default=False)
-            if attach_plugin:
+        attach_plugin = rospy.get_param("grasp_plugin", default=False)
+        if attach_plugin:
+            try:
                 # gazebo_ros link attacher
                 self.attach_link = attach_link
                 self.attach_srv = rospy.ServiceProxy('/link_attacher_node/attach', Attach)
                 self.detach_srv = rospy.ServiceProxy('/link_attacher_node/detach', Attach)
                 rospy.logdebug('Waiting for service: {0}'.format(self.attach_srv.resolved_name))
                 rospy.logdebug('Waiting for service: {0}'.format(self.detach_srv.resolved_name))
-                self.attach_srv.wait_for_service(2.0)
-                self.detach_srv.wait_for_service(2.0)
-        except:
-            rospy.logerr("Fail to load grasp plugin")
-
+                self.attach_srv.wait_for_service()
+                self.detach_srv.wait_for_service()
+            except Exception:
+                rospy.logerr("Fail to load grasp plugin services. Make sure to launch the right Gazebo world!")
         # Gripper action server
         action_server = self.ns + node_name + '/gripper_cmd'
         self._client = actionlib.SimpleActionClient(action_server, GripperCommandAction)
@@ -164,7 +161,6 @@ class GripperController(object):
         res = self.attach_srv.call(req)
         return res.ok
 
-        return self.command(1.0, percentage=True, wait=wait)
     def open(self, opening_width=None, wait=True):
         if opening_width:
             return self.command(opening_width, percentage=False, wait=wait)

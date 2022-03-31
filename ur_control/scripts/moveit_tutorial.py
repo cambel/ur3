@@ -1,45 +1,28 @@
 #!/usr/bin/env python2
 
-# Software License Agreement (BSD License)
+# The MIT License (MIT)
 #
-# Copyright (c) 2013, SRI International
-# All rights reserved.
+# Copyright (c) 2018-2021 Cristian Beltran
 #
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
 #
-#  * Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-#  * Redistributions in binary form must reproduce the above
-#    copyright notice, this list of conditions and the following
-#    disclaimer in the documentation and/or other materials provided
-#    with the distribution.
-#  * Neither the name of SRI International nor the names of its
-#    contributors may be used to endorse or promote products derived
-#    from this software without specific prior written permission.
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 #
-# Author: Acorn Pooley, Mike Lautman
-
-# BEGIN_SUB_TUTORIAL imports
-##
-# To use the Python MoveIt interfaces, we will import the `moveit_commander`_ namespace.
-# This namespace provides us with a `MoveGroupCommander`_ class, a `PlanningSceneInterface`_ class,
-# and a `RobotCommander`_ class. More on these below. We also import `rospy`_ and some messages that we will use:
-##
+# Author: Cristian Beltran
 
 import argparse
 import sys
@@ -51,7 +34,6 @@ import geometry_msgs.msg
 from math import pi
 from std_msgs.msg import String
 from moveit_commander.conversions import pose_to_list
-# END_SUB_TUTORIAL
 
 import signal
 
@@ -114,7 +96,7 @@ class MoveGroupPythonIntefaceTutorial(object):
         # If you are using a different robot, change this value to the name of your robot
         # arm planning group.
         # This interface can be used to plan and execute motions:
-        group_name = "leftarm"
+        group_name = "arm"
         move_group = moveit_commander.MoveGroupCommander(group_name)
 
         # Create a `DisplayTrajectory`_ ROS publisher which is used to display
@@ -170,13 +152,12 @@ class MoveGroupPythonIntefaceTutorial(object):
         # thing we want to do is move it to a slightly better configuration.
         # We can get the joint values from the group and adjust some of the values:
         joint_goal = move_group.get_current_joint_values()
-        joint_goal[0] = 0
-        joint_goal[1] = -pi/4
-        joint_goal[2] = 0
-        joint_goal[3] = -pi/2
-        joint_goal[4] = 0
-        joint_goal[5] = pi/3
-        # joint_goal[6] = 0
+        joint_goal[0] = 1.57
+        joint_goal[1] = -1.57
+        joint_goal[2] = 1.30
+        joint_goal[3] = -1.57
+        joint_goal[4] = -1.57
+        joint_goal[5] = 0
 
         # The go command can be called with joint values, poses, or without any
         # parameters if you have already set the pose or joint target for the group
@@ -365,7 +346,7 @@ class MoveGroupPythonIntefaceTutorial(object):
         # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
         # First, we will create a box in the planning scene at the location of the left finger:
         box_pose = geometry_msgs.msg.PoseStamped()
-        box_pose.header.frame_id = "leftarm_robotiq_hande_tip_link_joint"
+        box_pose.header.frame_id = "ur3_robotiq_hande_gripper"
         box_pose.pose.orientation.w = 1.0
         box_pose.pose.position.z = 0.0  # slightly above the end effector
         box_name = "box_name"
@@ -391,7 +372,7 @@ class MoveGroupPythonIntefaceTutorial(object):
         # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
         # First, we will create a box in the planning scene at the location of the left finger:
         box_pose = geometry_msgs.msg.PoseStamped()
-        box_pose.header.frame_id = "workspace_body"
+        box_pose.header.frame_id = "base_link"
         box_pose.pose.orientation.w = 1.0
         box_pose.pose.position.x = 0.93  # slightly above the end effector
         box_pose.pose.position.y = 0.25  # slightly above the end effector
@@ -426,7 +407,7 @@ class MoveGroupPythonIntefaceTutorial(object):
         # planning scene to ignore collisions between those links and the box. For the ur3e
         # robot, we set ``grasping_group = 'hand'``. If you are using a different robot,
         # you should change this value to the name of your end effector group name.
-        grasping_group = 'leftarm_ee'
+        grasping_group = 'gripper'
         touch_links = robot.get_link_names(group=grasping_group)
         scene.attach_box(eef_link, box_name, touch_links=touch_links)
         # END_SUB_TUTORIAL

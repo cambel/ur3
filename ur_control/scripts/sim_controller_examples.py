@@ -1,15 +1,33 @@
 #!/usr/bin/env python
-import sys
-import signal
-from moveit_commander import conversions
-from ur_control import utils, spalg, transformations, traj_utils
-from ur_control.constants import FORCE_TORQUE_EXCEEDED
-from ur_control.hybrid_controller import ForcePositionController
-from ur_control.compliant_controller import CompliantController
+
+# The MIT License (MIT)
+#
+# Copyright (c) 2018-2021 Cristian Beltran
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+# Author: Cristian Beltran
+ 
+from ur_control import spalg, transformations, traj_utils
+from ur_control.arm import Arm
 import argparse
 import rospy
-import rospkg
-import yaml
 import timeit
 import numpy as np
 from pyquaternion import Quaternion
@@ -17,35 +35,17 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(linewidth=np.inf)
 
 
-def signal_handler(sig, frame):
-    print('You pressed Ctrl+C!')
-    sys.exit(0)
-
-
-signal.signal(signal.SIGINT, signal_handler)
-
-
 def move_joints(wait=True):
     # desired joint configuration 'q'
-    # q = [2.37191, -1.88688, -1.82035,  0.4766,  2.31206,  3.18758]
-    q = [1.5701, -1.1854, 1.3136, -1.6975, -1.5708, -0.0016]
-    q = [1.5794, -1.4553, 2.1418, -2.8737, -1.6081, 0.0063]
-    q = [1.7321, -1.4295, 2.0241, -2.6473, -1.6894, -1.4177]
-    q = [1.6626, -1.2571, 1.9806, -2.0439, -2.7765, -1.3049]  # b_bot bearing
-    # q = [1.6241, -1.2576, 2.0085, -2.1514, -2.7841, -1.408] # b_bot grasp bearing
-    q = [1.6288, -1.3301, 1.8391, -2.0612, -1.5872, -1.5548]  # b_bot
-    q = [1.6944, -1.697, 2.1605, -2.0188, -1.5658, 0.1337]  # push from up
+    q = [0, 0, 0, 0, 0, 0]
+    q = [3.2317, -1.979, 1.3969, -0.4844, -0.1151, -1.7565]
+    q = [1.5353, -1.211, -1.4186, -0.546, 1.6476, -0.0237]
 
-    q = [1.8301, -1.4344, 1.9283, -2.049, -1.5634, 0.2701] # safe pose before side push
-    arm.set_joint_positions(position=q, wait=wait, t=2.0)
-
-    q = [1.898, -1.5329, 2.1112, -2.1337, -1.5627, 0.3383]  # push from side x
-    q = [1.6869, -1.4745, 2.0504, -2.131, -1.5658, 0.1272]  # push from side y
     # go to desired joint configuration
     # in t time (seconds)
     # wait is for waiting to finish the motion before executing
     # anything else or ignore and continue with whatever is next
-    arm.set_joint_positions(position=q, wait=wait, t=2.0)
+    arm.set_joint_positions(position=q, wait=wait, t=0.5)
 
 
 def follow_trajectory():
@@ -68,7 +68,7 @@ def move_endeffector(wait=True):
     # get current position of the end effector
     cpose = arm.end_effector()
     # define the desired translation/rotation
-    deltax = np.array([0., 0., 0.0, 0., 1., 0.])
+    deltax = np.array([0., 0., 0.04, 0., 0., 0.])
     # add translation/rotation to current position
     cpose = transformations.pose_euler_to_quaternion(cpose, deltax, ee_rotation=True)
     # execute desired new pose
@@ -132,121 +132,92 @@ def grasp_plugin():
     arm.gripper.release(link_name="cube3::link")
 
 
-def move_to_pose():
-    cpose = arm.end_effector()
-    cpose[3:] = [0, 0, 0, 1]
-    arm.set_target_pose(pose=cpose, wait=True, t=1.0)
-
-    # def _conical_helix_trajectory(self, steps, revolutions):
-    #     # initial_pose = self.ur3e_arm.end_effector()[:3]
-    #     initial_pose = self.rand_init_cpose[:3]
-    #     final_pose = self.target_pos[:3]
-
-    #     target_q = transformations.vector_to_pyquaternion(self.target_pos[3:])
-
-    #     p1 = target_q.rotate(initial_pose - final_pose)
-    #     p2 = np.zeros(3)
-
-    #     traj = get_conical_helix_trajectory(p1, p2, steps, revolutions)
-    #     traj = np.apply_along_axis(target_q.rotate, 1, traj)
-    #     self.base_trajectory = traj + final_pose
-
-
-def spiral_trajectory():
-    initial_q = [1.6626, -1.2571, 1.9806, -2.0439, -2.7765, -1.3049]  # b_bot bearing
-    initial_q = [1.7095, -1.5062, 2.0365, -1.8598, -2.6038, -1.3207]  # b_bot shaft
-    initial_q = [0.9495, -1.6617, 1.866, -1.756, -1.538, 0.948]  # push # b_bot bearing with housing
-
+def circular_trajectory():
+    initial_q = [5.1818, 0.3954, -1.5714, -0.3902, 1.5448, -0.5056]
     arm.set_joint_positions(initial_q, wait=True, t=2)
 
-    plane = "YZ"
-    radius = 0.0
-    radius_direction = "+Z"
-    revolutions = 3
+    target_position = [0.20, -0.30, 0.80]
+    target_orienation = [0.01504, 0.01646, -0.01734, 0.9996]
+    target_orienation = [0.18603, 0.01902, -0.01464, 0.98225]
+    target_pose = target_position + target_orienation
 
-    steps = 50
-    duration = 10.0
+    deltax = np.array([0., 0.05, 0.1, 0., 0., 0.])
+    initial_pose = transformations.pose_euler_to_quaternion(target_pose, deltax, ee_rotation=True)
 
-    arm.set_wrench_offset(True)
+    initial_pose = initial_pose[:3]
+    final_pose = target_position[:3]
 
-    for _ in range(1):
-        initial_pose = arm.end_effector()
-        trajectory = traj_utils.compute_trajectory(initial_pose, plane, radius, radius_direction, steps, revolutions, trajectory_type="spiral", from_center=True,
-                                                   wiggle_direction="X", wiggle_angle=np.deg2rad(10.0), wiggle_revolutions=1.0)
-        execute_trajectory(trajectory, duration=duration, use_force_control=True)
+    target_q = transformations.vector_to_pyquaternion(target_orienation)
 
+    p1 = target_q.rotate(initial_pose - final_pose)
+    p2 = np.zeros(3)
+    steps = 20
+    duration = 10
 
-def circular_trajectory():
-    initial_q = [1.5791, -1.257, 1.8261, -2.2056, -2.6119, -1.5235]  # b_bot bearing
+    traj = traj_utils.circunference(p1, p2, steps)
+    traj = np.apply_along_axis(target_q.rotate, 1, traj)
+    trajectory = traj + final_pose
+
+    for position in trajectory:
+        cmd = np.concatenate([position, target_orienation])
+        arm.set_target_pose(cmd, wait=True, t=(duration/steps))
+
+def circular_trajectory2():
+    initial_q = [2.159, -1.8183, -1.9143, 0.4768, 2.5238, 4.6963]
+    # print(arm.end_effector().tolist())
     arm.set_joint_positions(initial_q, wait=True, t=1)
+    
+    target_position = [0.35951, -0.54521, 0.34393]
+    target_orienation = spalg.face_towards(target_position, arm.end_effector()[:3])[3:].tolist()
 
-    plane = "YZ"
-    radius = 0.003
-    radius_direction = "+Z"
+    target_pose = target_position + target_orienation
 
-    steps = 100
-    revolutions = 1
-    duration = 10.0
+    deltax = np.array([0., 0.0, 0.2, 0., 0., 0.])
+    initial_pose_ = transformations.pose_euler_to_quaternion(target_pose, deltax, ee_rotation=True)
+    initial_pose = initial_pose_[:3]
+    final_pose = target_position[:3]
 
-    arm.set_wrench_offset(True)
+    circle_orientation = [0,0,0,1.0]
+    target_q = transformations.vector_to_pyquaternion(circle_orientation)
 
-    for _ in range(1):  # Execute the trajectory twice starting from the end of the previous trajectory
-        initial_pose = arm.end_effector()
-        trajectory = traj_utils.compute_trajectory(initial_pose, plane, radius, radius_direction, steps, revolutions, trajectory_type="circular", from_center=False,
-                                                   wiggle_direction="X", wiggle_angle=np.deg2rad(0.0), wiggle_revolutions=10.0)
-        execute_trajectory(trajectory, duration=duration, use_force_control=True)
+    p1 = target_q.rotate(initial_pose - final_pose)
+    p2 = np.zeros(3)
+    steps = 20
+    duration = 10
 
+    traj = traj_utils.circunference(p1, p2, steps, axes=[0,2,1])
+    traj = np.apply_along_axis(target_q.rotate, 1, traj)
+    trajectory = traj + final_pose
 
-def test_multiple_planes():
-    planes = ["XY", "XZ", "YZ"]
-    radius_directions = [["+X", "-X", "+Y", "-Y"], ["+X", "-X", "+Z", "-Z"], ["+Y", "-Y", "+Z", "-Z"]]
-    for a, b in zip(planes, radius_directions):
-        for r in b:
-            print("PLANE", a, r)
-            initial_q = [1.5909, -1.3506, 1.9397, -2.0634, -2.5136, -1.4549]  # b_bot bearing
-            arm.set_joint_positions(initial_q, wait=True, t=1)
+    rot = spalg.face_towards(target_position, trajectory[0])[3:].tolist()
+    cmd = np.concatenate([trajectory[0], rot])
+    arm.set_target_pose(cmd, wait=True, t=(duration/steps))
+    for position in trajectory:
+        rot = spalg.face_towards(target_position, position)[3:].tolist()
+        cmd = np.concatenate([position, rot])
+        
+        cmd_q = arm._solve_ik(cmd)
+        if check_ik(arm.joint_angles(), cmd_q):
+            arm.set_target_pose(cmd, wait=True, t=(duration/steps))
 
-            plane = a
-            radius = 0.05
-            radius_direction = r
+    from ur_gazebo.gazebo_spawner import GazeboModels
+    spawner = GazeboModels('ur3_gazebo')
 
-            steps = 100
-            duration = 2.0
+    m1 = create_gazebo_marker(initial_pose_, "base_link", marker_id="obj")
+    spawner.load_models([m1])
 
-            initial_pose = arm.end_effector()
-            trajectory = traj_utils.compute_trajectory(initial_pose, plane, radius, radius_direction, steps, revolutions=1, trajectory_type="spiral", from_center=False)
-            execute_trajectory(trajectory, duration=duration, use_force_control=True)
+def check_ik(curr_q, cmd_q):
+    cmd = cmd_q if cmd_q is not None else np.zeros_like(curr_q)
+    distance = np.linalg.norm(curr_q-cmd)
+    print(distance)
+    return distance < 0.5
 
+def create_gazebo_marker(pose, reference_frame, marker_id=None):
+    from ur_gazebo.model import Model
+    pose = np.array(pose)
+    marker_pose = [pose[:3].tolist(), pose[3:].tolist()]
+    return Model("visual_marker", marker_pose[0], orientation=marker_pose[1], reference_frame=reference_frame, model_id=marker_id)
 
-def wiggle():
-    initial_pose = arm.end_effector()
-    steps = 100.
-    traj = traj_utils.compute_rotation_wiggle(initial_pose[3:], "Z", np.deg2rad(10.0), steps, 3)
-    timeout = 10./steps
-
-    for i, to in enumerate(traj):
-        cmd = np.concatenate([initial_pose[:3], to])
-        # print("Initial error", i, np.round(spalg.translation_rotation_error(traj[0], arm.end_effector())[3:], 4))
-        arm.set_target_pose_flex(cmd, t=timeout)
-        rospy.sleep(timeout)
-
-def execute_trajectory(trajectory, duration, use_force_control=False, termination_criteria=None):
-    if use_force_control:
-        # pf_model = init_force_control([0., 0.9, 0.9, 0.9, 0.9, 0.9])
-        pf_model = init_force_control([1., 1., 1., 1., 1., 1.])
-        target_force = np.array([0., 0., 0., 0., 0., 0.])
-        max_force_torque = np.array([500.0, 500., 500., 500., 500., 500.])
-
-        def termination_criteria(current_pose, standby): return False
-
-        full_force_control(target_force, trajectory, pf_model, timeout=duration,
-                        relative_to_ee=False, max_force_torque=max_force_torque, termination_criteria=termination_criteria)
-
-    else:
-        joint_trajectory = []
-        for point in trajectory:
-            joint_trajectory.append(arm._solve_ik(point))
-        arm.set_joint_trajectory(joint_trajectory, t=duration)
 
 def face_towards_target():
     """
@@ -257,186 +228,6 @@ def face_towards_target():
     # compute pose with new rotation
     cmd = spalg.face_towards(target_position, cpose)
     arm.set_target_pose(cmd, wait=True, t=1)
-
-
-def init_force_control(selection_matrix, dt=0.002):
-    Kp = np.array([3., 3., 3., 1., 1., 1.])
-    Kp_pos = Kp
-    Kd_pos = Kp * 0.01
-    Ki_pos = Kp * 0.01
-    position_pd = utils.PID(Kp=Kp_pos, Ki=Ki_pos, Kd=Kd_pos, dynamic_pid=True)
-
-    # Force PID gains
-    Kp = np.array([0.05, 0.05, 0.05, 0.05, 0.05, 0.05])
-    Kp_force = Kp
-    Kd_force = Kp * 0.01
-    Ki_force = Kp * 0.01
-    force_pd = utils.PID(Kp=Kp_force, Kd=Kd_force, Ki=Ki_force)
-    pf_model = ForcePositionController(position_pd=position_pd, force_pd=force_pd, alpha=np.diag(selection_matrix), dt=dt)
-
-    return pf_model
-
-
-def full_force_control(
-        target_force=None, target_positions=None, model=None,
-        selection_matrix=[1., 1., 1., 1., 1., 1.], 
-        relative_to_ee=False, timeout=10.0, max_force_torque=[200., 200., 200., 5., 5., 5.],
-        termination_criteria=None):
-    """ 
-      Use with caution!! 
-      target_force: list[6], target force for each direction x,y,z,ax,ay,az
-      target_position: list[7], target position for each direction x,y,z + quaternion
-      selection_matrix: list[6], define which direction is controlled by position(1.0) or force(0.0)
-      relative_to_ee: bool, whether to use the base_link of the robot as frame or the ee_link (+ ee_transform)
-      timeout: float, duration in seconds of the force control
-    """
-    arm.set_wrench_offset(True)  # offset the force sensor
-    arm.relative_to_ee = relative_to_ee
-
-    # TODO(cambel): Define a config file for the force-control parameters
-    if model is None:
-        pf_model = init_force_control(selection_matrix)
-    else:
-        pf_model = model
-        pf_model.selection_matrix = np.diag(selection_matrix)
-
-    max_force_torque = np.array(max_force_torque)
-
-    target_force = np.array([0., 0., 0., 0., 0., 0.]) if target_force is None else target_force
-
-    target_positions = arm.end_effector() if target_positions is None else np.array(target_positions)
-
-    pf_model.set_goals(force=target_force)
-
-    # print("STARTING Force Control with target_force:", target_force, "timeout", timeout)
-    return arm.set_hybrid_control_trajectory(target_positions, pf_model, max_force_torque=max_force_torque, timeout=timeout, stop_on_target_force=False, termination_criteria=termination_criteria)
-    # rospy.loginfo("Force control finished with: %s" % res)  # debug
-
-
-def force_control():
-    arm.set_wrench_offset(True)
-
-    timeout = 10.0
-
-    selection_matrix = [0., 0., 0., 1., 1., 1.]
-    target_force = np.array([0., 0., 0., 0., 0., 0.])
-
-    full_force_control(target_force, selection_matrix=selection_matrix, timeout=timeout, relative_to_ee=False)
-
-
-def execute_manual_routine(routine_filename):
-    path = rospkg.RosPack().get_path("o2ac_routines") + ("/config/playback_sequences/%s.yaml" % routine_filename)
-    with open(path, 'r') as f:
-        routine = yaml.load(f)
-    robot_name = routine["robot_name"]
-    waypoints = routine["waypoints"]
-
-    for i, point in enumerate(waypoints):
-        print("point:", i+1)
-        # raw_input()
-        pose = point['pose']
-        pose_type = point['type']
-        gripper_action = point.get('gripper-action')
-        duration = point['duration']
-        move_to_waypoint(pose, pose_type, gripper_action, 1.)
-
-def move_to_waypoint(pose, pose_type, gripper_action, duration):
-    if pose_type == 'joint-space' or pose_type == 'joint-space-goal-cartesian-lin-motion':
-        target=pose = arm.end_effector(pose)
-        # arm.set_joint_positions(pose, wait=True, t=1.0)
-        arm.move_linear(target, t=duration)
-    elif pose_type == 'task-space':
-        arm.set_target_pose(pose, wait=True, t=duration)
-    elif pose_type == 'relative-tcp':
-        arm.move_relative(pose, relative_to_ee=True, t=duration)
-    elif pose_type == 'relative-base':
-        arm.move_relative(pose, relative_to_ee=False, t=duration)
-    else:
-        raise ValueError("Invalid pose_type: %s" % pose_type)
-    if gripper_action:
-        pass # do gripper action
-
-
-def move_linear():
-    # get current position of the end effector
-    cpose = arm.end_effector()
-    # define the desired translation/rotation
-    deltax = np.array([0.1, 0.0, 0.0, 0., np.deg2rad(15.), 0.])
-    # add translation/rotation to current position
-    cmd = transformations.pose_euler_to_quaternion(cpose, deltax)
-    print(cmd[3:], cpose[3:])
-    # execute desired new pose
-    # may fail if IK solution is not found
-    arm.move_linear(pose=cmd, t=1.0)
-
-    cpose = arm.end_effector()
-    deltax = np.array([0.0, 0.1, 0.0, 0., np.deg2rad(-15.), 0.])
-    # add translation/rotation to current position
-    cmd = transformations.pose_euler_to_quaternion(cpose, deltax)
-    # execute desired new pose
-    # may fail if IK solution is not found
-    arm.move_linear(pose=cmd, t=1.0)
-
-    cpose = arm.end_effector()
-    deltax = np.array([-0.1, 0.0, 0.0, np.deg2rad(15.), 0., 0.])
-    # add translation/rotation to current position
-    cmd = transformations.pose_euler_to_quaternion(cpose, deltax)
-    # execute desired new pose
-    # may fail if IK solution is not found
-    arm.move_linear(pose=cmd, t=1.0)
-
-    cpose = arm.end_effector()
-    deltax = np.array([0.0, -0.1, 0.0, np.deg2rad(-15.), 0., 0.])
-    # add translation/rotation to current position
-    cmd = transformations.pose_euler_to_quaternion(cpose, deltax)
-    # execute desired new pose
-    # may fail if IK solution is not found
-    arm.move_linear(pose=cmd, t=1.0)
-
-def rotation_test_pid():
-    initial_q = [0.9495, -1.6617, 1.866, -1.756, -1.538, 0.948]  # push # b_bot bearing with housing
-
-    arm.set_joint_positions(initial_q, wait=True, t=2)
-
-    plane = "YZ"
-    radius = 0.0
-    radius_direction = "+Z"
-    revolutions = 3
-
-    steps = 50
-    duration = 5.0
-
-    arm.set_wrench_offset(True)
-
-    cpose = np.copy(arm.end_effector())
-    crot = list(transformations.euler_from_quaternion(cpose[3:], axes='rxyz'))
-    crot[0] += np.deg2rad(30)
-    target_positions = [np.concatenate([cpose[:3], transformations.quaternion_from_euler(*crot, axes='rxyz')])]
-    print("initial orientation", cpose[3:])
-    print("target orientation",target_positions[0][3:])
-    execute_trajectory(target_positions, duration=duration, use_force_control=True)
-    print("diff", np.round(spalg.translation_rotation_error(arm.end_effector(), cpose), 5))
-
-    # initial_q = [0.9495, -1.6617, 1.866, -1.756, -1.538, 0.948]  # push # b_bot bearing with housing
-    # arm.set_joint_positions(initial_q, wait=True, t=2)
-    
-    # pf_model = init_force_control([1,1,1,1,1,1.])
-    # arm.set_wrench_offset(True)  # offset the force sensor
-
-    # max_force_torque = np.array([500.0, 500., 500., 500., 500., 500.])
-
-    # target_force = np.array([0., 0., 0., 0., 0., 0.])
-
-    # cpose = arm.end_effector()
-    # crot = list(transformations.euler_from_quaternion(cpose[3:]))
-    # crot[0] += np.deg2rad(30)
-    # target_positions = np.concatenate([cpose[:3], crot])
-
-    # pf_model.set_goals(force=target_force)
-
-    # # print("STARTING Force Control with target_force:", target_force, "timeout", timeout)
-    # return arm.set_hybrid_control_trajectory(target_positions, pf_model, max_force_torque=max_force_torque, timeout=5.0)
-    # # rospy.loginfo("Force control finished with: %s" % res)  # debug
 
 def main():
     """ Main function to be run. """
@@ -449,63 +240,34 @@ def main():
                         help='move to a desired end-effector position')
     parser.add_argument('-g', '--gripper', action='store_true',
                         help='Move gripper')
-    parser.add_argument('-f', '--force', action='store_true',
-                        help='Force control demo')
-    parser.add_argument('-p', '--pose', action='store_true',
-                        help='Move to pose')
-    parser.add_argument('-w', '--wiggle', action='store_true',
-                        help='Wiggle')
-    parser.add_argument('-r', '--routine', action='store_true',
-                        help='Execute manual routine')
     parser.add_argument('--grasp_naive', action='store_true',
                         help='Test simple grasping (cube_tasks world)')
     parser.add_argument('--grasp_plugin', action='store_true',
                         help='Test grasping plugin (cube_tasks world)')
     parser.add_argument('--circle', action='store_true',
                         help='Circular rotation around a target pose')
-    parser.add_argument('--spiral', action='store_true',
-                        help='Spiral rotation around a target pose')
     parser.add_argument('--face', action='store_true',
                         help='Face towards a target vector')
-    parser.add_argument('--rot', action='store_true',
-                        help='rotation test')
-    parser.add_argument(
-        '--namespace', type=str, help='Namespace of arm', default=None)
+
     args = parser.parse_args()
 
     rospy.init_node('ur3e_script_control')
 
-    tcp_z = 0.0  # where to consider the tool center point wrt end-effector
+    tcp_z = 0.21  # where to consider the tool center point wrt end-effector
     if args.face:
-        tcp_z = 0.0
-
-    ns = ''
-    joints_prefix = None
-    robot_urdf = "ur3e_robot"
-    rospackage = None
-    tcp_link = None
-    if args.namespace:
-        ns = args.namespace
-        joints_prefix = args.namespace + "_"
-        robot_urdf = args.namespace
-        rospackage = "o2ac_scene_description"
-        tcp_link='gripper_tip_link'
-
-    use_gripper = args.gripper
+        tcp_z = 0.21
 
     global arm
-    arm = CompliantController(ft_sensor=True, gripper=use_gripper, namespace=ns,
-                              joint_names_prefix=joints_prefix,
-                              robot_urdf=robot_urdf, robot_urdf_package=rospackage, 
-                              ee_link=tcp_link)
+    arm = Arm(
+        ft_sensor=True,  # get Force/Torque data or not
+        gripper=args.gripper,  # Enable gripper
+        )
 
     real_start_time = timeit.default_timer()
     ros_start_time = rospy.get_time()
 
     if args.move:
         move_joints()
-    if args.pose:
-        move_linear()
     if args.move_traj:
         follow_trajectory()
     if args.move_ee:
@@ -517,19 +279,10 @@ def main():
     if args.grasp_plugin:
         grasp_plugin()
     if args.circle:
-        circular_trajectory()
-    if args.spiral:
-        spiral_trajectory()
+        circular_trajectory2()
     if args.face:
         face_towards_target()
-    if args.force:
-        force_control()
-    if args.wiggle:
-        wiggle()
-    if args.routine:
-        execute_manual_routine("bearing_orient_totb")
-    if args.rot:
-        rotation_test_pid()
+
     print("real time", round(timeit.default_timer() - real_start_time, 3))
     print("ros time", round(rospy.get_time() - ros_start_time, 3))
 

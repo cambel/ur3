@@ -1,7 +1,31 @@
 #!/usr/bin/env python
-from ur_control import utils, spalg, transformations
-from ur_control.impedance_control import AdmittanceModel
-from ur_control.compliant_controller import CompliantController
+
+# The MIT License (MIT)
+#
+# Copyright (c) 2018-2021 Cristian Beltran
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+# Author: Cristian Beltran
+
+from ur_control import transformations
+from ur_control.arm import Arm
 import argparse
 import rospy
 import timeit
@@ -12,13 +36,13 @@ np.set_printoptions(linewidth=np.inf)
 
 def move_joints(wait=True):
     # desired joint configuration 'q'
-    q = [-1.1592, -0.7574, 1.7715, -2.5935, 1.5664, 0.0]
+    q = [2.37191, -1.88688, -1.82035,  0.4766,  2.31206,  3.18758]
 
     # go to desired joint configuration
     # in t time (seconds)
     # wait is for waiting to finish the motion before executing
     # anything else or ignore and continue with whatever is next
-    arm.set_joint_positions(position=q, wait=wait, t=5.0)
+    arm.set_joint_positions(position=q, wait=wait, t=0.5)
 
 
 def follow_trajectory():
@@ -51,23 +75,17 @@ def move_endeffector(wait=True):
 
 def move_gripper():
     # very different than simulation
-    # from robotiq_urcap_control.msg import Robotiq2FGripper_robot_input as inputMsg
-    # from robotiq_urcap_control.msg import Robotiq2FGripper_robot_output as outputMsg
-    # from robotiq_urcap_control.robotiq_urcap_control import RobotiqGripper
-    from robotiq_msgs.msg import CModelCommand, CModelStatus
-    from robotiq_control.cmodel_urcap import RobotiqCModelURCap
-
+    from robotiq_urcap_control.msg import Robotiq2FGripper_robot_input as inputMsg
+    from robotiq_urcap_control.msg import Robotiq2FGripper_robot_output as outputMsg
+    from robotiq_urcap_control.robotiq_urcap_control import RobotiqGripper
     print("Connecting to gripper")
     robot_ip = rospy.get_param("/ur_hardware_interface/robot_ip")
-    gripper = RobotiqCModelURCap(robot_ip=robot_ip)
-    # gripper = RobotiqGripper(robot_ip=robot_ip)
+    gripper = RobotiqGripper(robot_ip=robot_ip)
     # The Gripper status is published on the topic named 'Robotiq2FGripperRobotInput'
-    pub = rospy.Publisher('Robotiq2FGripperRobotInput', CModelStatus, queue_size=1)
-    # pub = rospy.Publisher('Robotiq2FGripperRobotInput', inputMsg, queue_size=1)
+    pub = rospy.Publisher('Robotiq2FGripperRobotInput', inputMsg, queue_size=1)
 
     # The Gripper command is received from the topic named 'Robotiq2FGripperRobotOutput'
-    rospy.Subscriber('Robotiq2FGripperRobotOutput', CModelCommand, gripper.send_command)
-    # rospy.Subscriber('Robotiq2FGripperRobotOutput', outputMsg, gripper.send_command)
+    rospy.Subscriber('Robotiq2FGripperRobotOutput', outputMsg, gripper.send_command)
 
     gripper.connect()
     gripper.activate()
@@ -92,33 +110,16 @@ def main():
                         help='Rotation slerp')
     parser.add_argument('--relative', action='store_true', help='relative to end-effector')
     parser.add_argument('--rotation_pd', action='store_true', help='relative to end-effector')
-    parser.add_argument(
-        '--namespace', type=str, help='Namespace of arm', default=None)
-    parser.add_argument(
-        '--gripper', action='store_true', help='enable gripper commands')
 
     args = parser.parse_args()
 
     rospy.init_node('ur3e_script_control')
 
-    ns = ''
-    joints_prefix = None
-    robot_urdf = "ur3e_robot"
-    if args.namespace:
-        ns = args.namespace
-        joints_prefix = args.namespace + "_"
-        robot_urdf = args.namespace
-    
-    use_gripper = args.gripper  
-
-    extra_ee = [0, 0, 0.0, 0, 0, 0, 1]
-
     global arm
-    arm = CompliantController(ft_sensor=False, ee_transform=extra_ee, 
-              gripper=use_gripper, namespace=ns, 
-              joint_names_prefix=joints_prefix, 
-              robot_urdf=robot_urdf)
-    print("Extra ee", extra_ee)
+    arm = Arm(
+        ft_sensor=True,  # get Force/Torque data or not
+        gripper=True,  # Enable gripper
+    )
 
     real_start_time = timeit.default_timer()
     ros_start_time = rospy.get_time()
