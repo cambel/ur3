@@ -49,6 +49,13 @@ Execute the following command to see the available examples.
   $ rosrun ur_control sim_controller_examples.py --help
   ```
 
+For testing the grasping examples you need to explicitly specify that the gripper is going to be loaded, e.g.,
+  ```
+  $ rosrun ur_control sim_controller_examples.py --gripper --grasp_naive
+  ```
+
+The grasp_plugin example uses this [plugin](https://github.com/pal-robotics/gazebo_ros_link_attacher), and requires gazebo to be launched with the grasp_plugin parameter as `True`.
+
 An easy way to control the robot using the keyboard can be found in the script:
   ```
   $ rosrun ur_control joint_position_keyboard.py
