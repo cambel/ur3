@@ -149,7 +149,7 @@
       <plugin name="gazebo_grasp_fix" filename="libgazebo_grasp_fix.so">
             <arm>
               <arm_name>robotiq_85</arm_name>
-              <palm_link>tool0</palm_link>
+              <palm_link>wrist_3_link</palm_link>
               <gripper_link>robotiq_85_left_finger_tip_link</gripper_link>
               <gripper_link>robotiq_85_right_finger_tip_link</gripper_link>
             </arm>
@@ -173,7 +173,7 @@
         </grasp_check>
         <gripper_link>robotiq_85_left_finger_tip_link</gripper_link>
         <gripper_link>robotiq_85_right_finger_tip_link</gripper_link>
-        <palm_link>robotiq_85_base_link</palm_link>
+        <palm_link>wrist_3_link</palm_link>
       </gripper>
     </gazebo> 
   </xacro:unless>
