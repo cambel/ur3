@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#! /usr/bin/env python
 
 # The MIT License (MIT)
 #
@@ -24,13 +24,21 @@
 #
 # Author: Cristian Beltran
  
-from ur_control import spalg, transformations, traj_utils
+from ur_control import transformations, traj_utils, conversions
 from ur_control.arm import Arm
 import argparse
+import random
 import rospy
 import timeit
+
+# If Docker version of Python3 version is used in melodic, 
+# Install tf for python3 like this: pip install --extra-index-url https://rospypi.github.io/simple/ tf2_ros
+# Then enable the following  lines to re-direct tf to the new library
+import sys
+sys.path[:0] = ['/usr/local/lib/python3.6/dist-packages/']
+import tf
+
 import numpy as np
-from pyquaternion import Quaternion
 np.set_printoptions(suppress=True)
 np.set_printoptions(linewidth=np.inf)
 
@@ -132,102 +140,48 @@ def grasp_plugin():
     arm.gripper.release(link_name="cube3::link")
 
 
+def get_random_valid_direction(plane):
+    if plane == "XZ":
+        return random.choice(["+X", "-X", "+Z", "-Z"])
+    elif plane == "YZ":
+        return random.choice(["+Y", "-Y", "+Z", "-Z"])
+    elif plane == "XY":
+        return random.choice(["+X", "-X", "+Y", "-Y"])
+    else:
+        raise ValueError("Invalid value for plane: %s" % plane)
+
 def circular_trajectory():
-    initial_q = [5.1818, 0.3954, -1.5714, -0.3902, 1.5448, -0.5056]
+    """ Simple circular trajectory from initial pose. 5cm of radius"""
+    initial_q = [1.8391, -1.5659, 1.4889, -1.6421, -1.6115, 0.2656]
     arm.set_joint_positions(initial_q, wait=True, t=2)
 
-    target_position = [0.20, -0.30, 0.80]
-    target_orienation = [0.01504, 0.01646, -0.01734, 0.9996]
-    target_orienation = [0.18603, 0.01902, -0.01464, 0.98225]
-    target_pose = target_position + target_orienation
+    duration = 5.0
+    steps = 100
+    plane = "XY"
+    direction = get_random_valid_direction(plane)
+    dummy_trajectory = traj_utils.compute_trajectory(initial_pose=[0, 0, 0, 0, 0, 0, 1.],
+                                                    plane=plane, radius=0.05, 
+                                                    radius_direction=direction, steps=steps, revolutions=1,
+                                                    from_center=False, trajectory_type="circular")
 
-    deltax = np.array([0., 0.05, 0.1, 0., 0., 0.])
-    initial_pose = transformations.pose_euler_to_quaternion(target_pose, deltax, ee_rotation=True)
 
-    initial_pose = initial_pose[:3]
-    final_pose = target_position[:3]
 
-    target_q = transformations.vector_to_pyquaternion(target_orienation)
+    listener = tf.TransformListener()
+    # convert dummy_trajectory (initial pose frame id) to robot's base frame
+    try:
+        listener.waitForTransform("base_link", "wrist_3_link", rospy.Time(0), rospy.Duration(1))
+        transform2target = listener.fromTranslationRotation(*listener.lookupTransform("base_link", "wrist_3_link", rospy.Time(0)))
+    except Exception as e:
+        print(e)
+        return False
 
-    p1 = target_q.rotate(initial_pose - final_pose)
-    p2 = np.zeros(3)
-    steps = 20
-    duration = 10
-
-    traj = traj_utils.circunference(p1, p2, steps)
-    traj = np.apply_along_axis(target_q.rotate, 1, traj)
-    trajectory = traj + final_pose
-
-    for position in trajectory:
-        cmd = np.concatenate([position, target_orienation])
-        arm.set_target_pose(cmd, wait=True, t=(duration/steps))
-
-def circular_trajectory2():
-    initial_q = [2.159, -1.8183, -1.9143, 0.4768, 2.5238, 4.6963]
-    # print(arm.end_effector().tolist())
-    arm.set_joint_positions(initial_q, wait=True, t=1)
-    
-    target_position = [0.35951, -0.54521, 0.34393]
-    target_orienation = spalg.face_towards(target_position, arm.end_effector()[:3])[3:].tolist()
-
-    target_pose = target_position + target_orienation
-
-    deltax = np.array([0., 0.0, 0.2, 0., 0., 0.])
-    initial_pose_ = transformations.pose_euler_to_quaternion(target_pose, deltax, ee_rotation=True)
-    initial_pose = initial_pose_[:3]
-    final_pose = target_position[:3]
-
-    circle_orientation = [0,0,0,1.0]
-    target_q = transformations.vector_to_pyquaternion(circle_orientation)
-
-    p1 = target_q.rotate(initial_pose - final_pose)
-    p2 = np.zeros(3)
-    steps = 20
-    duration = 10
-
-    traj = traj_utils.circunference(p1, p2, steps, axes=[0,2,1])
-    traj = np.apply_along_axis(target_q.rotate, 1, traj)
-    trajectory = traj + final_pose
-
-    rot = spalg.face_towards(target_position, trajectory[0])[3:].tolist()
-    cmd = np.concatenate([trajectory[0], rot])
-    arm.set_target_pose(cmd, wait=True, t=(duration/steps))
-    for position in trajectory:
-        rot = spalg.face_towards(target_position, position)[3:].tolist()
-        cmd = np.concatenate([position, rot])
+    for p in dummy_trajectory:
+        ps = conversions.to_pose_stamped("base_link", p)
+        next_pose = conversions.from_pose_to_list(conversions.transform_pose("base_link", transform2target, ps).pose)
+        print("next_pose", np.round(next_pose[:3].tolist(),4))
         
-        cmd_q = arm._solve_ik(cmd)
-        if check_ik(arm.joint_angles(), cmd_q):
-            arm.set_target_pose(cmd, wait=True, t=(duration/steps))
-
-    from ur_gazebo.gazebo_spawner import GazeboModels
-    spawner = GazeboModels('ur3_gazebo')
-
-    m1 = create_gazebo_marker(initial_pose_, "base_link", marker_id="obj")
-    spawner.load_models([m1])
-
-def check_ik(curr_q, cmd_q):
-    cmd = cmd_q if cmd_q is not None else np.zeros_like(curr_q)
-    distance = np.linalg.norm(curr_q-cmd)
-    print(distance)
-    return distance < 0.5
-
-def create_gazebo_marker(pose, reference_frame, marker_id=None):
-    from ur_gazebo.model import Model
-    pose = np.array(pose)
-    marker_pose = [pose[:3].tolist(), pose[3:].tolist()]
-    return Model("visual_marker", marker_pose[0], orientation=marker_pose[1], reference_frame=reference_frame, model_id=marker_id)
-
-
-def face_towards_target():
-    """
-        Move robot's end-effector towards a target point. 
-    """
-    cpose = arm.end_effector()  # current pose
-    target_position = [0.35951, -0.54521, 0.34393]
-    # compute pose with new rotation
-    cmd = spalg.face_towards(target_position, cpose)
-    arm.set_target_pose(cmd, wait=True, t=1)
+        arm.set_target_pose_flex(pose=next_pose, t=duration/steps)
+        rospy.sleep(duration/steps)
 
 def main():
     """ Main function to be run. """
@@ -246,16 +200,10 @@ def main():
                         help='Test grasping plugin (cube_tasks world)')
     parser.add_argument('--circle', action='store_true',
                         help='Circular rotation around a target pose')
-    parser.add_argument('--face', action='store_true',
-                        help='Face towards a target vector')
 
     args = parser.parse_args()
 
     rospy.init_node('ur3e_script_control')
-
-    tcp_z = 0.21  # where to consider the tool center point wrt end-effector
-    if args.face:
-        tcp_z = 0.21
 
     global arm
     arm = Arm(
@@ -279,9 +227,7 @@ def main():
     if args.grasp_plugin:
         grasp_plugin()
     if args.circle:
-        circular_trajectory2()
-    if args.face:
-        face_towards_target()
+        circular_trajectory()
 
     print("real time", round(timeit.default_timer() - real_start_time, 3))
     print("ros time", round(rospy.get_time() - ros_start_time, 3))
