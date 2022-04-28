@@ -334,7 +334,7 @@ class JointPositionController(JointControllerBase):
     it will move at its maximum speed/acceleration and will even move the base of the robot, so, B{use with caution}.
     """
 
-    def __init__(self, namespace='', timeout=5.0, joint_names=None):
+    def __init__(self, namespace='', timeout=1.0, joint_names=None):
         """
         C{JointPositionController} constructor. It creates the required publishers for controlling 
         the UR robot. Given that it inherits from C{JointControllerBase} it subscribes 
@@ -424,7 +424,7 @@ class JointTrajectoryController(JointControllerBase):
         the acceleration level.
     """
 
-    def __init__(self, publisher_name='arm_controller', namespace='', timeout=5.0, joint_names=None):
+    def __init__(self, publisher_name='arm_controller', namespace='', timeout=1.0, joint_names=None):
         """
         JointTrajectoryController constructor. It creates the C{SimpleActionClient}.
         @type namespace: string
