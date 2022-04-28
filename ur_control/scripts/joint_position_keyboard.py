@@ -196,17 +196,17 @@ See help inside the example with the '?' key for key bindings.
     global relative_ee
     relative_ee = args.relative
 
-    ns = ''
+    ns = args.namespace
     joints_prefix = None
     robot_urdf = "ur3e"
     rospackage = None
-    tcp_link = None
+    tcp_link = "gripper_tip_link"
     use_gripper = args.gripper
 
     global arm
     arm = Arm(ft_sensor=False,
               gripper=use_gripper, namespace=ns,
-              joint_names_prefix=joints_prefix,
+              joint_names_prefix=ns+'_',
               robot_urdf=robot_urdf, robot_urdf_package=rospackage,
               ee_link=tcp_link)
 
