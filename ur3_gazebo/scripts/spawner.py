@@ -42,12 +42,12 @@ def place_board():
     spawner.load_models(models)
 
 def place_cube():
-    cube_lenght = "0.2"
+    cube_lenght = "0.05"
     obj = BOX % ("box", cube_lenght, cube_lenght, cube_lenght, "Yellow", cube_lenght, cube_lenght, cube_lenght)
-    model_names = ["box"]
-    objpose = [[0.618678,  0.0,  0.955148], [0, 0.0, 0, 0.0]]
+    model_names = "box"
+    objpose = [-0.076554,  0.0,  0.899557, 0, 0.0, 0, 0.0]
 
-    models = [Model(model_names[0], objpose[0], file_type='string', string_model=obj, reference_frame="world")]
+    models = [Model(model_names, objpose, file_type='string', string_model=obj, reference_frame="world")]
     spawner.load_models(models)
 
 def place_models():
