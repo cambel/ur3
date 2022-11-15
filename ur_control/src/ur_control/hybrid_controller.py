@@ -16,6 +16,7 @@ class ForcePositionController(object):
                  position_pd,
                  force_pd,
                  alpha=None,
+                 stiffness=None,
                  dt=0.002):
         """ Force-Position controller
             alpha: [list] tradeoff between position and force signal for each direction
@@ -24,6 +25,7 @@ class ForcePositionController(object):
         self.force_pd = force_pd
 
         self.alpha = np.array(alpha)
+        self.stiffness = np.array(stiffness)
         self.dt = dt
 
         self.error_data = list()  # data for graph
@@ -99,6 +101,46 @@ class ForcePositionController(object):
         dxf_pos = np.dot(self.alpha, dxf_pos)
         dxf_force = np.dot((np.identity(6) - self.alpha), dxf_force)
         return dxf_pos + dxf_force, dxf_pos, dxf_force
+
+    def control_position_orientation_simplified(self, fc, xv):
+        """ Obtains the next action from the hybrid controller
+            fc: list, current wrench
+            xv: list, virtual trajectory translation + quaternion
+            :return: list, angular velocity 
+        """
+        # Force PD compensator
+        Fe = -1*self.target_force - fc 
+        Fe = np.dot((np.identity(6) - self.alpha), Fe) # Weight by selection matrix
+        
+        # Position PD compensator
+        Xe = spalg.translation_rotation_error(self.target_position, xv)
+        Xe = np.dot(self.alpha, Xe) # Weight by selection matrix
+        
+        error = Xe + Fe
+
+        compliance_error = self.position_pd.update(error=error, dt=self.dt)
+
+        return compliance_error, Xe, Fe
+
+    def control_position_orientation_stiffness(self, fc, xv):
+        """ Obtains the next action from the hybrid controller
+            fc: list, current wrench
+            xv: list, virtual trajectory translation + quaternion
+            :return: list, angular velocity 
+        """
+        # Force PD compensator
+        Fe = -1 * (self.target_force - fc)
+        
+
+        # Position PD compensator
+        Xe = spalg.translation_rotation_error(self.target_position, xv)
+        Xe = self.stiffness * Xe # Multiply by stiffness (N/m, Nm/rad)
+        
+        error = Xe + Fe
+
+        compliance_error = self.position_pd.update(error=error, dt=self.dt)
+
+        return compliance_error, Xe, Fe
 
     def control_velocity(self, fc, xv):
         """ Obtains the next action from hybrid controller 

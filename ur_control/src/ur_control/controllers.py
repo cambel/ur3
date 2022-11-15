@@ -574,7 +574,7 @@ class FTsensor(object):
         self.raw_msg = None
         self.rate = 500
         self.wrench_rate = 500
-        self.wrench_filter = filters.ButterLowPass(2.5, self.rate, 2)
+        self.wrench_filter = filters.ButterLowPass(2.5, self.rate, 3)
         self.wrench_window = int(100)
         assert(self.wrench_window >= 5)
         self.wrench_queue = collections.deque(maxlen=self.wrench_window)
