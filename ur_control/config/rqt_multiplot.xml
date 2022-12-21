@@ -36,10 +36,10 @@
                                         <type>2</type>
                                     </scale>
                                     <topic>/b_bot/wrench/filtered</topic>
-                                    <type>geometry_msgs/Wrench</type>
+                                    <type>geometry_msgs/WrenchStamped</type>
                                 </x_axis>
                                 <y_axis>
-                                    <field>force/x</field>
+                                    <field>wrench/force/x</field>
                                     <field_type>0</field_type>
                                     <scale>
                                         <absolute_maximum>20</absolute_maximum>
@@ -49,7 +49,7 @@
                                         <type>1</type>
                                     </scale>
                                     <topic>/b_bot/wrench/filtered</topic>
-                                    <type>geometry_msgs/Wrench</type>
+                                    <type>geometry_msgs/WrenchStamped</type>
                                 </y_axis>
                             </axes>
                             <color>
@@ -87,10 +87,10 @@
                                         <type>2</type>
                                     </scale>
                                     <topic>/b_bot/wrench/filtered</topic>
-                                    <type>geometry_msgs/Wrench</type>
+                                    <type>geometry_msgs/WrenchStamped</type>
                                 </x_axis>
                                 <y_axis>
-                                    <field>force/y</field>
+                                    <field>wrench/force/y</field>
                                     <field_type>0</field_type>
                                     <scale>
                                         <absolute_maximum>20</absolute_maximum>
@@ -100,7 +100,7 @@
                                         <type>1</type>
                                     </scale>
                                     <topic>/b_bot/wrench/filtered</topic>
-                                    <type>geometry_msgs/Wrench</type>
+                                    <type>geometry_msgs/WrenchStamped</type>
                                 </y_axis>
                             </axes>
                             <color>
@@ -138,10 +138,10 @@
                                         <type>2</type>
                                     </scale>
                                     <topic>/b_bot/wrench/filtered</topic>
-                                    <type>geometry_msgs/Wrench</type>
+                                    <type>geometry_msgs/WrenchStamped</type>
                                 </x_axis>
                                 <y_axis>
-                                    <field>force/z</field>
+                                    <field>wrench/force/z</field>
                                     <field_type>0</field_type>
                                     <scale>
                                         <absolute_maximum>20</absolute_maximum>
@@ -151,7 +151,7 @@
                                         <type>1</type>
                                     </scale>
                                     <topic>/b_bot/wrench/filtered</topic>
-                                    <type>geometry_msgs/Wrench</type>
+                                    <type>geometry_msgs/WrenchStamped</type>
                                 </y_axis>
                             </axes>
                             <color>

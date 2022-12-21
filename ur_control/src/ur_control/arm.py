@@ -30,7 +30,7 @@ from trajectory_msgs.msg import (
     JointTrajectory,
     JointTrajectoryPoint,
 )
-from geometry_msgs.msg import (Wrench)
+from geometry_msgs.msg import (WrenchStamped)
 
 from ur_control import utils, spalg, conversions, transformations
 from ur_control.constants import JOINT_ORDER, JOINT_PUBLISHER_ROBOT, FT_SUBSCRIBER, IKFAST, TRAC_IK, \
@@ -161,13 +161,20 @@ class Arm(object):
     def _init_ft_sensor(self):
         # Publisher of wrench
         namespace = '' if self.ns is None else self.ns
-        print("publish filtered wrench:", '%s/%s/filtered' % (namespace, self.ft_topic))
-        self.pub_ee_wrench = rospy.Publisher('%s/%s/filtered' % (namespace, self.ft_topic),
-                                             Wrench,
-                                             queue_size=50)
+        # self.ft_sensor = FTsensor(namespace='%s/%s' % (namespace, self.ft_topic))
+        ft_namespace = '%s/%s/filtered' % (namespace, self.ft_topic)
+        rospy.Subscriber(ft_namespace, WrenchStamped, self.__ft_callback__)
+        
+        # Check that the FT topic is publishing
+        self.current_ft_value = None
+        if not utils.wait_for(lambda: self.current_ft_value is not None, timeout=2.0):
+            rospy.logerr('Timed out waiting for {0} topic'.format(ft_namespace))
+            return
 
-        self.ft_sensor = FTsensor(namespace='%s/%s' % (namespace, self.ft_topic))
         self.set_wrench_offset(override=False)
+    
+    def __ft_callback__(self, msg):
+        self.current_ft_value = conversions.from_wrench(msg.wrench)
 
     def _update_wrench_offset(self):
         namespace = '' if self.ns is None else self.ns
@@ -217,15 +224,15 @@ class Arm(object):
 ### Public methods ###
 
     def get_filtered_ft(self):
-        """ Get measurements from FT Sensor.
+        """ Get measurements from FT Sensor in its default frame of reference.
             Measurements are filtered with a low-pass filter.
             Measurements are given in sensors orientation.
         """
-        if self.ft_sensor is None:
+        if self.current_ft_value is None:
             raise Exception("FT Sensor not initialized")
 
         ft_limitter = [300, 300, 300, 30, 30, 30]  # Enforce measurement limits (simulation)
-        ft = self.ft_sensor.get_filtered_wrench()
+        ft = self.current_ft_value
         ft = [
             ft[i] if abs(ft[i]) < ft_limitter[i] else ft_limitter[i]
             for i in range(6)
@@ -243,7 +250,7 @@ class Arm(object):
                 self._update_wrench_offset()
 
     def get_ee_wrench_hist(self, hist_size=24):
-        if self.ft_sensor is None:
+        if self.current_ft_value is None:
             raise Exception("FT Sensor not initialized")
 
         q_hist = self.joint_traj_controller.get_joint_positions_hist()[:hist_size]
@@ -259,30 +266,21 @@ class Arm(object):
 
     def get_ee_wrench(self):
         """ Compute the wrench (force/torque) in task-space """
-        if self.ft_sensor is None:
+        if self.current_ft_value is None:
             return np.zeros(6)
 
-        wrench_force = self.ft_sensor.get_filtered_wrench()
+        wrench_force = self.current_ft_value
 
         if self.wrench_offset is not None:
             wrench_force = np.array(wrench_force) - np.array(self.wrench_offset)
 
         # compute force transformation?
         # # # Transform of EE
-        pose = self.end_effector(tip_link=self.ft_frame)
+        pose = self.end_effector()
 
         ee_wrench_force = spalg.convert_wrench(wrench_force, pose)
 
         return ee_wrench_force
-
-    def publish_wrench(self):
-        if self.ft_sensor is None:
-            raise Exception("FT Sensor not initialized")
-
-        " Publish arm's end-effector wrench "
-        wrench = self.get_ee_wrench()
-        # Note you need to call rospy.init_node() before this will work
-        self.pub_ee_wrench.publish(conversions.to_wrench(wrench))
 
     def end_effector(self,
                      joint_angles=None,
