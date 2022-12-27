@@ -7,6 +7,9 @@ ARG UBUNTU_VERSION=18.04
 FROM tensorflow/tensorflow:latest-gpu-py3
 LABEL maintainer Cristian Beltran "beltran@hlab.sys.es.osaka-u.ac.jp"
 
+# Fix Nvidia repo
+RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub
+
 #### Use an official ROS runtime as a parent image
 # setup timezone
 RUN echo 'Etc/UTC' > /etc/timezone && \
