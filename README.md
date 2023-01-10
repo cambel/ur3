@@ -1,6 +1,6 @@
 Universal Robot UR/URe
 ===
-<img src="https://github.com/cambel/ur3/blob/master/wiki/ur3e.gif?raw=true" alt="UR3e & Robotiq Hand-e" width="250"><img src="https://github.com/cambel/ur3/blob/master/wiki/ur3.gif?raw=true" alt="UR3 & Robotiq 85" width="250">
+<img src="https://github.com/cambel/ur3/blob/noetic-devel/wiki/ur3e.gif?raw=true" alt="UR3e & Robotiq Hand-e" width="250"><img src="https://github.com/cambel/ur3/blob/noetic-devel/wiki/ur3.gif?raw=true" alt="UR3 & Robotiq 85" width="250">
 
 
 Custom ROS packages for the UR3 Robot with a gripper Robotiq 85 and the UR3e robot with a gripper Robotiq Hand-e. 
@@ -24,7 +24,7 @@ You can then use the sliders to change the joint values and the gripper values.
 Change the value of ur_robot to any other valid robot (ur3e, ur5e, ...)
 
 ### Simulation in Gazebo 9
-<img src="https://github.com/cambel/ur3/blob/master/wiki/ur3-e.png?raw=true" width="500">
+<img src="https://github.com/cambel/ur3/blob/noetic-devel/wiki/ur3-e.png?raw=true" width="500">
 
 To simulate the robot launch the following:
   ```
