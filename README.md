@@ -6,6 +6,8 @@ Universal Robot UR/URe
 Custom ROS packages for the UR3 Robot with a gripper Robotiq 85 and the UR3e robot with a gripper Robotiq Hand-e. 
 Tested on ROS Noetic Ubuntu 20.04 with Python 3.8.
 
+For ROS Melodic see the `melodic-devel` branch.
+
 ## Installation 
 
 ### [With docker](https://github.com/cambel/ur3/wiki/Install-with-Docker)
