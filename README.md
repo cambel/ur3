@@ -4,7 +4,7 @@ Universal Robot UR/URe
 
 
 Custom ROS packages for the UR3 Robot with a gripper Robotiq 85 and the UR3e robot with a gripper Robotiq Hand-e. 
-Tested on ROS Melodic Ubuntu 18.04 with Python 3.6.
+Tested on ROS Noetic Ubuntu 20.04 with Python 3.8.
 
 ## Installation 
 
