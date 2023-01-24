@@ -197,18 +197,18 @@ See help inside the example with the '?' key for key bindings.
     relative_ee = args.relative
 
     ns = args.namespace
-    joints_prefix = None
     robot_urdf = "ur3e"
     rospackage = None
     tcp_link = "gripper_tip_link"
     use_gripper = args.gripper
+    joint_names_prefix = ns+'_' if ns else ''
 
     global arm
-    arm = Arm(ft_sensor=False,
-              gripper=use_gripper, namespace=ns,
-              joint_names_prefix=ns+'_',
+    arm = Arm(gripper=use_gripper, namespace=ns,
+              joint_names_prefix=joint_names_prefix,
               robot_urdf=robot_urdf, robot_urdf_package=rospackage,
-              ee_link=tcp_link)
+              ee_link=tcp_link,
+              ft_topic='wrench')
 
     map_keyboard()
     print("Done.")

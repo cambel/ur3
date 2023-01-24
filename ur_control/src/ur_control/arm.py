@@ -22,8 +22,8 @@
 #
 # Author: Cristian Beltran
 
+import collections
 import numpy as np
-from pyquaternion import Quaternion
 
 import rospy
 from trajectory_msgs.msg import (
@@ -35,7 +35,9 @@ from geometry_msgs.msg import (WrenchStamped)
 from ur_control import utils, spalg, conversions, transformations
 from ur_control.constants import JOINT_ORDER, JOINT_PUBLISHER_ROBOT, FT_SUBSCRIBER, IKFAST, TRAC_IK, \
     DONE, SPEED_LIMIT_EXCEEDED, IK_NOT_FOUND, get_arm_joint_names, \
-    BASE_LINK, EE_LINK, FT_LINK
+    BASE_LINK, EE_LINK
+
+from std_srvs.srv import Empty
 
 try:
     from ur_ikfast import ur_kinematics as ur_ikfast
@@ -44,67 +46,71 @@ except ImportError:
 
 from ur_control.controllers import JointTrajectoryController, FTsensor, GripperController
 from ur_pykdl import ur_kinematics
-from trac_ik_python.trac_ik import IK
+from trac_ik_python.trac_ik import IK as TRACK_IK_SOLVER
 
 cprint = utils.TextColors()
+
+
+def resolve_parameter(value, default_value):
+    if value:
+        return value
+    if default_value:
+        return default_value
+    raise ValueError("No value defined for parameter")
 
 
 class Arm(object):
     """ UR3 arm controller """
 
     def __init__(self,
-                 ft_sensor=False,
                  robot_urdf='ur3e',
                  robot_urdf_package=None,
                  ik_solver=TRAC_IK,
-                 namespace='',
+                 namespace=None,
                  gripper=False,
                  joint_names_prefix=None,
                  ft_topic=None,
                  base_link=None,
-                 ee_link=None,
-                 ft_link=None):
-        """ ft_sensor bool: whether or not to try to load ft sensor information
-            ee_transform array [x,y,z,ax,ay,az,w]: optional transformation to the end-effector
+                 ee_link=None):
+        """ ee_transform array [x,y,z,ax,ay,az,w]: optional transformation to the end-effector
                                                   that is applied before doing any operation in task-space
             robot_urdf string: name of the robot urdf file to be used
             namespace string: nodes namespace prefix
             gripper bool: enable gripper control
         """
 
-        cprint.ok("ft_sensor: {}, ee_link: {}, \n robot_urdf: {}".format(ft_sensor, ee_link, robot_urdf))
+        cprint.ok("ft_sensor: {}, ee_link: {}, \n robot_urdf: {}".format(bool(ft_topic), ee_link, robot_urdf))
 
         self._joint_angle = dict()
         self._joint_velocity = dict()
         self._joint_effort = dict()
-        self._current_ft = []
+
+        self.current_ft_value = np.zeros(6)
+        self.wrench_queue = collections.deque(maxlen=25)  # store history of FT data
 
         self._robot_urdf = robot_urdf
         self._robot_urdf_package = robot_urdf_package if robot_urdf_package is not None else 'ur_pykdl'
 
-        self.ft_sensor = None
-        self.ft_topic = ft_topic if ft_topic is not None else FT_SUBSCRIBER
+        self.ft_topic = resolve_parameter(ft_topic, FT_SUBSCRIBER)
 
         self.ik_solver = ik_solver
-        
-        assert namespace is not None, "namespace cannot be None"
-        self.ns = namespace
+
+        self.ns = resolve_parameter(namespace, "")
+
+        base_link = resolve_parameter(base_link, BASE_LINK)
+        ee_link = resolve_parameter(ee_link, EE_LINK)
+
+        # Support for joint prefixes
         self.joint_names_prefix = joint_names_prefix
-
-        _base_link = base_link if base_link is not None else BASE_LINK
-        _ee_link = ee_link if ee_link is not None else EE_LINK
-        _ft_frame = ft_link if ft_link is not None else FT_LINK
-
-        self.base_link = _base_link if joint_names_prefix is None else joint_names_prefix + _base_link
-        self.ee_link = _ee_link if joint_names_prefix is None else joint_names_prefix + _ee_link
-        self.ft_frame = _ft_frame if joint_names_prefix is None else joint_names_prefix + _ft_frame
+        base_link = base_link if joint_names_prefix is None else joint_names_prefix + base_link
+        ee_link = ee_link if joint_names_prefix is None else joint_names_prefix + ee_link
 
         # self.max_joint_speed = np.deg2rad([100, 100, 100, 200, 200, 200]) # deg/s -> rad/s
         self.max_joint_speed = np.deg2rad([191, 191, 191, 371, 371, 371])
 
-        self._init_ik_solver(self.base_link, self.ee_link)
+        self._init_ik_solver(base_link, ee_link)
         self._init_controllers(gripper, joint_names_prefix)
-        if ft_sensor:
+        if ft_topic:
             self._init_ft_sensor()
 
 ### private methods ###
@@ -116,12 +122,8 @@ class Arm(object):
         # Flexible trajectory (point by point)
 
         traj_publisher_flex = self.ns + '/' + traj_publisher + '/command'
-
         cprint.blue("connecting to: {}".format(traj_publisher_flex))
-
-        self._flex_trajectory_pub = rospy.Publisher(traj_publisher_flex,
-                                                    JointTrajectory,
-                                                    queue_size=10)
+        self._flex_trajectory_pub = rospy.Publisher(traj_publisher_flex, JointTrajectory, queue_size=10)
 
         self.joint_traj_controller = JointTrajectoryController(
             publisher_name=traj_publisher, namespace=self.ns, joint_names=self.joint_names, timeout=1.0)
@@ -131,28 +133,26 @@ class Arm(object):
             self.gripper = GripperController(namespace=self.ns, prefix=self.joint_names_prefix, timeout=2.0)
 
     def _init_ik_solver(self, base_link, ee_link):
-        self.base_link = base_link
-        self.ee_link = ee_link
+        # Instantiate KDL kinematics solver to compute forward kinematics
         if rospy.has_param("robot_description"):
             self.kdl = ur_kinematics(base_link=base_link, ee_link=ee_link)
         else:
             self.kdl = ur_kinematics(base_link=base_link, ee_link=ee_link, robot=self._robot_urdf, prefix=self.joint_names_prefix, rospackage=self._robot_urdf_package)
 
+        # Instantiate Inverse kinematics solver
         if self.ik_solver == IKFAST:
             # IKfast libraries
             try:
                 self.arm_ikfast = ur_ikfast.URKinematics(self._robot_urdf)
             except Exception:
-                rospy.logerr("IK solver set to IKFAST but no ikfast found for: %s. Switching to TRAC_IK" % self._robot_urdf)
-                self.ik_solver == TRAC_IK
-                return self._init_ik_solver(base_link, ee_link)
+                raise ValueError("IK solver set to IKFAST but no ikfast found for: %s. " % self._robot_urdf)
         elif self.ik_solver == TRAC_IK:
             try:
                 if not rospy.has_param("robot_description"):
-                    self.trac_ik = IK(base_link=base_link, tip_link=ee_link, solve_type="Distance", timeout=0.002, epsilon=1e-5,
-                                      urdf_string=utils.load_urdf_string(self._robot_urdf_package, self._robot_urdf))
+                    self.trac_ik = TRACK_IK_SOLVER(base_link=base_link, tip_link=ee_link, solve_type="Distance", timeout=0.002, epsilon=1e-5,
+                                                   urdf_string=utils.load_urdf_string(self._robot_urdf_package, self._robot_urdf))
                 else:
-                    self.trac_ik = IK(base_link=base_link, tip_link=ee_link, solve_type="Distance")
+                    self.trac_ik = TRACK_IK_SOLVER(base_link=base_link, tip_link=ee_link, solve_type="Distance")
             except Exception as e:
                 rospy.logerr("Could not instantiate TRAC_IK" + str(e))
         else:
@@ -160,26 +160,20 @@ class Arm(object):
 
     def _init_ft_sensor(self):
         # Publisher of wrench
-        namespace = '' if self.ns is None else self.ns
-        # self.ft_sensor = FTsensor(namespace='%s/%s' % (namespace, self.ft_topic))
-        ft_namespace = '%s/%s/filtered' % (namespace, self.ft_topic)
+        ft_namespace = '%s/%s/filtered' % (self.ns, self.ft_topic)
         rospy.Subscriber(ft_namespace, WrenchStamped, self.__ft_callback__)
-        
+
+        self._zero_ft = rospy.ServiceProxy('%s/%s/zero_ftsensor' % (self.ns, self.ft_topic), Empty)
+        self._zero_ft.wait_for_service(rospy.Duration(2.0))
+
         # Check that the FT topic is publishing
-        self.current_ft_value = None
         if not utils.wait_for(lambda: self.current_ft_value is not None, timeout=2.0):
             rospy.logerr('Timed out waiting for {0} topic'.format(ft_namespace))
             return
 
-        self.set_wrench_offset(override=False)
-    
     def __ft_callback__(self, msg):
         self.current_ft_value = conversions.from_wrench(msg.wrench)
-
-    def _update_wrench_offset(self):
-        namespace = '' if self.ns is None else self.ns
-        self.wrench_offset = self.get_filtered_ft().tolist()
-        rospy.set_param('%s/ft_offset' % namespace, self.wrench_offset)
+        self.wrench_queue.append(self.current_ft_value)
 
     def _flexible_trajectory(self, position, time=5.0, vel=None):
         """ Publish point by point making it more flexible for real-time control """
@@ -204,7 +198,7 @@ class Arm(object):
 
     def _solve_ik(self, pose, q_guess=None, attempts=5, verbose=True):
         q_guess_ = q_guess if q_guess is not None else self.joint_angles()
-        # TODO(cambel): weird it shouldn't happen but...
+
         if isinstance(q_guess, np.float64):
             q_guess_ = None
 
@@ -239,25 +233,12 @@ class Arm(object):
         ]
         return np.array(ft)
 
-    def set_wrench_offset(self, override=False):
-        """ Set a wrench offset """
-        if override:
-            self._update_wrench_offset()
-        else:
-            namespace = 'ur3' if self.ns is None else self.ns
-            self.wrench_offset = rospy.get_param('/%s/ft_offset' % namespace, None)
-            if self.wrench_offset is None:
-                self._update_wrench_offset()
-
     def get_ee_wrench_hist(self, hist_size=24):
         if self.current_ft_value is None:
             raise Exception("FT Sensor not initialized")
 
         q_hist = self.joint_traj_controller.get_joint_positions_hist()[:hist_size]
-        ft_hist = self.ft_sensor.get_filtered_wrench(hist_size=hist_size)
-
-        if self.wrench_offset is not None:
-            ft_hist = np.array(ft_hist) - np.array(self.wrench_offset)
+        ft_hist = np.array(self.wrench_queue)[:hist_size]
 
         poses_hist = [self.end_effector(q) for q in q_hist]
         wrench_hist = [spalg.convert_wrench(wft, p).tolist() for p, wft in zip(poses_hist, ft_hist)]
@@ -271,16 +252,14 @@ class Arm(object):
 
         wrench_force = self.current_ft_value
 
-        if self.wrench_offset is not None:
-            wrench_force = np.array(wrench_force) - np.array(self.wrench_offset)
-
-        # compute force transformation?
-        # # # Transform of EE
+        # Transform force to end effector frame
         pose = self.end_effector()
-
         ee_wrench_force = spalg.convert_wrench(wrench_force, pose)
 
         return ee_wrench_force
+
+    def zero_ft_sensor(self):
+        self._zero_ft()
 
     def end_effector(self,
                      joint_angles=None,
@@ -379,8 +358,7 @@ class Arm(object):
 
     def set_joint_positions_flex(self, position, t=5.0, v=None):
         qc = self.joint_angles()
-        deltaq = (qc - position)
-        speed = deltaq / t
+        speed = (qc - position) / t
         cmd = position
         if np.any(np.abs(speed) > self.max_joint_speed):
             rospy.logwarn("Exceeded max speed %s deg/s, ignoring command" % np.round(np.rad2deg(speed), 0))
@@ -405,57 +383,3 @@ class Arm(object):
             return IK_NOT_FOUND
         else:
             return self.set_joint_positions_flex(q, t=t)
-
-### Complementary control methods ###
-
-    def move_relative(self, delta, relative_to_ee=False, wait=True, t=5.):
-        """
-            Move relative to the current pose of the robot
-            delta: array[6], translations and rotations(euler angles) from the current pose
-            relative_to_ee: bool, whether to consider the delta relative to the robot's base or its end-effector (TCP)
-            wait: bool, wait for the motion to be completed
-            t: float, duration of the motion (how fast it will be)
-        """
-        cpose = self.end_effector()
-        cmd = transformations.pose_euler_to_quaternion(cpose, delta, ee_rotation=relative_to_ee)
-        return self.set_target_pose(cmd, wait=True, t=t)
-
-    def move_linear(self, pose, eef_step=0.01, t=5.0):
-        """
-            CAUTION: simple linear interpolation
-            pose: array[7], target translation and rotation
-            granularity: int, number of point for the interpolation
-            t: float, duration in seconds
-        """
-        joint_trajectory = self.compute_cartesian_path(pose, eef_step, t)
-        self.set_joint_trajectory(joint_trajectory, t=t)
-
-    def compute_cartesian_path(self, pose, eef_step=0.01, t=5.0):
-        """
-            CAUTION: simple linear interpolation
-            pose: array[7], target translation and rotation
-            granularity: int, number of point for the interpolation
-            t: float, duration in seconds
-        """
-        cpose = self.end_effector()
-        translation_dist = np.linalg.norm(cpose[:3])
-        rotation_dist = Quaternion.distance(transformations.vector_to_pyquaternion(cpose[3:]), transformations.vector_to_pyquaternion(pose[3:])) / 2.0
-
-        steps = int((translation_dist + rotation_dist) / eef_step)
-
-        points = np.linspace(cpose[:3], pose[:3], steps)
-        rotations = Quaternion.intermediates(transformations.vector_to_pyquaternion(cpose[3:]), transformations.vector_to_pyquaternion(pose[3:]), steps, include_endpoints=True)
-
-        joint_trajectory = []
-
-        for i, (point, rotation) in enumerate(zip(points, rotations)):
-            cmd = np.concatenate([point, transformations.vector_from_pyquaternion(rotation)])
-            q_guess = None if i < 2 else np.mean(joint_trajectory[:-1], 0)
-            q = self._solve_ik(cmd, q_guess)
-            if q is not None:  # ignore points with no IK solution, can we do better?
-                joint_trajectory.append(q)
-
-        dt = t/float(len(joint_trajectory))
-        # TODO(cambel): is this good enough to catch big jumps due to IK solutions?
-        return spalg.jump_threshold(np.array(joint_trajectory), dt, 2.5)
-
