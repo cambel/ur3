@@ -61,7 +61,7 @@ class FTsensor(object):
         # Publisher to outward topic
         self.pub = rospy.Publisher(self.out_topic, WrenchStamped, queue_size=10)
         # Service for zeroing the filtered signal
-        rospy.Service(self.in_topic + "zeroing", Empty, self._srv_zeroing)
+        rospy.Service(self.in_topic + "zero_ftsensor", Empty, self._srv_zeroing)
         rospy.Service(self.in_topic + "enable_publish", SetBool, self._srv_publish)
 
         # Low pass filter
