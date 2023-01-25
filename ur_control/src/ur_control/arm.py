@@ -26,14 +26,12 @@ import collections
 import numpy as np
 
 import rospy
-from trajectory_msgs.msg import (
-    JointTrajectory,
-    JointTrajectoryPoint,
-)
-from geometry_msgs.msg import (WrenchStamped)
+from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+
+from geometry_msgs.msg import WrenchStamped
 
 from ur_control import utils, spalg, conversions, transformations
-from ur_control.constants import JOINT_ORDER, JOINT_PUBLISHER_ROBOT, FT_SUBSCRIBER, IKFAST, TRAC_IK, \
+from ur_control.constants import JOINT_ORDER, JOINT_TRAJECTORY_CONTROLLER, FT_SUBSCRIBER, IKFAST, TRAC_IK, \
     DONE, SPEED_LIMIT_EXCEEDED, IK_NOT_FOUND, get_arm_joint_names, \
     BASE_LINK, EE_LINK
 
@@ -44,6 +42,7 @@ try:
 except ImportError:
     print("Import ur_ikfast not available, IKFAST would not be supported without it")
 
+from ur_control.controllers_connection import ControllersConnection
 from ur_control.controllers import JointTrajectoryController, FTsensor, GripperController
 from ur_pykdl import ur_kinematics
 from trac_ik_python.trac_ik import IK as TRACK_IK_SOLVER
@@ -102,21 +101,23 @@ class Arm(object):
 
         # Support for joint prefixes
         self.joint_names_prefix = joint_names_prefix
-        base_link = base_link if joint_names_prefix is None else joint_names_prefix + base_link
+        self.base_link = base_link if joint_names_prefix is None else joint_names_prefix + base_link
         ee_link = ee_link if joint_names_prefix is None else joint_names_prefix + ee_link
 
         # self.max_joint_speed = np.deg2rad([100, 100, 100, 200, 200, 200]) # deg/s -> rad/s
         self.max_joint_speed = np.deg2rad([191, 191, 191, 371, 371, 371])
 
-        self._init_ik_solver(base_link, ee_link)
+        self._init_ik_solver(self.base_link, ee_link)
         self._init_controllers(gripper, joint_names_prefix)
         if ft_topic:
             self._init_ft_sensor()
 
+        self.controller_manager = ControllersConnection(namespace)
+
 ### private methods ###
 
     def _init_controllers(self, gripper, joint_names_prefix=None):
-        traj_publisher = JOINT_PUBLISHER_ROBOT
+        traj_publisher = JOINT_TRAJECTORY_CONTROLLER
         self.joint_names = None if joint_names_prefix is None else get_arm_joint_names(joint_names_prefix)
 
         # Flexible trajectory (point by point)
