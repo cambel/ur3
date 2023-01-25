@@ -133,12 +133,11 @@ class CompliantController(Arm):
         self.update_controller_parameters(parameters)
 
     @switch_cartesian_controllers
-    def execute_compliance_control(self, trajectory: np.array, target_force: np.array, max_force_torque: list, duration: float, stop_on_target_force=False):
+    def execute_compliance_control(self, trajectory: np.array, target_force: np.array, max_force_torque: list,
+                                   duration: float, stop_on_target_force=False):
 
         # Space out the trajectory points
-        print("1", trajectory.shape)
         trajectory = trajectory.reshape((-1, 7))  # Assuming this format [x,y,z,qx,qy,qz,qw]
-        print("1", trajectory.shape)
         step_duration = duration / float(trajectory.shape[0])
         trajectory_index = 0
 
@@ -154,19 +153,20 @@ class CompliantController(Arm):
         # Publish first trajectory point
         self.set_cartesian_target_pose(trajectory[trajectory_index])
 
+        rate = rospy.Rate(100)
+
         while not rospy.is_shutdown() and (rospy.get_time() - initial_time) < duration:
 
-            current_wrench = self.get_ee_wrench()
+            current_wrench = self.get_ee_wrench(hand_frame_control=False)
+
             if stop_on_target_force and np.all(np.abs(current_wrench)[target_force != 0] > np.abs(target_force)[target_force != 0]):
                 rospy.loginfo('Target F/T reached {}'.format(np.round(current_wrench, 3)) + ' Stopping!')
                 result = STOP_ON_TARGET_FORCE
-                self.set_cartesian_target_pose(self.end_effector())
                 break
 
             # Safety limits: max force
             if np.any(np.abs(current_wrench) > max_force_torque):
                 rospy.logerr('Maximum force/torque exceeded {}'.format(np.round(current_wrench, 3)))
-                self.set_cartesian_target_pose(self.end_effector())
                 result = FORCE_TORQUE_EXCEEDED
                 break
 
@@ -178,6 +178,7 @@ class CompliantController(Arm):
                 # push next point to the controller
                 self.set_cartesian_target_pose(trajectory[trajectory_index])
 
+            rate.sleep()
         # Stop moving
         # set position control only, then fix the pose to the current one
         self.set_position_control_mode()
