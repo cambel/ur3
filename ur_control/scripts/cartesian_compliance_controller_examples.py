@@ -46,7 +46,7 @@ signal.signal(signal.SIGINT, signal_handler)
 
 def move_joints():
     q = [1.0639, -1.6225, 1.9346, -1.8819, -1.5647, -0.5853]
-    arm.set_joint_positions(q, t=5)
+    arm.set_joint_positions(q, t=5, wait=True)
 
 
 def move_cartesian():
@@ -86,7 +86,7 @@ def move_force():
     target_force[2] = -5
 
     res = arm.execute_compliance_control(ee, target_force=target_force,
-                                         max_force_torque=[50., 50., 50., 5., 5., 5.], duration=10,
+                                         max_force_torque=[50., 50., 50., 5., 5., 5.], duration=15,
                                          stop_on_target_force=True)
     print(res)
     print("EE change", ee - arm.end_effector())
@@ -134,8 +134,8 @@ def main():
                         help='move towards target force')
     parser.add_argument('-fd', '--free_drive', action='store_true',
                         help='move the robot freely')
-    parser.add_argument('-hfc', '--hand_frame_control', action='store_true',
-                        help='move towards target force using hand frame of reference')
+    # parser.add_argument('-hfc', '--hand_frame_control', action='store_true',
+    #                     help='move towards target force using hand frame of reference')
     parser.add_argument('-a', '--admittance', action='store_true',
                         help='Spring-mass-damper force control demo')
     parser.add_argument('--namespace', type=str,
@@ -168,8 +168,8 @@ def main():
         admittance_control()
     if args.free_drive:
         free_drive()
-    if args.hand_frame_control:
-        move_hand_frame_control()
+    # if args.hand_frame_control:
+    #     move_hand_frame_control()
 
 
 if __name__ == "__main__":
