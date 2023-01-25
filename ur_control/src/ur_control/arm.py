@@ -246,18 +246,20 @@ class Arm(object):
 
         return np.array(wrench_hist)
 
-    def get_ee_wrench(self):
+    def get_ee_wrench(self, hand_frame_control=False):
         """ Compute the wrench (force/torque) in task-space """
         if self.current_ft_value is None:
             return np.zeros(6)
 
         wrench_force = self.current_ft_value
+        if not hand_frame_control:
+            return wrench_force
+        else:
+            # Transform force to end effector frame
+            pose = self.end_effector()
+            ee_wrench_force = spalg.convert_wrench(wrench_force, pose)
 
-        # Transform force to end effector frame
-        pose = self.end_effector()
-        ee_wrench_force = spalg.convert_wrench(wrench_force, pose)
-
-        return ee_wrench_force
+            return ee_wrench_force
 
     def zero_ft_sensor(self):
         self._zero_ft()
