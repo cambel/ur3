@@ -44,7 +44,12 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 
-def move():
+def move_joints():
+    q = [1.0639, -1.6225, 1.9346, -1.8819, -1.5647, -0.5853]
+    arm.set_joint_positions(q, t=5)
+
+
+def move_cartesian():
 
     arm.set_position_control_mode(False)
 
@@ -57,34 +62,82 @@ def move():
     p2[2] += 0.005
 
     trajectory = np.stack((p1, p2))
+    target_force = np.zeros(6)
 
-    print(trajectory)
-
-    arm.execute_compliance_control(trajectory, target_force=np.zeros(0),
+    arm.execute_compliance_control(trajectory, target_force=target_force,
                                    max_force_torque=[50., 50., 50., 5., 5., 5.], duration=5)
 
-    print(arm.end_effector())
+    print("EE change", ee - arm.end_effector())
 
-def force_control():
-    """ 
-        Simple example of compliance control
-        selection_matrix: list[6]. define which direction is controlled by position(1.0) or force(0.0) goal. 
-                          Values in between make the controller attempt to achieve both position and force goals.
-    """
-    pass
+
+def move_force():
+    """ Linear push. Move until the target force is felt and stop. """
+    arm.zero_ft_sensor()
+
+    selection_matrix = [1, 1, 0, 1, 1, 1]
+    arm.update_selection_matrix(selection_matrix)
+
+    pid_gains = [0.01, 0.01, 0.01, 1.0, 1.0, 1.0]
+    arm.update_pid_gains(pid_gains)
+
+    ee = arm.end_effector()
+
+    target_force = np.zeros(6)
+    target_force[2] = -5
+
+    res = arm.execute_compliance_control(ee, target_force=target_force,
+                                         max_force_torque=[50., 50., 50., 5., 5., 5.], duration=10,
+                                         stop_on_target_force=True)
+    print(res)
+    print("EE change", ee - arm.end_effector())
+
+
+def admittance_control():
+    """ Spring-mass-damper force control """
+    arm.set_control_mode(mode="spring-mass-damper")
+
+    ee = arm.end_effector()
+    target_force = np.zeros(6)
+    arm.execute_compliance_control(ee, target_force=target_force,
+                                   max_force_torque=[50., 50., 50., 5., 5., 5.], duration=10,
+                                   stop_on_target_force=False)
+
+
+def free_drive():
+    arm.zero_ft_sensor()
+
+    selection_matrix = [0, 0, 0, 0, 0, 0]
+    arm.update_selection_matrix(selection_matrix)
+
+    pid_gains = [0.05, 0.05, 0.05, 1.0, 1.0, 1.0]
+    arm.update_pid_gains(pid_gains)
+
+    ee = arm.end_effector()
+
+    target_force = np.zeros(6)
+
+    res = arm.execute_compliance_control(ee, target_force=target_force,
+                                         max_force_torque=[50., 50., 50., 5., 5., 5.], duration=15,
+                                         stop_on_target_force=False)
+    print(res)
+    print("EE change", ee - arm.end_effector())
 
 
 def main():
     """ Main function to be run. """
     parser = argparse.ArgumentParser(description='Test force control')
-    parser.add_argument('-m', '--move', action='store_true',
+    parser.add_argument('-m', '--move_joints', action='store_true',
                         help='move to joint configuration')
-    parser.add_argument('-f', '--force', action='store_true',
-                        help='Force control demo')
-    # parser.add_argument('--circle', action='store_true',
-    #                     help='Circular rotation around a target pose')
-    # parser.add_argument('--spiral', action='store_true',
-    #                     help='Spiral rotation around a target pose')
+    parser.add_argument('-mc', '--move_cartesian', action='store_true',
+                        help='move to cartesian configuration')
+    parser.add_argument('-mf', '--move_force', action='store_true',
+                        help='move towards target force')
+    parser.add_argument('-fd', '--free_drive', action='store_true',
+                        help='move the robot freely')
+    parser.add_argument('-hfc', '--hand_frame_control', action='store_true',
+                        help='move towards target force using hand frame of reference')
+    parser.add_argument('-a', '--admittance', action='store_true',
+                        help='Spring-mass-damper force control demo')
     parser.add_argument('--namespace', type=str,
                         help='Namespace of arm', default=None)
     args = parser.parse_args()
@@ -105,14 +158,18 @@ def main():
                               ee_link=tcp_link,
                               ft_topic='wrench')
 
-    if args.move:
-        move()
-    # if args.circle:
-    #     circular_trajectory()
-    # if args.spiral:
-    #     spiral_trajectory()
-    if args.force:
-        force_control()
+    if args.move_joints:
+        move_joints()
+    if args.move_cartesian:
+        move_cartesian()
+    if args.move_force:
+        move_force()
+    if args.admittance:
+        admittance_control()
+    if args.free_drive:
+        free_drive()
+    if args.hand_frame_control:
+        move_hand_frame_control()
 
 
 if __name__ == "__main__":
