@@ -32,6 +32,17 @@ def convert_selection_matrix_to_parameters(selection_matrix):
     }
 
 
+def convert_pid_gains_to_parameters(pid_gains):
+    return {
+        "trans_x": {"p": pid_gains[0], "d": 0},
+        "trans_y": {"p": pid_gains[1], "d": 0},
+        "trans_z": {"p": pid_gains[2], "d": 0},
+        "rot_x": {"p": pid_gains[3], "d": 0},
+        "rot_y": {"p": pid_gains[4], "d": 0},
+        "rot_z": {"p": pid_gains[5], "d": 0}
+    }
+
+
 def switch_cartesian_controllers(func):
     '''Decorator that switches from cartesian to joint trajectory controllers and back'''
 
@@ -59,20 +70,23 @@ class CompliantController(Arm):
         self.cartesian_target_wrench_pub = rospy.Publisher('%s/%s/target_wrench' % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), WrenchStamped, queue_size=10.0)
 
         self.dyn_config_clients = {
-            "rot_x": dynamic_reconfigure.client.Client("%s/%s/pd_gains/rot_x" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
-            "rot_y": dynamic_reconfigure.client.Client("%s/%s/pd_gains/rot_y" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
-            "rot_z": dynamic_reconfigure.client.Client("%s/%s/pd_gains/rot_z" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
             "trans_x": dynamic_reconfigure.client.Client("%s/%s/pd_gains/trans_x" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
             "trans_y": dynamic_reconfigure.client.Client("%s/%s/pd_gains/trans_y" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
             "trans_z": dynamic_reconfigure.client.Client("%s/%s/pd_gains/trans_z" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
+            "rot_x": dynamic_reconfigure.client.Client("%s/%s/pd_gains/rot_x" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
+            "rot_y": dynamic_reconfigure.client.Client("%s/%s/pd_gains/rot_y" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
+            "rot_z": dynamic_reconfigure.client.Client("%s/%s/pd_gains/rot_z" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
 
             "stiffness": dynamic_reconfigure.client.Client("%s/%s/stiffness" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
+
+            "hand_frame_control": dynamic_reconfigure.client.Client("%s/%s" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
         }
 
     def set_cartesian_target_wrench(self, wrench: list):
         # Publish the target wrench
         try:
             target_wrench = WrenchStamped()
+            target_wrench.header.frame_id = self.base_link
             target_wrench.wrench = conversions.to_wrench(wrench)
             self.cartesian_target_wrench_pub.publish(target_wrench)
         except Exception as e:
@@ -91,9 +105,31 @@ class CompliantController(Arm):
             rospy.loginfo("Setting parameters %s to the group %s" % (parameters[param], param))
             self.dyn_config_clients[param].update_configuration(parameters[param])
 
+    def update_selection_matrix(self, selection_matrix):
+        parameters = convert_selection_matrix_to_parameters(selection_matrix)
+        self.update_controller_parameters(parameters)
+
+    def update_pid_gains(self, pid_gains):
+        parameters = convert_pid_gains_to_parameters(pid_gains)
+        self.update_controller_parameters(parameters)
+
+    def set_control_mode(self, mode="parallel"):
+        parameters = {"stiffness": {}}
+        if mode == "parallel":
+            parameters["stiffness"].update({"use_parallel_force_position_control": True})
+        elif mode == "spring-mass-damper":
+            parameters["stiffness"].update({"use_parallel_force_position_control": False})
+        else:
+            raise ValueError("Unknown control mode %s" % mode)
+        self.update_controller_parameters(parameters)
+
     def set_position_control_mode(self, enable=True):
         parameters = convert_selection_matrix_to_parameters(np.ones(6))
         parameters["stiffness"].update({"use_parallel_force_position_control": enable})
+        self.update_controller_parameters(parameters)
+
+    def set_hand_frame_control(self, enable):
+        parameters = {"hand_frame_control": {"hand_frame_control": enable}}
         self.update_controller_parameters(parameters)
 
     @switch_cartesian_controllers
