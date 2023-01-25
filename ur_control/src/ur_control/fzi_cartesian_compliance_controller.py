@@ -81,6 +81,12 @@ class CompliantController(Arm):
 
             "hand_frame_control": dynamic_reconfigure.client.Client("%s/%s" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
         }
+        rospy.on_shutdown(self.safety_hook)
+        self.set_hand_frame_control(False)
+
+    def safety_hook(self):
+        self.controller_manager.switch_controllers(controllers_on=[JOINT_TRAJECTORY_CONTROLLER],
+                                                   controllers_off=[CARTESIAN_COMPLIANCE_CONTROLLER])
 
     def set_cartesian_target_wrench(self, wrench: list):
         # Publish the target wrench
