@@ -102,12 +102,12 @@ class Arm(object):
         # Support for joint prefixes
         self.joint_names_prefix = joint_names_prefix
         self.base_link = base_link if joint_names_prefix is None else joint_names_prefix + base_link
-        ee_link = ee_link if joint_names_prefix is None else joint_names_prefix + ee_link
+        self.ee_link = ee_link if joint_names_prefix is None else joint_names_prefix + ee_link
 
         # self.max_joint_speed = np.deg2rad([100, 100, 100, 200, 200, 200]) # deg/s -> rad/s
         self.max_joint_speed = np.deg2rad([191, 191, 191, 371, 371, 371])
 
-        self._init_ik_solver(self.base_link, ee_link)
+        self._init_ik_solver(self.base_link, self.ee_link)
         self._init_controllers(gripper, joint_names_prefix)
         if ft_topic:
             self._init_ft_sensor()

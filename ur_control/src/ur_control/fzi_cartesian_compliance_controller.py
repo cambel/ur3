@@ -80,10 +80,13 @@ class CompliantController(Arm):
 
             "stiffness": dynamic_reconfigure.client.Client("%s/%s/stiffness" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
 
-            "hand_frame_control": dynamic_reconfigure.client.Client("%s/%s" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
+            "hand_frame_control": dynamic_reconfigure.client.Client("%s/%s/force" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
+            
+            "end_effector_link": dynamic_reconfigure.client.Client("%s/%s" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
         }
         rospy.on_shutdown(self.safety_hook)
         self.set_hand_frame_control(False)
+        self.set_end_effector_link(self.ee_link)
 
     def safety_hook(self):
         self.controller_manager.switch_controllers(controllers_on=[JOINT_TRAJECTORY_CONTROLLER],
@@ -139,8 +142,13 @@ class CompliantController(Arm):
         parameters = {"hand_frame_control": {"hand_frame_control": enable}}
         self.update_controller_parameters(parameters)
 
+    def set_end_effector_link(self, end_effector_link):
+        """ Change the end_effector_link used in the Cartesian Compliance Controllers"""
+        parameters = {"end_effector_link": {"end_effector_link": end_effector_link}}
+        self.update_controller_parameters(parameters)
+
     @switch_cartesian_controllers
-    def execute_compliance_control(self, trajectory: np.array, target_force: np.array, max_force_torque: list,
+    def execute_compliance_control(self, trajectory: np.array, target_wrench: np.array, max_force_torque: list,
                                    duration: float, stop_on_target_force=False, termination_criteria=None):
 
         # Space out the trajectory points
@@ -155,7 +163,7 @@ class CompliantController(Arm):
         result = DONE
 
         # Publish target wrench only once
-        self.set_cartesian_target_wrench(target_force)
+        self.set_cartesian_target_wrench(target_wrench)
 
         # Publish first trajectory point
         self.set_cartesian_target_pose(trajectory[trajectory_index])
@@ -173,7 +181,7 @@ class CompliantController(Arm):
                     result = TERMINATION_CRITERIA
                     break
 
-            if stop_on_target_force and np.all(np.abs(current_wrench)[target_force != 0] > np.abs(target_force)[target_force != 0]):
+            if stop_on_target_force and np.all(np.abs(current_wrench)[target_wrench != 0] > np.abs(target_wrench)[target_wrench != 0]):
                 rospy.loginfo('Target F/T reached {}'.format(np.round(current_wrench, 3)) + ' Stopping!')
                 result = STOP_ON_TARGET_FORCE
                 break
