@@ -64,7 +64,7 @@ def move_cartesian():
     trajectory = np.stack((p1, p2))
     target_force = np.zeros(6)
 
-    arm.execute_compliance_control(trajectory, target_force=target_force,
+    arm.execute_compliance_control(trajectory, target_wrench=target_force,
                                    max_force_torque=[50., 50., 50., 5., 5., 5.], duration=5)
 
     print("EE change", ee - arm.end_effector())
@@ -82,12 +82,32 @@ def move_force():
 
     ee = arm.end_effector()
 
-    target_force = np.zeros(6)
-    target_force[2] = -5
+    target_force = [0, 0, -5, 0, 0, 0]  # express in the end_effector_link
 
-    res = arm.execute_compliance_control(ee, target_force=target_force,
+    res = arm.execute_compliance_control(ee, target_wrench=target_force,
                                          max_force_torque=[50., 50., 50., 5., 5., 5.], duration=15,
                                          stop_on_target_force=True)
+    print(res)
+    print("EE change", ee - arm.end_effector())
+
+
+def slicing():
+    """ Push down while oscillating in X-axis or Y-axis """
+    arm.zero_ft_sensor()
+
+    selection_matrix = [1, 1, 0, 1, 1, 1]
+    arm.update_selection_matrix(selection_matrix)
+
+    pd_gains = [0.03, 0.03, 0.03, 1.0, 1.0, 1.0]
+    arm.update_pd_gains(pd_gains)
+
+    ee = arm.end_effector()
+
+    trajectory = traj_utils.compute_sinusoidal_trajectory(ee, dimension=1, period=3, amplitude=0.02, num_of_points=100)
+    target_force = [0, 0, -3, 0, 0, 0]  # express in the end_effector_link
+
+    res = arm.execute_compliance_control(trajectory, target_wrench=target_force,
+                                         max_force_torque=[50., 50., 50., 5., 5., 5.], duration=20)
     print(res)
     print("EE change", ee - arm.end_effector())
 
@@ -98,7 +118,7 @@ def admittance_control():
 
     ee = arm.end_effector()
     target_force = np.zeros(6)
-    arm.execute_compliance_control(ee, target_force=target_force,
+    arm.execute_compliance_control(ee, target_wrench=target_force,
                                    max_force_torque=[50., 50., 50., 5., 5., 5.], duration=10,
                                    stop_on_target_force=False)
 
@@ -116,7 +136,7 @@ def free_drive():
 
     target_force = np.zeros(6)
 
-    res = arm.execute_compliance_control(ee, target_force=target_force,
+    res = arm.execute_compliance_control(ee, target_wrench=target_force,
                                          max_force_torque=[50., 50., 50., 5., 5., 5.], duration=15,
                                          stop_on_target_force=False)
     print(res)
@@ -134,10 +154,10 @@ def main():
                         help='move towards target force')
     parser.add_argument('-fd', '--free_drive', action='store_true',
                         help='move the robot freely')
-    # parser.add_argument('-hfc', '--hand_frame_control', action='store_true',
-    #                     help='move towards target force using hand frame of reference')
     parser.add_argument('-a', '--admittance', action='store_true',
                         help='Spring-mass-damper force control demo')
+    parser.add_argument('-s', '--slicing', action='store_true',
+                        help='Push down while oscillating on X-axis')
     parser.add_argument('--namespace', type=str,
                         help='Namespace of arm', default=None)
     args = parser.parse_args()
@@ -166,7 +186,8 @@ def main():
         admittance_control()
     if args.free_drive:
         free_drive()
-
+    if args.slicing:
+        slicing()
     if args.move_joints:
         move_joints()
     # if args.hand_frame_control:
