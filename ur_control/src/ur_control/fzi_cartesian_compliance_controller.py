@@ -32,14 +32,14 @@ def convert_selection_matrix_to_parameters(selection_matrix):
     }
 
 
-def convert_pid_gains_to_parameters(pid_gains):
+def convert_pd_gains_to_parameters(p_gains, d_gains=[0, 0, 0, 0, 0, 0]):
     return {
-        "trans_x": {"p": pid_gains[0], "d": 0},
-        "trans_y": {"p": pid_gains[1], "d": 0},
-        "trans_z": {"p": pid_gains[2], "d": 0},
-        "rot_x": {"p": pid_gains[3], "d": 0},
-        "rot_y": {"p": pid_gains[4], "d": 0},
-        "rot_z": {"p": pid_gains[5], "d": 0}
+        "trans_x": {"p": p_gains[0], "d": d_gains[0]},
+        "trans_y": {"p": p_gains[1], "d": d_gains[1]},
+        "trans_z": {"p": p_gains[2], "d": d_gains[2]},
+        "rot_x": {"p": p_gains[3], "d": d_gains[3]},
+        "rot_y": {"p": p_gains[4], "d": d_gains[4]},
+        "rot_z": {"p": p_gains[5], "d": d_gains[5]}
     }
 
 
@@ -108,15 +108,15 @@ class CompliantController(Arm):
 
     def update_controller_parameters(self, parameters: dict):
         for param in parameters.keys():
-            rospy.loginfo("Setting parameters %s to the group %s" % (parameters[param], param))
+            rospy.logdebug("Setting parameters %s to the group %s" % (parameters[param], param))
             self.dyn_config_clients[param].update_configuration(parameters[param])
 
     def update_selection_matrix(self, selection_matrix):
         parameters = convert_selection_matrix_to_parameters(selection_matrix)
         self.update_controller_parameters(parameters)
 
-    def update_pid_gains(self, pid_gains):
-        parameters = convert_pid_gains_to_parameters(pid_gains)
+    def update_pd_gains(self, p_gains, d_gains=[0, 0, 0, 0, 0, 0]):
+        parameters = convert_pd_gains_to_parameters(p_gains, d_gains)
         self.update_controller_parameters(parameters)
 
     def set_control_mode(self, mode="parallel"):
