@@ -77,8 +77,8 @@ def move_force():
     selection_matrix = [1, 1, 0, 1, 1, 1]
     arm.update_selection_matrix(selection_matrix)
 
-    pid_gains = [0.01, 0.01, 0.01, 1.0, 1.0, 1.0]
-    arm.update_pid_gains(pid_gains)
+    pd_gains = [0.01, 0.01, 0.01, 1.0, 1.0, 1.0]
+    arm.update_pd_gains(pd_gains)
 
     ee = arm.end_effector()
 
@@ -109,8 +109,8 @@ def free_drive():
     selection_matrix = [0, 0, 0, 0, 0, 0]
     arm.update_selection_matrix(selection_matrix)
 
-    pid_gains = [0.05, 0.05, 0.05, 1.0, 1.0, 1.0]
-    arm.update_pid_gains(pid_gains)
+    pd_gains = [0.05, 0.05, 0.05, 1.0, 1.0, 1.0]
+    arm.update_pd_gains(pd_gains)
 
     ee = arm.end_effector()
 
@@ -158,8 +158,6 @@ def main():
                               ee_link=tcp_link,
                               ft_topic='wrench')
 
-    if args.move_joints:
-        move_joints()
     if args.move_cartesian:
         move_cartesian()
     if args.move_force:
@@ -168,6 +166,9 @@ def main():
         admittance_control()
     if args.free_drive:
         free_drive()
+
+    if args.move_joints:
+        move_joints()
     # if args.hand_frame_control:
     #     move_hand_frame_control()
 
