@@ -6,12 +6,13 @@
 # distribution of this software and related documentation without an express
 # license agreement from Cristian Beltran is strictly prohibited.
 
+import types
 import rospy
 import numpy as np
 
 from ur_control.arm import Arm
-from ur_control import transformations, utils, conversions
-from ur_control.constants import JOINT_TRAJECTORY_CONTROLLER, CARTESIAN_COMPLIANCE_CONTROLLER, STOP_ON_TARGET_FORCE, FORCE_TORQUE_EXCEEDED, DONE
+from ur_control import conversions
+from ur_control.constants import JOINT_TRAJECTORY_CONTROLLER, CARTESIAN_COMPLIANCE_CONTROLLER, STOP_ON_TARGET_FORCE, FORCE_TORQUE_EXCEEDED, DONE, TERMINATION_CRITERIA
 
 from geometry_msgs.msg import WrenchStamped, PoseStamped
 
@@ -140,7 +141,7 @@ class CompliantController(Arm):
 
     @switch_cartesian_controllers
     def execute_compliance_control(self, trajectory: np.array, target_force: np.array, max_force_torque: list,
-                                   duration: float, stop_on_target_force=False):
+                                   duration: float, stop_on_target_force=False, termination_criteria=None):
 
         # Space out the trajectory points
         trajectory = trajectory.reshape((-1, 7))  # Assuming this format [x,y,z,qx,qy,qz,qw]
@@ -164,6 +165,13 @@ class CompliantController(Arm):
         while not rospy.is_shutdown() and (rospy.get_time() - initial_time) < duration:
 
             current_wrench = self.get_ee_wrench(hand_frame_control=False)
+
+            if termination_criteria is not None:
+                assert isinstance(termination_criteria, types.LambdaType), "Invalid termination criteria, expecting lambda/function with one argument[current pose array[7]]"
+                if termination_criteria(self.end_effector()):
+                    rospy.loginfo("Termination criteria returned True, stopping force control")
+                    result = TERMINATION_CRITERIA
+                    break
 
             if stop_on_target_force and np.all(np.abs(current_wrench)[target_force != 0] > np.abs(target_force)[target_force != 0]):
                 rospy.loginfo('Target F/T reached {}'.format(np.round(current_wrench, 3)) + ' Stopping!')
