@@ -1,0 +1,7 @@
+pause physics
+Spawn robot
+spawn/load controllers
+unpause physics
+
+stop/unload controllers
+repeat 

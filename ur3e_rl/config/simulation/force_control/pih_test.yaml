@@ -1,0 +1,67 @@
+ur3e_gym: #namespace
+
+    reset_robot: True
+    test_mode: True
+
+    reset_time: 1
+
+    randomize_board_properties: False
+    normal_randomization: True
+    basic_randomization: False
+    # board_initial_pose: [-0.10, 0.38, 0.11, 3.141592, 0, 0.0] # horizontal
+    # board_initial_pose: [-0.10, 0.40, 0.12, 3.641592, 0, 0.0] # inclined
+    board_initial_pose: [0.17021, -0.36557, 0.37, 0, 0, 0.0]
+    board_workspace: [[-0.05, 0.05], [-0.05, 0.05], [-0.08, -0.01], [-30, 30], [-30, 30], [-60, 60]] # easy
+    # board_workspace: [[-0.03, 0.03], [-0.0, 0.03], [-0.03, 0.03], [-10, 10], [-45, 45], [-10, 10]] # easy
+    # board_workspace: [[-0.07, 0.0], [-0.05, 0.05], [0.0, 0.05], [-5, 5], [-5, 5], [-10, 10]] # mid
+    # board_workspace: [[-0.07, 0.07], [-0.07, 0.07], [0.0, 0.05], [-10, 10], [-10, 10], [-90, 90]] # hard
+    # max_board_workspace: [0.10, 0.10, 0.08, 10, 10, 45]
+    max_board_workspace: [0.05, 0.05, 0.08, 30, 30, 60]
+    min_board_workspace: [0.02, 0.02, 0.01, 5, 5, 20]
+    curriculum_learning: False
+    progressive_cl: True
+    reward_based_on_cl: False
+    peg_shape: trapezoid
+    board_mu: 1.0
+    board_mu2: 1.0
+    board_stiffness: 8.0e+5
+    max_mu_range: [1, 1]
+    max_stiffness_range: [2.0e+6, 1.0e+7]
+    max_scale_range: [1.01, 1.01]
+
+    
+    # initial conditions
+    random_initial_pose: True
+    # for each dimension define upper and lower bound from initial pose
+    max_distance: [0.1, 0.1, 0.1, 0.785398, 0.785398, 1.5707]
+    workspace: [[-0.05, 0.05], [-0.05, 0.05], [-0.02, -0.08], [30, -30], [30, -30], [60, -60]]
+    init_q: [4.810671, -0.878528, 1.723916, -2.428353, 1.553552, -0.080051]
+    # init_q: [1.4924, -1.2674, 1.9757, -2.6997, -1.5407, -0.0687] # inclined
+    # init_q: [1.4837, -0.6153, 1.8778, -4.3322, -1.4804, 0.0101] # vertical
+
+    target_duration: 6
+    target_pose_uncertain: False
+    uncertainty_std: [0.001, 0.0]
+    random_target_pose: False
+    target_pose: [-0.101, 0.40824, 0.14391, 0.7072, 0.70637, -0.00665, 0.02936]
+
+    position_threshold: 0.005
+    termination_on_negative_reward: True
+    termination_reward_threshold: -500 # new -500
+
+
+# Controller parameters
+ur3e_force_control:
+    max_twist: [0.01, 0.01, 0.01, 0.785398, 0.785398, 0.785398]
+
+    max_force_torque: [30, 30.0, 30.0, 4, 4, 4]
+    desired_force_torque: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    
+    # parallel control parameters
+    pd_range_type: 'mult' # or 'sum'
+    base_position_kp: [5.0, 5.0, 5.0, 50.0, 50.0, 100.0]
+    kpd_range: 5
+    base_force_kp: [0.01, 0.01, 0.01, 0.5, 0.5, 0.5]
+    kpi_range: 2
+    
+    alpha: [0.5,0.5,0.5,0.5,0.5,0.5] # keep a degree of compliance

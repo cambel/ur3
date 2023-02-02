@@ -1,0 +1,26 @@
+<launch>
+    <arg name="batch_qty"   default="5"/>
+    <arg name="batch_size"   default="5"/>
+    <arg name="bounding_box" default="[900, 500, 1450, 750]"/>
+    <arg name="model"        default="/root/dev/image_classification/logs/training2.1_mobilev3Large2242002202114-24-36.h5"/>
+    <arg name="target_label" default="0.0"/>
+    <arg name="debug"        default="False"/>
+
+    <include file="$(find realsense2_camera)/launch/rs_camera.launch">
+        <arg name="color_width" default="1920"/> <!-- which mode of camera is used-->
+        <arg name="color_height" default="1080"/> <!-- which mode of camera is used-->
+  		<arg name="color_fps" default="15"/>
+    </include>
+
+    <node name="pipe_classifier"
+        pkg="ur3e_openai"
+        type="manipulate_image.py"
+        output="screen" >
+        <param name="batch_qty"   value="$(arg batch_qty)"/>
+        <param name="batch_size"   value="$(arg batch_size)"/>
+        <param name="bounding_box" value="$(arg bounding_box)"/>
+        <param name="model"        value="$(arg model)"/>
+        <param name="target_label" value="$(arg target_label)"/>
+        <param name="debug"        value="$(arg debug)"/>
+    </node>
+</launch>

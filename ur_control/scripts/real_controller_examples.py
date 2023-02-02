@@ -67,7 +67,7 @@ def move_endeffector(wait=True):
     # define the desired translation/rotation
     deltax = np.array([0., 0., 0.04, 0., 0., 0.])
     # add translation/rotation to current position
-    cpose = transformations.pose_euler_to_quaternion(cpose, deltax, ee_rotation=True)
+    cpose = transformations.transform_pose(cpose, deltax, rotated_frame=True)
     # execute desired new pose
     # may fail if IK solution is not found
     arm.set_target_pose(pose=cpose, wait=True, t=1.0)

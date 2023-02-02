@@ -1,0 +1,77 @@
+ur3e_gym: #namespace
+    # General Agent parameters
+    env_id: "UR3ePipeCoatingEnv-v0"
+    driver: "gazebo" # or "robot"
+
+    ft_sensor: True
+    relative_to_ee: False
+    robot_control_dt: 0.002
+    agent_control_dt: 0.05
+    reset_time: 1.0
+
+    steps_per_episode: 100
+    
+    ft_hist: False
+    actor_class: "default"
+
+    rand_seed: 10   
+    # initial conditions
+    random_initial_pose: True
+    rand_init_interval: 1
+    # for each dimension define upper and lower bound from initial pose
+    workspace: [[0.04,-0.04], [0.04, -0.04], [0.005, 0.02], [10, -10], [10, -10], [10, -10]]
+    init_q: [-2.24462, -1.67999,  1.891, -3.48903,  5.38531,  0.09558]
+
+    target_pose_uncertain: False
+    uncertainty_std: [0.001, 0.0]
+    target_pos: [-0.16992, -0.27985, 0.55021]
+    extra_ee: [0, 0, 0.05, 0, 0, 0, 1]
+    end_effector_points: [[0.,0.,0.]]
+    
+    # actions parameters 
+    n_actions: 12
+    
+    # Reward parameters
+    tgt_pose_indices: [0,1,2,3,4,5]
+    distance_threshold: 5.0
+    reward_type: 'sparse'
+    cost_positive: True
+    cost:
+        l1: 1.0
+        l2: 10.0
+        ws: [1.0,1.0,0.1]
+        alpha: 0.00001
+        goal: 100
+        speed_violation: -1.0
+        ik_violation: -1.0
+        collision: -50.0
+        
+# Controller parameters
+ur3e_force_control:
+    n_actions: 12
+    robot_control_dt: 0.002
+    
+    max_speed: [0.02,0.02,0.02] # per agent action
+    action_scale: [1., 1., 1.]
+
+    max_force_torque: [40.0, 40.0, 40.0, 1.0, 1.0, 1.0]
+    desired_force_torque: [0.0, 0.0, 0.0]
+    
+    # parallel control parameters
+    pd_range_type: 'mult' # or 'sum'
+    base_position_kp: [5.0, 5.0, 5.0]
+    kpd_range: 2
+    base_force_kp: [5.0e-3, 5.0e-3, 5.0e-3]
+    kpi_range: 2
+    
+    alpha: [0.5,0.5,0.5] # keep a degree of compliance
+    alpha_base: 0.5
+    alpha_range: 0.4
+
+pipe_classifier:
+    batch_qty: 5
+    batch_size: 5
+    bounding_box: [0, 0, 200, 200]
+    model: '/root/dev/image_classification/logs/training2.1-2001202113-29-37.h5'
+    # model: '/root/dev/image_classification/logs/training2.2-2001202112-10-11.h5'
+    target_label: 0 # 0 for glue, 1 for smooth 

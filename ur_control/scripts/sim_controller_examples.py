@@ -70,7 +70,7 @@ def move_endeffector(wait=True):
     # define the desired translation/rotation
     deltax = np.array([0., 0., 0.04, 0., 0., 0.])
     # add translation/rotation to current position
-    cpose = transformations.pose_euler_to_quaternion(cpose, deltax, ee_rotation=True)
+    cpose = transformations.transform_pose(cpose, deltax, rotated_frame=True)
     # execute desired new pose
     # may fail if IK solution is not found
     arm.set_target_pose(pose=cpose, wait=True, t=1.0)
@@ -142,7 +142,7 @@ def circular_trajectory():
     target_pose = target_position + target_orienation
 
     deltax = np.array([0., 0.05, 0.1, 0., 0., 0.])
-    initial_pose = transformations.pose_euler_to_quaternion(target_pose, deltax, ee_rotation=True)
+    initial_pose = transformations.transform_pose(target_pose, deltax, rotated_frame=True)
 
     initial_pose = initial_pose[:3]
     final_pose = target_position[:3]
@@ -173,7 +173,7 @@ def circular_trajectory2():
     target_pose = target_position + target_orienation
 
     deltax = np.array([0., 0.0, 0.2, 0., 0., 0.])
-    initial_pose_ = transformations.pose_euler_to_quaternion(target_pose, deltax, ee_rotation=True)
+    initial_pose_ = transformations.transform_pose(target_pose, deltax, rotated_frame=True)
     initial_pose = initial_pose_[:3]
     final_pose = target_position[:3]
 

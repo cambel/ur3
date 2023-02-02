@@ -166,7 +166,7 @@ def compute_trajectory(initial_pose, plane, radius, radius_direction, steps=100,
     else:
         raise ValueError("Invalid value for plane: %s" % plane)
 
-    target_pose = transformations.pose_euler_to_quaternion(initial_pose, direction, ee_rotation=False)
+    target_pose = transformations.transform_pose(initial_pose, direction, rotated_frame=False)
 
     # print("Initial", np.round(spalg.translation_rotation_error(target_pose, arm.end_effector()), 4))
     target_orientation = transformations.vector_to_pyquaternion(transformations.quaternion_from_euler(*to_plane))

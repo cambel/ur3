@@ -1,0 +1,23 @@
+<launch>
+    <arg name="batch_qty"   default="6"/>
+    <arg name="batch_size"   default="20"/>
+    <arg name="bounding_box" default="[0, 0, 1920, 1080]"/>
+    <arg name="glue_model"        default="/root/dev/image_classification/training2.1_v3_mobilev3Large_224-2021-030-2-10-19-04.h5"/>
+    <arg name="smooth_model"        default="/root/dev/image_classification/training2.2_v3_mobilev3Large_224-2021-03-03-15-25-41.h5"/>
+    <arg name="debug"        default="False"/>
+
+    <include file="$(find ur_handeye_calibration)/launch/usb_cam.launch">
+    </include>
+
+    <node name="pipe_classifier"
+        pkg="ur3e_openai"
+        type="manipulate_image.py"
+        output="screen" >
+        <param name="batch_qty"    value="$(arg batch_qty)"/>
+        <param name="batch_size"   value="$(arg batch_size)"/>
+        <!-- <param name="bounding_box" value="$(arg bounding_box)"/> -->
+        <param name="glue_model"   value="$(arg glue_model)"/>
+        <param name="smooth_model" value="$(arg smooth_model)"/>
+        <param name="debug"        value="$(arg debug)"/>
+    </node>
+</launch>

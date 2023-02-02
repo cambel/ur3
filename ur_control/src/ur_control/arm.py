@@ -386,3 +386,8 @@ class Arm(object):
             return IK_NOT_FOUND
         else:
             return self.set_joint_positions_flex(q, t=t)
+
+    def move_relative(self, transformation, relative_to_tcp=True, duration=5.0, wait=True):
+        """ Move end-effector backwards relative to its position in a straight line """
+        new_pose = transformations.transform_pose(self.end_effector(), transformation, rotated_frame=relative_to_tcp)
+        self.set_target_pose(pose=new_pose, t=duration, wait=wait)

@@ -113,7 +113,7 @@ def move_arm(wait=True):
                 delta[0] = deltas[0][x+1]
                 delta[2] = deltas[2][y+1]
                 delta[1] = deltas[1][i]
-                cpose = transformations.pose_euler_to_quaternion(initial_ee, delta, ee_rotation=False)
+                cpose = transformations.transform_pose(initial_ee, delta, rotated_frame=False)
                 arm.set_target_pose(pose=cpose, wait=True, t=0.5)
                 # input("Enter to continue")
                 append_tf_data()

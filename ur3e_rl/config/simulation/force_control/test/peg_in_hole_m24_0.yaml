@@ -1,0 +1,5 @@
+ur3e_gym: #namespace
+    random_type: normal
+    curriculum_learning: False
+    progressive_cl: False
+    reward_based_on_cl: False
