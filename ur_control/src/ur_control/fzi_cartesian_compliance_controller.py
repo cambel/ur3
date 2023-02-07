@@ -1,10 +1,26 @@
-# Copyright (c) 2018-2021, Cristian Beltran.  All rights reserved.
+# The MIT License (MIT)
 #
-# Cristian Beltran and its licensors retain all intellectual property
-# and proprietary rights in and to this software, related documentation
-# and any modifications thereto.  Any use, reproduction, disclosure or
-# distribution of this software and related documentation without an express
-# license agreement from Cristian Beltran is strictly prohibited.
+# Copyright (c) 2023 Cristian Beltran
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+# Author: Cristian Beltran
 
 import types
 import rospy
@@ -33,6 +49,20 @@ def convert_selection_matrix_to_parameters(selection_matrix):
     }
 
 
+def convert_stiffness_to_parameters(stiffness):
+    return {
+        "stiffness":
+        {
+            "trans_x": stiffness[0],
+            "trans_y": stiffness[1],
+            "trans_z": stiffness[2],
+            "rot_x": stiffness[3],
+            "rot_y": stiffness[4],
+            "rot_z": stiffness[5],
+        }
+    }
+
+
 def convert_pd_gains_to_parameters(p_gains, d_gains=[0, 0, 0, 0, 0, 0]):
     return {
         "trans_x": {"p": p_gains[0], "d": d_gains[0]},
@@ -48,16 +78,19 @@ def switch_cartesian_controllers(func):
     '''Decorator that switches from cartesian to joint trajectory controllers and back'''
 
     def wrap(*args, **kwargs):
-        args[0].controller_manager.switch_controllers(controllers_on=[CARTESIAN_COMPLIANCE_CONTROLLER],
-                                                      controllers_off=[JOINT_TRAJECTORY_CONTROLLER])
+        if not args[0].auto_switch_controllers:
+            return func(*args, **kwargs)
+
+        args[0].activate_cartesian_controller()
+
         try:
             res = func(*args, **kwargs)
         except Exception as e:
             print(e)
             res = DONE
 
-        args[0].controller_manager.switch_controllers(controllers_on=[JOINT_TRAJECTORY_CONTROLLER],
-                                                      controllers_off=[CARTESIAN_COMPLIANCE_CONTROLLER])
+        args[0].activate_joint_trajectory_controller()
+
         return res
     return wrap
 
@@ -67,6 +100,9 @@ class CompliantController(Arm):
                  **kwargs):
         """ Compliant controller using FZI Cartesian Compliance controllers """
         Arm.__init__(self, **kwargs)
+
+        self.auto_switch_controllers = True  # Safety switching back to safe controllers
+
         self.cartesian_target_pose_pub = rospy.Publisher('%s/%s/target_frame' % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), PoseStamped, queue_size=10.0)
         self.cartesian_target_wrench_pub = rospy.Publisher('%s/%s/target_wrench' % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), WrenchStamped, queue_size=10.0)
 
@@ -81,14 +117,18 @@ class CompliantController(Arm):
             "stiffness": dynamic_reconfigure.client.Client("%s/%s/stiffness" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
 
             "hand_frame_control": dynamic_reconfigure.client.Client("%s/%s/force" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
-            
+
             "end_effector_link": dynamic_reconfigure.client.Client("%s/%s" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
         }
-        rospy.on_shutdown(self.safety_hook)
+        rospy.on_shutdown(self.activate_joint_trajectory_controller)
         self.set_hand_frame_control(False)
         self.set_end_effector_link(self.ee_link)
 
-    def safety_hook(self):
+    def activate_cartesian_controller(self):
+        self.controller_manager.switch_controllers(controllers_on=[CARTESIAN_COMPLIANCE_CONTROLLER],
+                                                   controllers_off=[JOINT_TRAJECTORY_CONTROLLER])
+
+    def activate_joint_trajectory_controller(self):
         self.controller_manager.switch_controllers(controllers_on=[JOINT_TRAJECTORY_CONTROLLER],
                                                    controllers_off=[CARTESIAN_COMPLIANCE_CONTROLLER])
 
@@ -123,6 +163,10 @@ class CompliantController(Arm):
         parameters = convert_pd_gains_to_parameters(p_gains, d_gains)
         self.update_controller_parameters(parameters)
 
+    def update_stiffness(self, stiffness):
+        parameters = convert_stiffness_to_parameters(stiffness)
+        self.update_controller_parameters(parameters)
+
     def set_control_mode(self, mode="parallel"):
         parameters = {"stiffness": {}}
         if mode == "parallel":
@@ -149,7 +193,8 @@ class CompliantController(Arm):
 
     @switch_cartesian_controllers
     def execute_compliance_control(self, trajectory: np.array, target_wrench: np.array, max_force_torque: list,
-                                   duration: float, stop_on_target_force=False, termination_criteria=None):
+                                   duration: float, stop_on_target_force=False, termination_criteria=None,
+                                   auto_stop=True):
 
         # Space out the trajectory points
         trajectory = trajectory.reshape((-1, 7))  # Assuming this format [x,y,z,qx,qy,qz,qw]
@@ -201,9 +246,11 @@ class CompliantController(Arm):
                 self.set_cartesian_target_pose(trajectory[trajectory_index])
 
             rate.sleep()
-        # Stop moving
-        # set position control only, then fix the pose to the current one
-        self.set_position_control_mode()
-        self.set_cartesian_target_pose(self.end_effector())
+
+        if auto_stop:
+            # Stop moving
+            # set position control only, then fix the pose to the current one
+            self.set_position_control_mode()
+            self.set_cartesian_target_pose(self.end_effector())
 
         return result

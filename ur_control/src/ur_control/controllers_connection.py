@@ -14,7 +14,11 @@ class ControllersConnection():
         if namespace:
             prefix = '/' + namespace + '/controller_manager/'
         else:
-            prefix = '/controller_manager'
+            prefix = '/controller_manager/'
+
+        # Only for o2ac sim
+        if rospy.has_param("use_gazebo_sim"):
+            prefix = '/controller_manager/'
 
         self.switch_service = rospy.ServiceProxy(prefix + 'switch_controller', SwitchController)
         self.load_service = rospy.ServiceProxy(prefix + 'load_controller', LoadController)
@@ -73,6 +77,10 @@ class ControllersConnection():
         :return:
         """
 
+        if rospy.has_param("use_gazebo_sim"):
+            controllers_on = [self.ns + "/" + controller for controller in controllers_on]
+            controllers_off = [self.ns + "/" + controller for controller in controllers_off]
+
         try:
             self.switch_service.wait_for_service(0.1)
             switch_request_object = SwitchControllerRequest()
@@ -117,6 +125,7 @@ class ControllersConnection():
         :param controllers_reset: ["name_controller_1", "name_controller2",...,"name_controller_n"]
         :return:
         """
+        
         reset_result = False
 
         result_off_ok = self.switch_controllers(controllers_on=[], controllers_off=self.controllers_list)
