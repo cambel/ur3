@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 #
-# Copyright (c) 2018-2021 Cristian Beltran
+# Copyright (c) 2018-2023 Cristian Beltran
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -94,7 +94,7 @@ class Arm(object):
 
         self.ik_solver = ik_solver
 
-        self.ns = resolve_parameter(namespace, "")
+        self.ns = namespace if namespace else ""
 
         base_link = resolve_parameter(base_link, BASE_LINK)
         ee_link = resolve_parameter(ee_link, EE_LINK)

@@ -79,10 +79,8 @@ def map_keyboard():
         else:  # rotation
             delta[dim] += delta_q * sign / 0.25
 
-        for _ in range(n):
-            x = transformations.pose_from_angular_velocity(x, delta, dt=dt, rotated_frame=relative_ee)
-
-        arm.set_target_pose_flex(pose=x, t=0.25)
+        xc = transformations.transform_pose(x, delta, rotated_frame=relative_to_tcp)
+        arm.set_target_pose_flex(pose=xc, t=0.25)
 
     def open_gripper():
         arm.gripper.open()
@@ -193,8 +191,8 @@ See help inside the example with the '?' key for key bindings.
 
     rospy.init_node("joint_position_keyboard", log_level=rospy.INFO)
 
-    global relative_ee
-    relative_ee = args.relative
+    global relative_to_tcp
+    relative_to_tcp = args.relative
 
     ns = args.namespace
     robot_urdf = "ur3e"
