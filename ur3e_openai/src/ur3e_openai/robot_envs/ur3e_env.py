@@ -47,15 +47,16 @@ class UR3eEnv(robot_env.RobotGazeboEnv):
         self.controllers_on = ['joint_state_controller', 'scaled_pos_joint_traj_controller']
 
         # It doesn't use namespace
-        self.robot_name_space = ""
+        self.robot_namespace = rospy.get_param("ur3e_gym/namespace", "")
 
         reset_controls_bool = False
 
         # We launch the init function of the Parent Class robot_env.RobotGazeboEnv
-        reset_method = "NO_RESET_SIM" if self.real_robot else "ROBOT"
+        # reset_method = "NO_RESET_SIM" if self.real_robot else "ROBOT"
+        reset_method = "NO_RESET_SIM"
         super(UR3eEnv, self).__init__(controllers_list=self.controllers_list,
                                       controllers_on=self.controllers_on,
-                                      robot_name_space=self.robot_name_space,
+                                      robot_name_space=self.robot_namespace,
                                       reset_controls=reset_controls_bool,
                                       use_gazebo=self.param_use_gazebo,
                                       start_init_physics_parameters=False,
@@ -65,8 +66,11 @@ class UR3eEnv(robot_env.RobotGazeboEnv):
 
         rospy.loginfo("UR3eEnv unpause...")
 
+        joint_names_prefix = self.robot_namespace+'_' if self.robot_namespace else ''
         self.ur3e_arm = CompliantController(ft_topic='wrench',
-                                            ee_link="gripper_tip_link")
+                                            ee_link="gripper_tip_link",
+                                            namespace=self.robot_namespace,
+                                            joint_names_prefix=joint_names_prefix,)
 
         if self.rand_seed is not None:
             self.seed(self.rand_seed)
@@ -79,7 +83,6 @@ class UR3eEnv(robot_env.RobotGazeboEnv):
     # ----------------------------
 
     def _pause_env(self):
-        self.ur3e_arm.activate_joint_trajectory_controller()
         current_pose = self.ur3e_arm.joint_angles()
         input("Press Enter to continue")
         self.ur3e_arm.set_joint_positions(current_pose, wait=True, t=self.reset_time)

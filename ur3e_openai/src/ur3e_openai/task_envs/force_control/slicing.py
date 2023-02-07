@@ -4,12 +4,12 @@
 from copy import copy
 import rospy
 import numpy as np
-from ur3e_openai.robot_envs.utils import get_object_color
 
+from ur3e_openai.robot_envs.utils import get_board_color
 from ur3e_openai.task_envs.ur3e_force_control import UR3eForceControlEnv
 from ur_control import transformations
 from ur_control.constants import FORCE_TORQUE_EXCEEDED
-from ur_gazebo.basic_models import get_peg_object_model
+from ur_gazebo.basic_models import get_box_model, get_cucumber_model
 from ur_gazebo.model import Model
 
 
@@ -17,12 +17,19 @@ def get_cl_range(range, curriculum_level):
     return [range[0], range[0] + (range[1] - range[0]) * curriculum_level]
 
 
-class UR3ePegInHoleEnv2(UR3eForceControlEnv):
+class UR3eSlicingEnv(UR3eForceControlEnv):
     """ Peg in hole with UR3e environment """
 
     def __init__(self):
         UR3eForceControlEnv.__init__(self)
         self.__load_env_params()
+
+        if not self.real_robot:
+            # string_model = get_box_model("cube", self.object_size, color=[0, 1, 0, 0],
+            #                              mass=self.object_mass, mu=self.object_friction, kp=self.object_stiffness)
+            string_model = get_cucumber_model(kp=self.object_stiffness, soft_cfm=self.object_soft_cfm, soft_erp=self.object_soft_erp)
+            self.box_model = Model("block", self.object_initial_pose, file_type="string",
+                                   string_model=string_model, model_id="target_block", reference_frame="o2ac_ground")
 
     def __load_env_params(self):
         prefix = "ur3e_gym"
@@ -33,6 +40,11 @@ class UR3ePegInHoleEnv2(UR3eForceControlEnv):
         self.object_stiffness = rospy.get_param(prefix + "/object_stiffness", 1e5)
         self.object_mu = rospy.get_param(prefix + "/object_mu", 1.0)
         self.object_mu2 = rospy.get_param(prefix + "/object_mu2", 1.0)
+        self.object_soft_erp = rospy.get_param(prefix + "/object_soft_erp", 0.01)
+        self.object_soft_cfm = rospy.get_param(prefix + "/object_soft_cfm", 0.2)
+        self.object_size = rospy.get_param(prefix + "/object_size", 0.03)
+        self.object_mass = rospy.get_param(prefix + "/object_mass", 1.0)
+        self.object_friction = rospy.get_param(prefix + "/object_friction", 1)
 
         self.uncertainty_error = rospy.get_param(prefix + "/uncertainty_error", False)
         self.uncertainty_error_max_range = rospy.get_param(prefix + "/uncertainty_error_max_range", [0, 0, 0, 0, 0, 0])
@@ -41,6 +53,8 @@ class UR3ePegInHoleEnv2(UR3eForceControlEnv):
         self.max_mu_range = rospy.get_param(prefix + "/max_mu_range", [1, 4])
         self.max_stiffness_range = rospy.get_param(prefix + "/max_stiffness_range", [5e5, 1e6])
         self.max_scale_range = rospy.get_param(prefix + "/max_scale_range", [1.05, 0.98])
+
+        self.update_target = rospy.get_param(prefix + "/update_target", False)
 
         # How often to generate a new model, number of episodes
         self.refresh_rate = rospy.get_param(prefix + "/refresh_rate", False)
@@ -57,13 +71,37 @@ class UR3ePegInHoleEnv2(UR3eForceControlEnv):
             self.set_environment_conditions()
 
         reset_time = 1.0 if not self.real_robot else 5.0
-        self.ur3e_arm.move_relative([0, 0, -0.03, 0, 0, 0], duration=reset_time)
+        self.ur3e_arm.move_relative([0, 0, 0.03, 0, 0, 0], duration=reset_time, relative_to_tcp=False)
 
         UR3eForceControlEnv._set_init_pose(self)
 
     def update_scene(self):
-        if self.real_robot:
-            return
+        self.stage = 0
+        block_pose = self.object_initial_pose  # self.randomize_block_position()
+        if self.randomize_object_properties:
+            randomize_value = self.rng.uniform(size=3)
+            mass = np.interp(randomize_value[0], [-1., 1.], [0.5, 5.])
+            friction = np.interp(randomize_value[0], [-1., 1.], [0, 5.])
+            stiffness = np.interp(randomize_value[0], [-1., 1.], [1e4, 1.e8])
+            color = list(get_board_color(stiffness=stiffness, stiff_lower=1e4, stiff_upper=1e8))+[0]
+            string_model = get_cucumber_model(kp=self.object_stiffness, soft_cfm=self.object_soft_cfm, soft_erp=self.object_soft_erp)
+            self.box_model = Model("block", block_pose, file_type="string",
+                                   string_model=string_model, model_id="target_block")
+            self.spawner.load_models([self.box_model])
+        else:
+            self.box_model.set_pose(block_pose)
+            self.spawner.update_model_state(self.box_model)
+
+        self.current_board_pose = transformations.pose_euler_to_quat(block_pose)
+
+    def randomize_block_position(self):
+        rand = self.rng.random(size=6)
+        rand = np.array([np.interp(rand[i], [0, 1.], self.object_workspace[i]) for i in range(6)])
+        rand[3:] = np.deg2rad(rand[3:])
+        self.x = rand
+        pose = np.copy(self.object_initial_pose)
+        pose[:2] += rand[:2]  # only x and y
+        return pose
 
     def set_environment_conditions(self):
         if self.curriculum_learning:
@@ -109,21 +147,6 @@ class UR3ePegInHoleEnv2(UR3eForceControlEnv):
             self.scale_range = self.max_scale_range
             self.current_object_workspace = self.object_workspace
             self.position_threshold_cl = self.position_threshold
-
-    def randomize_object_position(self):
-        if self.normal_randomization:
-            rand = self.rng.random(size=6)
-            rand = np.array([np.interp(rand[i], [0, 1.], self.current_object_workspace[i]) for i in range(6)])
-            rand[3:] = np.deg2rad(rand[3:])
-            self.x = rand
-            pose = np.copy(self.object_initial_pose)
-            pose += rand
-        else:
-            rand = np.zeros(6)
-
-        pose = np.copy(self.object_initial_pose)
-        pose += rand
-        return pose
 
     def _is_done(self, observations):
         pose_error = np.abs(observations[:6]*self.max_distance)

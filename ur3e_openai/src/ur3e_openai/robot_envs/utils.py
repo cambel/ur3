@@ -69,12 +69,6 @@ def randomize_pose(center_pose, workspace, reset_time, rng):
     rand = rng.uniform(low=-1.0, high=1.0, size=6)
     rand = np.array([np.interp(rand[i], [-1., 1.], workspace[i]) for i in range(6)])
     rand[3:] = np.deg2rad(rand[3:]) / reset_time  # rough estimation of angular velocity
-    # position = np.zeros(6)
-    # position[:3] = tr.pos
-    # orientation = np.zeros(6)
-    # orientation[3:] = np.deg2rad(rand[3:]) / reset_time  # rough estimation of angular velocity
-    # print("random delta", np.round(rand,5).tolist())
-    # new_orientation = tr.pose_from_angular_velocity(center_pose, orientation, dt=reset_time, rotated_frame=ee_rotation)
     return tr.transform_pose(center_pose, rand)
 
 def simple_random(workspace, rng):

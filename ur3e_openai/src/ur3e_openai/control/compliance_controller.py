@@ -65,7 +65,7 @@ class ComplianceController(controller.Controller):
             # B. selection matrix + pd_gains
             self.set_parallel_parameters(actions)
 
-        return self.ur3e_arm.execute_compliance_control(trajectory=target,
+        return self.ur3e_arm.execute_compliance_control(trajectory=np.array(target),
                                                         target_wrench=self.compute_target_wrench(target),
                                                         max_force_torque=self.max_force_torque,
                                                         duration=self.agent_control_dt,

@@ -156,6 +156,8 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         self.ee_centric = rospy.get_param(prefix + "/ee_centric", True)
         self.object_name = rospy.get_param(prefix + "/object_name", "target_board_tmp")
 
+        self.update_target = rospy.get_param(prefix + "/update_target", True)
+
         self.curriculum_learning = rospy.get_param(prefix + "/curriculum_learning", False)
         self.cumulative_episode_num = rospy.get_param(prefix + "/cumulative_episode_num", 0)
         self.curriculum_level = rospy.get_param(prefix + "/initial_curriculum_level", 0.1)
@@ -346,21 +348,21 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         self.controller.start()
 
     def update_target_pose(self):
-        if not self.real_robot:
+        if not self.real_robot and self.update_target:
             if self.object_centric:
                 if self.ee_centric:
                     translation, rotation = self.tf_listener.lookupTransform(
-                        "base_link", self.object_name, rospy.Time(0))
+                        self.ur3e_arm.base_link, self.object_name, rospy.Time(0))
                     self.object_centric_transform = self.tf_listener.fromTranslationRotation(translation, rotation)
                 else:
                     translation, rotation = self.tf_listener.lookupTransform(
-                        self.object_name, "base_link", rospy.Time(0))
+                        self.object_name, self.ur3e_arm.base_link, rospy.Time(0))
                     self.object_centric_transform = self.tf_listener.fromTranslationRotation(translation, rotation)
                 self.controller.ur3e_arm.object_centric_transform = self.object_centric_transform
                 self.object_current_pose = np.array([0, 0, 0, 0, 0, 0, 1])
             else:
                 obj_pose_msg = conversions.to_pose_stamped(self.object_name, [0, 0, 0, 0, 0, 0, 1])
-                obj_base_link_pose_msg = self.tf_listener.transformPose("base_link", obj_pose_msg)
+                obj_base_link_pose_msg = self.tf_listener.transformPose(self.ur3e_arm.base_link, obj_pose_msg)
                 self.object_current_pose = conversions.from_pose_to_list(obj_base_link_pose_msg.pose)
             self.current_target_pose = self.object_current_pose
 
@@ -372,7 +374,7 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
             self.current_target_pose[:3] += rand[:3]
             temp = transformations.euler_from_quaternion(self.current_target_pose[3:]) + rand[3:]
             self.current_target_pose[3:] = transformations.quaternion_from_euler(*temp)
-            print("uncertainty", (np.round(rand, 4)).tolist())
+            # print("uncertainty", (np.round(rand, 4)).tolist())
 
     def update_scene(self):
         self.start_model.set_pose(self.ur3e_arm.end_effector())
