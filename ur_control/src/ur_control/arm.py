@@ -35,7 +35,7 @@ from ur_control.constants import JOINT_ORDER, JOINT_TRAJECTORY_CONTROLLER, FT_SU
     DONE, SPEED_LIMIT_EXCEEDED, IK_NOT_FOUND, get_arm_joint_names, \
     BASE_LINK, EE_LINK
 
-from std_srvs.srv import Empty
+from std_srvs.srv import Empty, SetBool
 
 try:
     from ur_ikfast import ur_kinematics as ur_ikfast
@@ -166,6 +166,8 @@ class Arm(object):
 
         self._zero_ft = rospy.ServiceProxy('%s/%s/zero_ftsensor' % (self.ns, self.ft_topic), Empty)
         self._zero_ft.wait_for_service(rospy.Duration(2.0))
+        self._ft_filtered = rospy.ServiceProxy('%s/%s/enable_filtering' % (self.ns, self.ft_topic), SetBool)
+        self._ft_filtered.wait_for_service(rospy.Duration(1.0))
 
         # Check that the FT topic is publishing
         if not utils.wait_for(lambda: self.current_ft_value is not None, timeout=2.0):
@@ -263,6 +265,9 @@ class Arm(object):
 
     def zero_ft_sensor(self):
         self._zero_ft()
+
+    def set_ft_filtering(self, active=True):
+        self._ft_filtered(active)
 
     def end_effector(self,
                      joint_angles=None,

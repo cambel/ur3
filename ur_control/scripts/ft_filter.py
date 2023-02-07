@@ -45,6 +45,7 @@ class FTsensor(object):
                  republish=False):
         
         self.enable_publish = republish
+        self.enable_filtering = True
 
         self.in_topic = utils.solve_namespace(in_topic)
         if out_topic:
@@ -63,6 +64,7 @@ class FTsensor(object):
         # Service for zeroing the filtered signal
         rospy.Service(self.in_topic + "zero_ftsensor", Empty, self._srv_zeroing)
         rospy.Service(self.in_topic + "enable_publish", SetBool, self._srv_publish)
+        rospy.Service(self.in_topic + "enable_filtering", SetBool, self._srv_filtering)
 
         # Low pass filter
         self.filter = filters.ButterLowPass(cutoff, sampling_frequency, order)
@@ -91,11 +93,13 @@ class FTsensor(object):
         if rospy.is_shutdown():
             return
         self._active = True
-        self.add_wrench_observation(conversions.from_wrench(msg.wrench))
+        current_wrench = conversions.from_wrench(msg.wrench)
+        self.add_wrench_observation(current_wrench)
         if self.enable_publish:
-            filtered_wrench = self.get_filtered_wrench()
-            if filtered_wrench is not None:
-                data = filtered_wrench - self.wrench_offset
+            if self.enable_filtering:
+                current_wrench = self.get_filtered_wrench()
+            if current_wrench is not None:
+                data = current_wrench - self.wrench_offset
                 msg = WrenchStamped()
                 msg.wrench = conversions.to_wrench(data)
                 self.pub.publish(msg)
@@ -117,12 +121,19 @@ class FTsensor(object):
     def set_enable_publish(self, enable):
         self.enable_publish = enable
 
+    def set_enable_filtering(self, enable):
+        self.enable_filtering = enable
+
     def _srv_zeroing(self, req):
         self.update_wrench_offset()
         return EmptyResponse()
 
     def _srv_publish(self, req):
         self.set_enable_publish(req.data)
+        return SetBoolResponse(success=True)
+
+    def _srv_filtering(self, req):
+        self.set_enable_filtering(req.data)
         return SetBoolResponse(success=True)
 
 def main():
