@@ -352,14 +352,14 @@ class Arm(object):
         acc = None
 
         if velocities is not None:
-            vel = [velocities] * 6
+            vel = velocities #[velocities] * 6
         if accelerations is not None:
             acc = [accelerations] * 6
 
         for i, q in enumerate(trajectory):
             self.joint_traj_controller.add_point(positions=q,
                                                  time=(i+1) * dt,
-                                                 velocities=vel,
+                                                 velocities=vel[i],
                                                  accelerations=acc)
         self.joint_traj_controller.start(delay=0.01, wait=True)
         self.joint_traj_controller.clear_points()
