@@ -72,12 +72,11 @@ def map_keyboard():
         delta = np.zeros(6)
 
         n = 500
-        dt = 0.25/float(n)
 
         if dim <= 2:  # position
-            delta[dim] += delta_x * sign / 0.25
+            delta[dim] += delta_x * sign
         else:  # rotation
-            delta[dim] += delta_q * sign / 0.25
+            delta[dim] += delta_q * sign
 
         xc = transformations.transform_pose(x, delta, rotated_frame=relative_to_tcp)
         arm.set_target_pose_flex(pose=xc, t=0.25)
