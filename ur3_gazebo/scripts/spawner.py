@@ -34,21 +34,17 @@ def place_ball():
 
 
 def place_cube():
-    cube_lenght = "0.2"
-    obj = BOX % ("box", cube_lenght, cube_lenght, cube_lenght, "Yellow", cube_lenght, cube_lenght, cube_lenght)
-    model_names = ["box"]
-    objpose = [[0.618678,  0.0,  0.955148], [0, 0.0, 0, 0.0]]
-
-    models = [Model(model_names[0], objpose[0], file_type='string', string_model=obj, reference_frame="world")]
-    spawner.load_models(models)
+    obj = get_box_model("block", size=0.05)
+    objpose = [-0.176, 0.0, 0.869, 0.0, 0, 0.0]
+    model = Model("cube", objpose, file_type='string', string_model=obj, reference_frame="world")
+    spawner.load_models([model])
 
 def place_models():
     model_names = ["multi_peg_board"]
     model_names = ["simple_peg_board"]
-    objpose = [[-0.45, -0.20, 0.86], [0, 0.1986693, 0, 0.9800666]]
+    objpose = [[-0.176, 0.0, 0.869], [0, 0.1986693, 0, 0.9800666]]
     models = [Model(model_names[0], objpose[0], orientation=objpose[1])]
     spawner.load_models(models)
-
 
 def place_soft():
     name = "simple_peg_board"
@@ -63,22 +59,19 @@ def place_soft():
 
 def place_collision_cube():
     size = 0.02
-    string_model1 = get_box_model("cube", [size/2.,size/2.,size/2.], size, mu=2, mu2=2, color="Green", mass=0.5)
-    string_model2 = get_box_model("cube", [size/2.,size/2.,size/2.], size, color="Blue", mass=1)
-    string_model3 = get_box_model("cube", [size/2.,size/2.,size/2.], size, color="Red", mass=2)
-    string_model4 = get_box_model("cube", [size/2.,size/2.,size/2.], size, mu=2, mu2=2, color="DarkRed", mass=10)
     string_models = [
-        get_box_model("cube", [size/2.,size/2.,size/2.], size, mu=0.1, mu2=0.1, color="Green", mass=0.1),
-        # get_box_model("cube", [size/2.,size/2.,size/2.], size, color="Blue", mass=1),
-        # get_box_model("cube", [size/2.,size/2.,size/2.], size, color="Red", mass=2),
-        # get_box_model("cube", [size/2.,size/2.,size/2.], size, mu=2, mu2=2, color="DarkRed", mass=10),
+        get_box_model("cube", size, mu=0.1, mu2=0.1, color=[0,1,0,0], mass=0.1),
+        # get_box_model("cube", size, color="Blue", mass=1),
+        # get_box_model("cube", size, color="Red", mass=2),
+        # get_box_model("cube", size, mu=2, mu2=2, color="DarkRed", mass=10),
     ]
-    initial_pose = [0.36,0.10,0.69,0,0,0]
+    initial_pose = [0.10,0.10,0.20,0,0,0]
     models = []
     for i in range(len(string_models)):
         pose = copy.copy(initial_pose)
         pose[1] -= 0.05*i
-        model = Model("cube", pose, file_type="string", string_model=string_models[i], model_id="cube%s" % i)
+        model = Model("cube", pose, file_type="string", string_model=string_models[i], model_id="cube%s" % i, 
+                    reference_frame="o2ac_ground")
         models.append(model)
     spawner.load_models(models)
 
@@ -178,8 +171,8 @@ def main():
     if args.ball:
         place_ball()
     if args.cube:
-        # place_cube()
-        place_collision_cube()
+        place_cube()
+        # place_collision_cube()
     if args.button:
         place_button()
     if args.eef:

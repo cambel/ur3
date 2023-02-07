@@ -119,6 +119,7 @@ def get_box_model(
 BOX = """<?xml version="1.0" ?> 
 <sdf version="1.5"> 
   <model name="{model_name}"> 
+    <static>true</static>
     <link name="link"> 
       <pose>{x} {y} {z} 0 0 0</pose> 
       <inertial> 
@@ -149,7 +150,7 @@ BOX = """<?xml version="1.0" ?>
       <collision name="boxcollision"> 
         <pose frame=''>0 0 0 0 0 0</pose> 
         <laser_retro>0</laser_retro> 
-        <max_contacts>10</max_contacts> 
+        <max_contacts>30</max_contacts> 
         <geometry> 
           <box> 
             <size>{size} {size} {size}</size> 
@@ -430,6 +431,107 @@ BUTTON = """
         </surface> 
       </collision>
     </link>
+  </model>
+</sdf>
+"""
+
+
+def get_cucumber_model(kp=1e5, kd=1, soft_cfm=0.01, soft_erp=0.2, scale=1):
+    """ Create a String SDF model of a simple cucumber
+    Spring_stiffness must be negative.
+    """
+    return CUCUMBER.format(kp=kp, kd=kd, soft_cfm=soft_cfm, soft_erp=soft_erp, scale=0.001*scale)
+
+
+CUCUMBER = """
+<?xml version='1.0'?>
+<sdf version='1.6'>
+  <model name='cucumber'>
+    <static>true</static>
+    <link name='cucumber'>
+      <pose frame=''>0 0 0.01 0 0 0.58</pose>
+      <inertial>
+        <pose frame=''> 0 0 0 0 0 0</pose>
+        <mass>0.2</mass>
+        <inertia>
+          <ixx>0.01</ixx>
+          <ixy>0.01</ixy>
+          <ixz>0.01</ixz>
+          <iyy>0.01</iyy>
+          <iyz>0.01</iyz>
+          <izz>0.01</izz>
+        </inertia>
+      </inertial>
+      <visual name='cucumber'>
+        <pose frame=''>0 0 0 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>{scale} {scale} {scale}</scale>
+            <uri>model://meshes/cucumber.stl</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Green</name>
+          </script>
+        </material>
+      </visual>
+      <collision name='cucumber'>
+        <pose frame=''>0 0 0 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>{scale} {scale} {scale}</scale>
+            <uri>model://meshes/cucumber.stl</uri>
+          </mesh>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.5</mu>
+              <mu2>0.5</mu2>
+              <fdir1>0 0 0</fdir1>
+              <slip1>0.1</slip1>
+              <slip2>0.1</slip2>
+            </ode>
+            <torsional>
+              <coefficient>1</coefficient>
+              <patch_radius>0</patch_radius>
+              <surface_radius>0.9</surface_radius>
+              <use_patch_radius>0</use_patch_radius>
+              <ode>
+                <slip>0</slip>
+              </ode>
+            </torsional>
+          </friction>
+          <bounce>
+            <restitution_coefficient>0</restitution_coefficient>
+            <threshold>1e+06</threshold>
+          </bounce>
+          <contact>
+            <collide_without_contact>0</collide_without_contact>
+            <collide_without_contact_bitmask>1</collide_without_contact_bitmask>
+            <collide_bitmask>1</collide_bitmask>
+            <ode>
+              <soft_cfm>{soft_cfm}</soft_cfm>
+              <soft_erp>{soft_erp}</soft_erp>
+              <kp>{kp}</kp>
+              <kd>{kd}</kd>
+              <max_vel>0.01</max_vel>
+              <min_depth>0</min_depth>
+            </ode>
+            <bullet>
+              <split_impulse>1</split_impulse>
+              <split_impulse_penetration_threshold>-0.01</split_impulse_penetration_threshold>
+              <soft_cfm>0</soft_cfm>
+              <soft_erp>0.1</soft_erp>
+              <kp>1e+13</kp>
+              <kd>1</kd>
+            </bullet>
+          </contact>
+        </surface>
+      </collision>
+      </link>
   </model>
 </sdf>
 """
