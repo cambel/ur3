@@ -32,7 +32,7 @@
                                         <absolute_maximum>1000</absolute_maximum>
                                         <absolute_minimum>0</absolute_minimum>
                                         <relative_maximum>0</relative_maximum>
-                                        <relative_minimum>-10</relative_minimum>
+                                        <relative_minimum>-5</relative_minimum>
                                         <type>2</type>
                                     </scale>
                                     <topic>/b_bot/wrench/filtered</topic>
@@ -83,7 +83,7 @@
                                         <absolute_maximum>1000</absolute_maximum>
                                         <absolute_minimum>0</absolute_minimum>
                                         <relative_maximum>0</relative_maximum>
-                                        <relative_minimum>-10</relative_minimum>
+                                        <relative_minimum>-5</relative_minimum>
                                         <type>2</type>
                                     </scale>
                                     <topic>/b_bot/wrench/filtered</topic>
@@ -134,7 +134,7 @@
                                         <absolute_maximum>1000</absolute_maximum>
                                         <absolute_minimum>0</absolute_minimum>
                                         <relative_maximum>0</relative_maximum>
-                                        <relative_minimum>-10</relative_minimum>
+                                        <relative_minimum>-5</relative_minimum>
                                         <type>2</type>
                                     </scale>
                                     <topic>/b_bot/wrench/filtered</topic>

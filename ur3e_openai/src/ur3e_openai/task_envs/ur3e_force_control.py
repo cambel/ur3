@@ -23,6 +23,7 @@
 # Author: Cristian C Beltran-Hernandez
 
 # tf2 workaround for Python3
+import tf
 from ur3e_openai.initialize_logger import initialize_logger
 from ur_gazebo.model import Model
 from ur_gazebo.basic_models import SPHERE
@@ -42,7 +43,6 @@ import rospy
 import datetime
 import sys
 sys.path[:0] = ['/usr/local/lib/python3.6/dist-packages/']
-import tf
 
 
 class UR3eForceControlEnv(ur3e_env.UR3eEnv):
@@ -68,8 +68,8 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         rospy.sleep(1)
 
         self._init_controller()
-        self._previous_joints = None
-        self._previous_ee_pose_oc = None
+        self.previous_joints = None
+        self.previous_pose = None
         self.obs_logfile = None
         self.reward_per_step = []
         self.reward_details_per_step = []
@@ -199,10 +199,10 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         :return: observations
         """
         if self.object_centric:
-            ee_points, ee_velocities = self.get_position_and_velocity_object_centric()
+            ee_points, ee_velocities, ee_acceleration, ee_jerkiness = self.get_position_and_velocity_object_centric()
         else:
             joint_angles = self.ur3e_arm.joint_angles()
-            ee_points, ee_velocities = self.get_endeffector_relative_position_and_velocity(
+            ee_points, ee_velocities, ee_acceleration, ee_jerkiness = self.get_endeffector_relative_position_and_velocity(
                 joint_angles)
 
         if self.normalize_velocity:
@@ -218,8 +218,7 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         target_force = np.zeros(6)
         if self.target_force_as_obs:
             desired_force_wrt_goal = -1.0 * \
-                spalg.convert_wrench(
-                    self.controller.target_force_torque, self.current_target_pose)
+                spalg.convert_wrench(self.controller.target_force_torque, self.current_target_pose)
             target_force += desired_force_wrt_goal
 
         # velocity of action (mean desired velocity)
@@ -248,6 +247,11 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
             force_torque.ravel(),  # [6] or [6]*24
         ])
 
+        self.info = np.concatenate([
+            ee_acceleration.ravel(),
+            ee_jerkiness.ravel()
+        ])
+
         return obs.copy()
 
     def get_position_and_velocity_object_centric(self):
@@ -255,7 +259,7 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         with respect to the target object.
         """
         try:
-            current_pose = conversions.to_pose_stamped('base_link', self.ur3e_arm.end_effector())
+            self.current_pose = conversions.to_pose_stamped('base_link', self.ur3e_arm.end_effector())
             if self.ee_centric:
                 current_pose_obj_link = conversions.to_pose_stamped('target_board_tmp', [0.0, 0.0, 0, 0, 0, 0, 1])
                 # ee_pos_oc_now_msg = self.tf_listener.transformPose("gripper_tip_link", current_pose_obj_link)
@@ -267,24 +271,35 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
             else:
                 # ee_pos_oc_now_msg = self.tf_listener.transformPose(self.object_name, current_pose)
                 ee_pos_oc_now_msg = conversions.transform_pose(
-                    self.object_name, self.object_centric_transform, current_pose)
+                    self.object_name, self.object_centric_transform, self.current_pose)
             ee_pos_oc_now = conversions.from_pose_to_list(ee_pos_oc_now_msg.pose)
 
-            if self._previous_ee_pose_oc is None:
-                self._previous_ee_pose_oc = np.copy(ee_pos_oc_now)
+            if self.previous_pose is None:
+                self.previous_pose = np.copy(ee_pos_oc_now)
+                self.previous_velocity = np.zeros(6)
+                self.previous_acceleration = np.zeros(6)
 
             position_error = -ee_pos_oc_now[:3]
             orientation_error = spalg.quaternions_orientation_error2([0, 0, 0, 1], ee_pos_oc_now[3:])
             error = np.concatenate((position_error, orientation_error))
 
-            linear_velocity = (ee_pos_oc_now[:3] - self._previous_ee_pose_oc[:3]) / self.agent_control_dt
+            linear_velocity = (ee_pos_oc_now[:3] - self.previous_pose[:3]) / self.agent_control_dt
             angular_velocity = transformations.angular_velocity_from_quaternions(
-                ee_pos_oc_now[3:], self._previous_ee_pose_oc[3:], self.agent_control_dt)
-            velocity = np.concatenate((linear_velocity, angular_velocity))
+                ee_pos_oc_now[3:], self.previous_pose[3:], self.agent_control_dt)
 
-            self._previous_ee_pose_oc = np.copy(ee_pos_oc_now)
+            current_velocity = np.concatenate((linear_velocity, angular_velocity))
 
-            return error, velocity
+            # Get velocity and acceleration using finite difference approximation
+            current_acceleration = (current_velocity - self.previous_velocity) / self.agent_control_dt
+
+            # Estimate jerkiness using finite difference approximation
+            current_jerkiness = (current_acceleration - self.previous_acceleration) / self.agent_control_dt
+
+            self.previous_pose = np.copy(ee_pos_oc_now)
+            self.previous_velocity = np.copy(current_velocity)
+            self.previous_acceleration = np.copy(current_acceleration)
+
+            return error, current_velocity, current_acceleration, current_jerkiness
         except Exception as e:
             rospy.logerr("Fail to TF EEF to object frame, returning default method")
             return self.get_endeffector_relative_position_and_velocity(self.ur3e_arm.joint_angles())
@@ -294,28 +309,40 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         and velocities of the end effector with respect to the target pose
         """
 
-        if self._previous_joints is None:
-            self._previous_joints = self.ur3e_arm.joint_angles()
+        if self.previous_joints is None:
+            self.previous_joints = self.ur3e_arm.joint_angles()
+            self.previous_velocity = np.zeros(6)
+            self.previous_acceleration = np.zeros(6)
 
         # Current position
         ee_pos_now = self.ur3e_arm.end_effector(joint_angles=joint_angles)
 
         # Last position
-        ee_pos_last = self.ur3e_arm.end_effector(joint_angles=self._previous_joints)
-        self._previous_joints = joint_angles  # update
+        ee_pos_last = self.ur3e_arm.end_effector(joint_angles=self.previous_joints)
 
         # Use the past position to get the present velocity.
         linear_velocity = (ee_pos_now[:3] - ee_pos_last[:3]) / self.agent_control_dt
         angular_velocity = transformations.angular_velocity_from_quaternions(
             ee_pos_now[3:], ee_pos_last[3:], self.agent_control_dt)
-        velocity = np.concatenate((linear_velocity, angular_velocity))
+        current_velocity = np.concatenate((linear_velocity, angular_velocity))
+
+        # Get velocity and acceleration using finite difference approximation
+        current_acceleration = (current_velocity - self.previous_velocity) / self.agent_control_dt
+
+        # Estimate jerkiness using finite difference approximation
+        current_jerkiness = (current_acceleration - self.previous_acceleration) / self.agent_control_dt
+
+        # Update variables
+        self.previous_joints = joint_angles
+        self.previous_velocity = np.copy(current_velocity)
+        self.previous_acceleration = np.copy(current_acceleration)
 
         # Shift the present position by the End Effector target.
         # Since we subtract the target point from the current position, the optimal
         # value for this will be 0.
         error = spalg.translation_rotation_error(self.current_target_pose, ee_pos_now)
 
-        return error, velocity
+        return error, current_velocity, current_acceleration, current_jerkiness
 
     def _set_init_pose(self):
         """
@@ -471,6 +498,8 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
             r_sparse = 1.0 if done else 0.0
             reward = r_sparse + r_collision
             reward_details = [r_sparse, r_collision]
+        elif self.reward_type == 'slicing':  # position - target force
+            reward, reward_details = cost.slicing(self, observations, done)
         elif self.reward_type == 'dense-pft':  # position - target force
             reward, reward_details = cost.dense_pft(self, observations, done)
         # elif self.reward_type == 'dense-pvfr': # position & velocity - target force

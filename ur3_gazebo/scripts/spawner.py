@@ -104,17 +104,18 @@ def place_aruco():
 
 def place_button():
     name = "button"
-    initial_pose = [0.46, 0.07, 0.72, 0, 0, 0]  # world coordinates
+    initial_pose = [0.30, 0.07, 0.8, 0, 0, 0]  # world coordinates
     # models = [Model(name, pose=objpose, file_type='sdf', reference_frame="world")]
     string_models = [
-        get_button_model(color=[0,1,0,0], damping=0., friction=0., spring_stiffness=-100.),
+        get_button_model(color=[0,1,0,0], damping=1., friction=1., spring_stiffness=-250.),
         get_button_model(color=[0,0,1,0],  damping=1., friction=1., spring_stiffness=-300.),
-        get_button_model(color=[1,0,0,0],  damping=10., friction=10., spring_stiffness=-500.),
+        get_button_model(color=[1,0,0,0],  damping=2., friction=2., spring_stiffness=-400.),
     ]
     models = []
     for i in range(len(string_models)):
         pose = copy.copy(initial_pose)
-        pose[1] -= 0.075*i
+        pose[1] -= 0.05*i
+        pose[0] -= 0.05*i
         model = Model("button", pose, file_type="string", string_model=string_models[i], model_id="button_%s" % i)
         models.append(model)
     spawner.load_models(models)

@@ -109,6 +109,8 @@ if __name__ == '__main__':
     elif args.env_id == 17:
         param_file = "simulation/force_control/peg_in_hole_cartesian.yaml"
     elif args.env_id == 18:
+        param_file = "simulation/force_control/peg_in_hole_public.yaml"
+    elif args.env_id == 19:
         param_file = "simulation/force_control/slicing.yaml"
     else:
         raise Exception("invalid env_id")

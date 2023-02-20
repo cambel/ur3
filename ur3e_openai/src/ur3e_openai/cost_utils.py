@@ -8,6 +8,32 @@ def sparse(self, done):
         return self.cost_goal
     return 0
 
+def slicing(self, obs, done):
+    distance = np.linalg.norm(obs[:6])
+    jerkiness = np.linalg.norm(self.info[6:9])
+
+    wrench_size = self.wrench_hist_size*6
+    force = np.reshape(obs[-wrench_size:], (6,-1))
+    force = np.average(force, axis=1)
+    norm_force_torque = np.linalg.norm(force)
+
+    r_distance = 1 - np.tanh(10.0 * distance)
+    r_force = -1/(1 + np.exp(-norm_force_torque*20+5))
+    r_jerkiness = -1 * np.tanh(5e-4 * jerkiness)
+
+    r_collision = self.cost_collision if self.action_result == FORCE_TORQUE_EXCEEDED else 0.0
+    # reward discounted by the percentage of steps left for the episode (encourage faster termination)
+    # r_done = self.cost_done + (1-self.step_count/self.steps_per_episode) if done and self.action_result != FORCE_TORQUE_EXCEEDED else 0.0
+    position_reached = np.all(obs[1:3]*self.max_distance[1:3] < self.position_threshold_cl)
+    r_done = self.cost_done if done and position_reached and self.action_result != FORCE_TORQUE_EXCEEDED else 0.0
+
+    # encourage faster termination
+    r_step = self.cost_step
+
+    reward = self.w_dist*r_distance + self.w_force*r_force + self.w_jerkiness*r_jerkiness + r_collision + r_done + r_step
+    # print('r', round(reward, 4), round(r_distance, 4), round(r_force, 4), round(r_jerkiness, 4), r_done, jerkiness)
+    return reward, [r_distance, r_force, r_jerkiness, r_collision, r_done, r_step]
+
 def dense_distance(self, obs, done):
     reward = 0
 

@@ -86,7 +86,7 @@ def switch_cartesian_controllers(func):
         try:
             res = func(*args, **kwargs)
         except Exception as e:
-            print(e)
+            rospy.logerr("Exception: %s" % e)
             res = DONE
 
         args[0].activate_joint_trajectory_controller()
@@ -117,6 +117,8 @@ class CompliantController(Arm):
             "stiffness": dynamic_reconfigure.client.Client("%s/%s/stiffness" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
 
             "hand_frame_control": dynamic_reconfigure.client.Client("%s/%s/force" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
+
+            "solver": dynamic_reconfigure.client.Client("%s/%s/solver" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
 
             "end_effector_link": dynamic_reconfigure.client.Client("%s/%s" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
         }
@@ -191,10 +193,20 @@ class CompliantController(Arm):
         parameters = {"end_effector_link": {"end_effector_link": end_effector_link}}
         self.update_controller_parameters(parameters)
 
+    def set_solver_parameters(self, error_scale=None, iterations=None, publish_state_feedback=None):
+        parameters = {"solver": {}}
+        if error_scale:
+            parameters["solver"].update({"error_scale": error_scale})
+        if iterations:
+            parameters["solver"].update({"iterations": iterations})
+        if publish_state_feedback:
+            parameters["solver"].update({"publish_state_feedback": publish_state_feedback})
+        self.update_controller_parameters(parameters)
+
     @switch_cartesian_controllers
     def execute_compliance_control(self, trajectory: np.array, target_wrench: np.array, max_force_torque: list,
                                    duration: float, stop_on_target_force=False, termination_criteria=None,
-                                   auto_stop=True):
+                                   auto_stop=True, func=None, scale_up_error=False, max_scale_error=None):
 
         # Space out the trajectory points
         trajectory = trajectory.reshape((-1, 7))  # Assuming this format [x,y,z,qx,qy,qz,qw]
@@ -245,6 +257,16 @@ class CompliantController(Arm):
                 # push next point to the controller
                 self.set_cartesian_target_pose(trajectory[trajectory_index])
 
+            # Scale error_scale as position error decreases until a max scale error
+            if scale_up_error and max_scale_error:
+                position_error = np.linalg.norm(trajectory[trajectory_index][:3] - self.end_effector()[:3])
+                # from position_error < 0.01m increase scale error
+                factor = 1 - np.tanh(100 * position_error)
+                scale_error = np.interp(factor, [0, 1], [0.01, max_scale_error])
+                self.set_solver_parameters(error_scale=np.round(scale_error,3))
+
+            if func:
+                func(self.end_effector())
             rate.sleep()
 
         if auto_stop:

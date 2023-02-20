@@ -142,13 +142,11 @@ class ur_kinematics(object):
             for j in range(data.columns()):
                 mat[i, j] = data[i, j]
         return mat
-
-    def end_effector_transform(self, joint_values, tip_link=None):
-        pose = self.forward(joint_values, tip_link)
-        translation = np.array([pose[:3]])
-        transform = transformations.quaternion_matrix(pose[3:])
-        transform[:3, 3] = translation
-        return transform
+    
+    def get_transform_between_links(self, parent_link, child_link):
+        chain = self._kdl_tree.getChain(parent_link, child_link)
+        frame = chain.getSegment(0).getFrameToTip()
+        return frame_to_list(frame)
 
     def forward(self, joint_values, tip_link=None):
         if not tip_link or tip_link == self._tip_link:

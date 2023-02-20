@@ -299,15 +299,31 @@ PEG_BOARD = """<?xml version='1.0'?>
 </sdf>"""
 
 
-def get_button_model(spring_stiffness=-500., damping=0., friction=0., base_mass=1., button_mass=0.1, color=[1, 0, 0, 0],
+def rectangular_prism_inertia(l, w, h, m):
+    l2 = np.math.pow(l, 2)
+    h2 = np.math.pow(h, 2)
+    w2 = np.math.pow(w, 2)
+    return m/12.*np.array([[l2+h2, 0, 0], [0, w2+h2, 0], [0, 0, l2 + w2]])
+    # return m * np.array([[1./3.*(l2+h2), 1./4.*w*l, 1./4.*h*w],
+    #                     [1./4.*w*l, 1./3.*(w2+h2), 1./4.*h*l],
+    #                     [1./4.*h*w, 1./4.*h*l, 1./3.*(l2+w2)]])
+
+
+def get_button_model(spring_stiffness=-500., damping=0., friction=0., base_mass=2., button_mass=0.1, color=[1, 0, 0, 0],
                      kp=1e5, kd=1, max_vel=100.0):
     """ Create a String SDF model of a simple button
     Spring_stiffness must be negative.
     """
-    base_inertia = base_mass*(0.06**2)*np.array([[2./3., -1./4., -1./4.],
-                                                 [-1./4., 2./3., -1./4.], [-1./4., -1./4., 2./3.]])
-    button_inertia = button_mass*(0.05**2)*np.array([[2./3., -1./4., -1./4.],
-                                                     [-1./4., 2./3., -1./4.], [-1./4., -1./4., 2./3.]])
+    btn_length, btn_width = 0.06, 0.03
+    btn_height = 0.03
+    base_length, base_width = btn_length + 0.01, btn_width + 0.01
+    base_height = btn_height + 0.01
+    base_inertia = rectangular_prism_inertia(base_length, base_width, base_height, base_mass)
+    button_inertia = rectangular_prism_inertia(btn_length, btn_width, btn_height, button_mass)
+
+    range_of_motion = btn_height/2.0
+    lower_limit = (btn_height-0.01)/2.0
+    upper_limit = btn_height/2.0
     return BUTTON.format(base_mass=base_mass, button_mass=button_mass,
                          kp=kp, kd=kd, max_vel=max_vel,
                          spring_stiffness=abs(spring_stiffness)*-1,  # always negative values
@@ -316,14 +332,18 @@ def get_button_model(spring_stiffness=-500., damping=0., friction=0., base_mass=
                                                                                                          2], base_iyy=base_inertia[1, 1], base_iyz=base_inertia[1, 2], base_izz=base_inertia[2, 2],
                          button_ixx=button_inertia[0, 0], button_ixy=button_inertia[0, 1], button_ixz=button_inertia[0,
                                                                                                                      2], button_iyy=button_inertia[1, 1], button_iyz=button_inertia[1, 2], button_izz=button_inertia[2, 2],
-                         r=color[0], g=color[1], b=color[2], transparency=color[3])
+                         r=color[0], g=color[1], b=color[2], transparency=color[3],
+                         range_of_motion=range_of_motion,
+                         btn_length=btn_length, btn_width=btn_width, btn_height=btn_height,
+                         base_length=base_length, base_width=base_width, base_height=base_height,
+                         lower_limit=lower_limit, upper_limit=upper_limit)
 
 
 BUTTON = """
 <?xml version="1.0"?>
 <sdf version="1.5">
   <model name="button">
-    <pose>0 0 0.03 0 0 0</pose>
+    <pose>0 0 {range_of_motion} 0 0 0</pose>
     <link name="base_link">
       <inertial>
         <inertia>
@@ -339,7 +359,7 @@ BUTTON = """
       <visual name="visual">
         <geometry>
           <box>
-            <size>0.07 0.07 0.06</size>
+            <size>{base_length} {base_width} {base_height}</size>
           </box>
         </geometry>
         <material>
@@ -350,19 +370,27 @@ BUTTON = """
       <collision name="collision">
         <geometry>
           <box>
-            <size>0.07 0.07 0.06</size>
+            <size>{base_length} {base_width} {base_height}</size>
           </box>
         </geometry>
         <surface>
           <friction>
             <ode>
-              <mu>10</mu>
-              <mu2>10</mu2>
+              <mu>1</mu>
+              <mu2>1</mu2>
               <fdir1>0 0 0</fdir1>
               <slip1>0</slip1>
               <slip2>0</slip2>
             </ode>
           </friction>
+          <contact>
+            <ode> 
+              <kp>1e+6</kp> 
+              <kd>1</kd> 
+              <max_vel>0.01</max_vel> 
+              <min_depth>0.0</min_depth> 
+            </ode> 
+          </contact> 
         </surface>
       </collision>
     </link>
@@ -372,13 +400,13 @@ BUTTON = """
       <pose>0 0 0 0 0 0</pose>
       <axis>
         <limit>
-          <lower>-0.020</lower>
-          <upper>0.025</upper>
+          <lower>-{lower_limit}</lower>
+          <upper>{upper_limit}</upper>
         </limit>
         <xyz>0.0 0.0 1.0</xyz>
         <dynamics>
           <spring_stiffness>{spring_stiffness}</spring_stiffness>
-          <spring_reference>-0.025</spring_reference>
+          <spring_reference>-{range_of_motion}</spring_reference>
           <damping>{damping}</damping>
           <friction>{friction}</friction>
         </dynamics>
@@ -398,25 +426,25 @@ BUTTON = """
         <mass>{button_mass}</mass>
       </inertial>
       <visual name="visual">
-        <pose>0 0 0.025 0 0 0</pose>
+        <pose>0 0 {range_of_motion} 0 0 0</pose>
         <geometry>
           <box>
-            <size>0.05 0.05 0.05</size>
+            <size>{btn_length} {btn_width} {btn_height}</size>
           </box>
         </geometry>
         <transparency> {transparency} </transparency>
         <material>
-          <ambient>0 0 0 1</ambient>
-          <diffuse>0 0 0 1</diffuse>
-          <specular>0 0 0 0</specular>
+          <ambient>0.2 0.2 0.2 1</ambient>
+          <diffuse>0.2 0.2 0.2 1</diffuse>
+          <specular>0.2 0.2 0.2 0.5</specular>
           <emissive>{r} {g} {b} 1</emissive>
         </material>
       </visual>
       <collision name="collision">
-        <pose>0 0 0.025 0 0 0</pose>
+        <pose>0 0 {range_of_motion} 0 0 0</pose>
         <geometry>
           <box>
-            <size>0.05 0.05 0.05</size>
+            <size>{btn_length} {btn_width} {btn_height}</size>
           </box>
         </geometry>
         <surface>
@@ -425,7 +453,7 @@ BUTTON = """
               <kp>{kp}</kp> 
               <kd>{kd}</kd> 
               <max_vel>{max_vel}</max_vel> 
-              <min_depth>0.001</min_depth> 
+              <min_depth>0.0</min_depth> 
             </ode> 
           </contact> 
         </surface> 

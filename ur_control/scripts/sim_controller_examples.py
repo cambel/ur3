@@ -23,7 +23,7 @@
 # SOFTWARE.
 #
 # Author: Cristian Beltran
- 
+
 from ur_control import spalg, transformations, traj_utils
 from ur_control.arm import Arm
 import argparse
@@ -39,13 +39,18 @@ def move_joints(wait=True):
     # desired joint configuration 'q'
     q = [0, 0, 0, 0, 0, 0]
     q = [3.2317, -1.979, 1.3969, -0.4844, -0.1151, -1.7565]
-    q = [1.5353, -1.211, -1.4186, -0.546, 1.6476, -0.0237]
+    q = [1.5306, -2.1054, 1.3993, -0.785398, -1.5707, 0.0]
 
     # go to desired joint configuration
     # in t time (seconds)
     # wait is for waiting to finish the motion before executing
     # anything else or ignore and continue with whatever is next
     arm.set_joint_positions(position=q, wait=wait, t=0.5)
+
+def go_to_pose():
+    cpose = [-0.02, 0.50, 0.195, -0.00812894,  0.70963372, -0.00882711,  0.70446859]
+    print(arm.set_target_pose(pose=cpose, wait=True, t=1.0))
+    print("ok", np.round(cpose[:3] - arm.end_effector()[:3],4))
 
 
 def follow_trajectory():
@@ -162,11 +167,12 @@ def circular_trajectory():
         cmd = np.concatenate([position, target_orienation])
         arm.set_target_pose(cmd, wait=True, t=(duration/steps))
 
+
 def circular_trajectory2():
     initial_q = [2.159, -1.8183, -1.9143, 0.4768, 2.5238, 4.6963]
     # print(arm.end_effector().tolist())
     arm.set_joint_positions(initial_q, wait=True, t=1)
-    
+
     target_position = [0.35951, -0.54521, 0.34393]
     target_orienation = spalg.face_towards(target_position, arm.end_effector()[:3])[3:].tolist()
 
@@ -177,7 +183,7 @@ def circular_trajectory2():
     initial_pose = initial_pose_[:3]
     final_pose = target_position[:3]
 
-    circle_orientation = [0,0,0,1.0]
+    circle_orientation = [0, 0, 0, 1.0]
     target_q = transformations.vector_to_pyquaternion(circle_orientation)
 
     p1 = target_q.rotate(initial_pose - final_pose)
@@ -185,7 +191,7 @@ def circular_trajectory2():
     steps = 20
     duration = 10
 
-    traj = traj_utils.circunference(p1, p2, steps, axes=[0,2,1])
+    traj = traj_utils.circunference(p1, p2, steps, axes=[0, 2, 1])
     traj = np.apply_along_axis(target_q.rotate, 1, traj)
     trajectory = traj + final_pose
 
@@ -195,7 +201,7 @@ def circular_trajectory2():
     for position in trajectory:
         rot = spalg.face_towards(target_position, position)[3:].tolist()
         cmd = np.concatenate([position, rot])
-        
+
         cmd_q = arm._solve_ik(cmd)
         if check_ik(arm.joint_angles(), cmd_q):
             arm.set_target_pose(cmd, wait=True, t=(duration/steps))
@@ -206,11 +212,13 @@ def circular_trajectory2():
     m1 = create_gazebo_marker(initial_pose_, "base_link", marker_id="obj")
     spawner.load_models([m1])
 
+
 def check_ik(curr_q, cmd_q):
     cmd = cmd_q if cmd_q is not None else np.zeros_like(curr_q)
     distance = np.linalg.norm(curr_q-cmd)
     print(distance)
     return distance < 0.5
+
 
 def create_gazebo_marker(pose, reference_frame, marker_id=None):
     from ur_gazebo.model import Model
@@ -229,10 +237,13 @@ def face_towards_target():
     cmd = spalg.face_towards(target_position, cpose)
     arm.set_target_pose(cmd, wait=True, t=1)
 
+
 def main():
     """ Main function to be run. """
     parser = argparse.ArgumentParser(description='Test force control')
     parser.add_argument('-m', '--move', action='store_true',
+                        help='move to joint configuration')
+    parser.add_argument('-p', '--pose', action='store_true',
                         help='move to joint configuration')
     parser.add_argument('-t', '--move_traj', action='store_true',
                         help='move following a trajectory of joint configurations')
@@ -253,21 +264,27 @@ def main():
 
     rospy.init_node('ur3e_script_control')
 
-    tcp_z = 0.21  # where to consider the tool center point wrt end-effector
-    if args.face:
-        tcp_z = 0.21
+    ns = "b_bot"
+    robot_urdf = "ur3e"
+    rospackage = None
+    tcp_link = "gripper_tip_link"
+    use_gripper = False
+    joint_names_prefix = ns+'_' if ns else ''
 
     global arm
-    arm = Arm(
-        ft_sensor=True,  # get Force/Torque data or not
-        gripper=args.gripper,  # Enable gripper
-        )
+    arm = Arm(gripper=use_gripper, namespace=ns,
+              joint_names_prefix=joint_names_prefix,
+              robot_urdf=robot_urdf, robot_urdf_package=rospackage,
+              ee_link=tcp_link,
+              ft_topic='wrench')
 
     real_start_time = timeit.default_timer()
     ros_start_time = rospy.get_time()
 
     if args.move:
         move_joints()
+    if args.pose:
+        go_to_pose()
     if args.move_traj:
         follow_trajectory()
     if args.move_ee:

@@ -10,17 +10,17 @@ ur3e_gym: #namespace
 
     relative_to_ee: False
     robot_control_dt: 0.002
-    agent_control_dt: 0.01
+    agent_control_dt: 0.05
     reset_time: 2.0
     # actions parameters 
-    n_actions: 7
+    n_actions: 5
     action_type: "slicing"
     
     object_name: "target_block_tmp"
     object_centric: False
     ee_centric: False
 
-    steps_per_episode: 500
+    steps_per_episode: 300
     
     actor_class: "wave"
     ft_hist: True
@@ -49,7 +49,6 @@ ur3e_gym: #namespace
     max_damping_range: [0, 1]
     max_kp_range: [4.0e+5, 1.0e+6]
     max_kd_range: [1, 2]
-    max_friction_range: [0, 2]
 
     ## Target object configuration
     randomize_object_properties: True
@@ -74,30 +73,29 @@ ur3e_gym: #namespace
     target_pose_uncertain: False
     uncertainty_std: [0.001, 0.0]
     random_target_pose: False
-    target_pose: [-0.02, 0.50, 0.194, -0.00812894,  0.70963372, -0.00882711,  0.70446859]
+    target_pose: [-0.0, 0.50, 0.197, -0.00812894,  0.70963372, -0.00882711,  0.70446859]
     
     # Reward parameters
     tgt_pose_indices: [0,1,2,3,4,5]
     
-    position_threshold: 0.003
+    position_threshold: 0.005
     max_position_threshold: 0.01   # new 0.05
     orientation_threshold: 0.0349066
     max_orientation_threshold: 0.07
 
-    reward_type: 'slicing'
+    reward_type: 'dense-distance-velocity-force'
     termination_on_negative_reward: True
-    termination_reward_threshold: -300 # new -500
+    termination_reward_threshold: -500 # new -500
 
     cost:
-        collision: -100.0
-        done: 100
+        collision: -500.0
+        done: 200
         step: -1.0  # new -1
     w_dist: 1.0
     w_force: 1.0
-    w_jerkiness: 1.0
         
 # Controller parameters
 ur3e_force_control:
     max_twist: [0.001, 0.001, 0.001, 0.001, 0.001, 0.001]
-    max_force_torque: [50, 50.0, 50.0, 5, 5, 5]
+    max_force_torque: [30, 30.0, 30.0, 3, 3, 3]
     desired_force_torque: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]

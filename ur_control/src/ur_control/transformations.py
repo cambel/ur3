@@ -1096,6 +1096,14 @@ def euler_from_quaternion(quaternion, axes='sxyz'):
     return euler_from_matrix(quaternion_matrix(quaternion), axes)
 
 
+def quaternion_normalize(v, tolerance=0.00001):
+    mag2 = sum(n * n for n in v)
+    if mag2 > tolerance:
+        mag = math.sqrt(mag2)
+        v = tuple(n / mag for n in v)
+    return numpy.array(v)
+
+
 def quaternion_from_euler(ai, aj, ak, axes='sxyz'):
     """Return quaternion from Euler angles and axis sequence.
 
@@ -1844,12 +1852,22 @@ def integrateUnitQuaternionDMM(q, w, dt):
     w_norm = numpy.linalg.norm(w)
     if w_norm == 0:
         return q
+    q_tmp = numpy.concatenate([numpy.sin(w_norm*dt/2)*w/w_norm, [numpy.cos(w_norm*dt/2.)]])
+    return quaternion_multiply(q_tmp, q)
+
+def integrateUnitQuaternionDMM2(q, w, dt):
+    """ Integrate a unit quaterniong using the Direct Multiplicaiton Method"""
+    q_ = vector_to_pyquaternion(q)
+    w_norm = numpy.linalg.norm(w)
+    if w_norm == 0:
+        return q_
     q_tmp = Quaternion(scalar=(numpy.cos(w_norm*dt/2.)), vector=numpy.sin(w_norm*dt/2)*w/w_norm)
-    return q_tmp*q
+    return vector_from_pyquaternion(q_tmp * q_)
 
 
 def integrateUnitQuaternionEuler(q, w, dt):
     """ Integrate a unit quaterniong using Euler Method"""
+    q = Quaternion(q)
     qw = Quaternion(scalar=0, vector=w)
     return (q + 0.5*qw*dt*q).normalised
 
@@ -1912,3 +1930,11 @@ def pose_euler_to_quat(pose):
 
 def diff_quaternion(q1, q2):
     return quaternion_multiply(q2, quaternion_inverse(q1))
+
+
+def transform_between_poses(p1, p2):
+    p1_T = pose_to_transform(p1)
+    p2_T = pose_to_transform(p2)
+
+    p1_T_inv = inverse_matrix(p1_T)
+    return concatenate_matrices(p1_T_inv, p2_T)

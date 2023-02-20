@@ -260,6 +260,9 @@ def fit_plane_svd(XYZ):
 
 
 def force_frame_transform(bTa):
+    return motion_frame_transform(bTa)
+
+def force_frame_transform2(bTa):
     """
     Calculates the coordinate transformation for force vectors.
     The force vectors obey special transformation rules.
@@ -271,8 +274,8 @@ def force_frame_transform(bTa):
     @return: The coordinate transformation from M{A} to M{B} for force
     vectors
     """
-    aTb = transform_inv(bTa)
-    return motion_frame_transform(aTb).T
+    aTb = tr.inverse_matrix(bTa) # is this necessary?
+    return motion_frame_transform(aTb).T # do we need to transpose here?
 
 
 def inertia_matrix_from_vector(i):

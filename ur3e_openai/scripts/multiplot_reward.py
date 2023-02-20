@@ -79,7 +79,7 @@ def load_common_data(folder_names):
     return np.concatenate(combined_data)
 
 def load_data(folder_name):
-    filename = glob.glob('/home/cambel/dev/results/'+folder_name+'/state_*')
+    filename = glob.glob(ROOT+folder_name+'/state_*')
     if len(filename) > 0:
         return np.load(filename[0], allow_pickle=True)
     raise ValueError("File not found: %s" % folder_name)
@@ -180,7 +180,7 @@ def multi_plot(folder_names, labels=None, cumulative=False):
 # single_plot(data)
 
 # Multiplot
-
+ROOT = '/root/o2ac-ur/tf2rl/results/'
 folder_names = [
 ### Main Comparison ###
 
@@ -192,19 +192,20 @@ folder_names = [
 
 ### Ablation Studies ###
 ## PID scheduling vs Normal PID
-['pid_scheduling/pih_pid_scheduling4', 'pid_scheduling/pih_pid_scheduling7'], # Our Adp. CL DyRe
-['pid_scheduling/pih_normal_pid','pid_scheduling/pih_normal_pid2',],
+# ['pid_scheduling/pih_pid_scheduling4', 'pid_scheduling/pih_pid_scheduling7'], # Our Adp. CL DyRe
+# ['pid_scheduling/pih_normal_pid','pid_scheduling/pih_normal_pid2',],
 
 ## New reward vs Old reward
 # ['reward_types/pih_m24_old_reward','reward_types/pih_m24_old_reward2',]
+   ["20230216T025910.934135_SAC_slicing"]
 ]
 
 labels = ['2048', '1024', '4096', '8192']
 labels = ['per_episode', 'every_100_steps', 'every_200_steps', 'every_500_steps']
-labels = None
 labels = ['No Curriculum', 'Linear Curriculum UDR', 'Linear Curriculum GDR', 'Adp. Curriculum UDR', 'Adp. Curriculum GDR']
 labels = ['New reward function', 'Old reward function']
 labels = ['PD gains scheduling','Normal PD', ]
+labels = None
 multi_plot(folder_names, labels=labels, cumulative=True)
 
 plt.xlabel('Time Steps', size=20)

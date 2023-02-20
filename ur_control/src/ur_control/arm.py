@@ -258,8 +258,9 @@ class Arm(object):
             return wrench_force
         else:
             # Transform force to end effector frame
-            pose = self.end_effector()
-            ee_wrench_force = spalg.convert_wrench(wrench_force, pose)
+            # Fix, the forces need to be converted by the transform between the wrist_3_link and the end effector link
+            transform = self.kdl.get_transform_between_links(self.joint_names_prefix + "wrist_3_link", self.ee_link)
+            ee_wrench_force = spalg.convert_wrench(wrench_force, transform)
 
             return ee_wrench_force
 
