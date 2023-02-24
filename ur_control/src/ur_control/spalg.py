@@ -482,7 +482,7 @@ def transform_inv(T):
 
 def quaternions_orientation_error(Qd, Qc):
     """
-    Calculates the orientation error between to quaternions
+    Calculates the orientation error between two quaternions
     Qd is the desired orientation
     Qc is the current orientation
     both with respect to the same fixed frame

@@ -11,7 +11,7 @@ ur3e_gym: #namespace
     relative_to_ee: False
     robot_control_dt: 0.002
     agent_control_dt: 0.01
-    reset_time: 2.0
+    reset_time: 0.5
     # actions parameters 
     n_actions: 7
     action_type: "slicing"
@@ -44,10 +44,10 @@ ur3e_gym: #namespace
 
     # Domain Randomization Parameters
     object_friction: 1
-    object_stiffness: 400
-    max_stiffness_range: [200, 500]
+    object_stiffness: 600
+    max_stiffness_range: [200, 1500]
     max_damping_range: [0, 1]
-    max_kp_range: [4.0e+5, 1.0e+6]
+    max_kp_range: [1.0e+5, 1.0e+6]
     max_kd_range: [1, 2]
     max_friction_range: [0, 2]
 
@@ -56,7 +56,7 @@ ur3e_gym: #namespace
     normal_randomization: True
     basic_randomization: False
     # object_initial_pose: [-0.12, 0.0, 0.88, 1.5707, -1.5707, 3.1415] # cucumber
-    object_initial_pose: [-0.12, 0.03, 0.89, 0, 0, 1.5707] # button
+    object_initial_pose: [-0.12, 0.03, 0.875, 0, 0, 1.5707] # button
     object_workspace: [[-0.05, 0.05], [-0.05, 0.05], [0.08, 0.02], [-20, 20], [-20, 20], [-60, 60]]
     max_object_workspace: [0.08, 0.08, 0.08, 20, 20, 60]
     min_object_workspace: [0.02, 0.02, 0.02, 5, 5, 10]
@@ -85,7 +85,7 @@ ur3e_gym: #namespace
     max_orientation_threshold: 0.07
 
     reward_type: 'slicing'
-    termination_on_negative_reward: True
+    termination_on_negative_reward: False
     termination_reward_threshold: -300 # new -500
 
     cost:

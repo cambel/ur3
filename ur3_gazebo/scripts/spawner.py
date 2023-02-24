@@ -107,9 +107,9 @@ def place_button():
     initial_pose = [0.30, 0.07, 0.8, 0, 0, 0]  # world coordinates
     # models = [Model(name, pose=objpose, file_type='sdf', reference_frame="world")]
     string_models = [
-        get_button_model(color=[0,1,0,0], damping=1., friction=1., spring_stiffness=-250.),
-        get_button_model(color=[0,0,1,0],  damping=1., friction=1., spring_stiffness=-300.),
-        get_button_model(color=[1,0,0,0],  damping=2., friction=2., spring_stiffness=-400.),
+        get_button_model(color=[0,1,0,0], damping=1., friction=1., spring_stiffness=-1000.),
+        get_button_model(color=[0,0,1,0],  damping=1., friction=1., spring_stiffness=-1500.),
+        get_button_model(color=[1,0,0,0],  damping=2., friction=2., spring_stiffness=-2000.),
     ]
     models = []
     for i in range(len(string_models)):

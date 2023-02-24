@@ -12,6 +12,8 @@ from ur_control.constants import FORCE_TORQUE_EXCEEDED, IK_NOT_FOUND
 from ur_gazebo.basic_models import get_box_model, get_button_model, get_cucumber_model
 from ur_gazebo.model import Model
 
+import threading
+
 
 def get_cl_range(range, curriculum_level):
     return [range[0], range[0] + (range[1] - range[0]) * curriculum_level]
@@ -81,14 +83,22 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         # Update target pose if needed
         self.update_target_pose()
 
-        # Go to initial pose
-        initial_pose = transformations.transform_pose(self.current_target_pose, [-0.05, 0, 0.035, 0, 0, 0], rotated_frame=False)
-        self.ur3e_arm.set_target_pose(pose=initial_pose, wait=True, t=self.reset_time)
+        def reset_pose():
+            # Go to initial pose
+            initial_pose = transformations.transform_pose(self.current_target_pose, [-0.05, 0, 0.035, 0, 0, 0], rotated_frame=False)
+            self.ur3e_arm.set_target_pose(pose=initial_pose, wait=True, t=self.reset_time)
 
-        self.max_distance = spalg.translation_rotation_error(self.current_target_pose, initial_pose)
-        self.max_distance = np.clip(self.max_distance, [0.01, 0.01, 0.01, 0.01, 0.01, 0.01], [1, 1, 1, np.pi*2, np.pi*2, np.pi*2])
+            self.max_distance = spalg.translation_rotation_error(self.current_target_pose, initial_pose)
+            self.max_distance = np.clip(self.max_distance, [0.01, 0.01, 0.01, 0.01, 0.01, 0.01], [1, 1, 1, np.pi*2, np.pi*2, np.pi*2])
+        
+        t1 = threading.Thread(target=reset_pose)
+        t2 = threading.Thread(target=self.update_scene)
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+        # self.update_scene()
 
-        self.update_scene()
         self.ur3e_arm.zero_ft_sensor()
         self.controller.start()
 

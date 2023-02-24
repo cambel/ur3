@@ -29,17 +29,17 @@ if __name__ == '__main__':
 
     parser = Trainer.get_argument()
     parser.add_argument('-e', '--env_id', type=int, help='environment ID', default=None)
-    parser.set_defaults(batch_size=4092)
-    parser.set_defaults(n_warmup=1000)  # still don't know what it this for
-    parser.set_defaults(max_steps=60000)  # 10000 for training 200 for evaluation
+    parser.set_defaults(batch_size=256)
+    parser.set_defaults(n_warmup=1e3)  # still don't know what it this for
+    parser.set_defaults(max_steps=30000)  # 10000 for training 200 for evaluation
     parser.set_defaults(save_model_interval=10000)
     parser.set_defaults(test_interval=1e10)  # 1e4 for training 200 for evaluation
     parser.set_defaults(test_episodes=1)
     parser.set_defaults(normalize_obs=False)
-    parser.set_defaults(auto_alpha=False)
+    parser.set_defaults(auto_alpha=True) # ON vs OFF
     parser.set_defaults(use_prioritized_rb=True)
-    parser.set_defaults(lr=1e-4)
-    parser.set_defaults(update_interval=1)  # update every so often
+    parser.set_defaults(lr=3e-3) # 1e4, 1e3
+    parser.set_defaults(update_interval=1)  # update every so often. 0 = Every episode
 
     args = parser.parse_args(rospy.myargv()[1:])
 
