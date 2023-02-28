@@ -25,8 +25,8 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 def load_env(folder, common_test, real):
-    # gyv_envs_params = folder + '/ros_gym_env_params.yaml'
-    gyv_envs_params = folder + '/common_ros_gym_env_params.yaml'
+    gyv_envs_params = folder + '/ros_gym_env_params.yaml'
+    # gyv_envs_params = folder + '/common_ros_gym_env_params.yaml'
     
     assert os.path.exists(gyv_envs_params)
 

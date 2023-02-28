@@ -68,6 +68,8 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         self.cl_downgrade_level = rospy.get_param(prefix + "/cl_downgrade_level", 0.2)
         print(">>>>> ", self.random_type, self.curriculum_learning,
               self.progressive_cl, self.reward_based_on_cl, " <<<<<<")
+        
+        self.position_threshold_cl = self.position_threshold
 
     def _set_init_pose(self):
         self.controller.stop()
@@ -103,6 +105,9 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         self.controller.start()
 
     def update_scene(self):
+        if self.real_robot:
+            return
+
         self.stage = 0
         block_pose = self.object_initial_pose  # self.randomize_block_position()
         if self.randomize_object_properties:
