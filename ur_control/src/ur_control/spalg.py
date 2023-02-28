@@ -260,9 +260,6 @@ def fit_plane_svd(XYZ):
 
 
 def force_frame_transform(bTa):
-    return motion_frame_transform(bTa)
-
-def force_frame_transform2(bTa):
     """
     Calculates the coordinate transformation for force vectors.
     The force vectors obey special transformation rules.
@@ -607,3 +604,25 @@ def jump_threshold(trajectory, dt, threshold):
         #     print("usual:", i, np.round(s-mean,2))
 
     return traj
+
+
+def sensor_torque_to_tcp_force(tcp_position, sensor_torques):
+    """
+        Compute the force as perceive by a point of the TCP
+        Thus, torques registered by the sensor are converted to forces
+
+        tcp_position: list[3]. Define the position of point P relative to the sensor 
+        sensor_torques: list[3]. Define the torque registered by the sensor
+    """
+    # Define the torque applied to frame A
+    T_A = np.array(sensor_torques) # in N.m
+
+    # Define the position vector from the axis of rotation to the point of application of the force on frame A
+    r_AP = np.array(tcp_position) # in m
+
+    # Define the position vector from the point of application on frame A to the corresponding point on frame B
+    r_BP =  - r_AP
+
+    # Compute the moment arm and the corresponding force on frame B
+    force_B = np.cross(T_A, r_AP) / np.linalg.norm(r_BP)**2
+    return force_B
