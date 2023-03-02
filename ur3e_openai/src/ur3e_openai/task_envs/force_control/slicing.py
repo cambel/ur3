@@ -68,8 +68,9 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         self.cl_downgrade_level = rospy.get_param(prefix + "/cl_downgrade_level", 0.2)
         print(">>>>> ", self.random_type, self.curriculum_learning,
               self.progressive_cl, self.reward_based_on_cl, " <<<<<<")
-        
+
         self.position_threshold_cl = self.position_threshold
+        self.successes_threshold = rospy.get_param(prefix + "/successes_threshold", 0)
 
     def _set_init_pose(self):
         self.controller.stop()
@@ -78,28 +79,29 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
 
         self.success_counter = 0
 
-        # Move away
-        # reset_time = 0.5 if not self.real_robot else 5.0
-        # self.ur3e_arm.move_relative([0, 0, 0.03, 0, 0, 0], duration=reset_time, relative_to_tcp=False)
-
         # Update target pose if needed
         self.update_target_pose()
 
-        def reset_pose():
-            # Go to initial pose
-            initial_pose = transformations.transform_pose(self.current_target_pose, [-0.05, 0, 0.035, 0, 0, 0], rotated_frame=False)
-            self.ur3e_arm.set_target_pose(pose=initial_pose, wait=True, t=self.reset_time)
+        if rospy.get_param("ur3e_gym/update_initial_conditions", True):
+            # Move away
+            # reset_time = 0.5 if not self.real_robot else 5.0
+            # self.ur3e_arm.move_relative([0, 0, 0.03, 0, 0, 0], duration=reset_time, relative_to_tcp=False)
 
-            self.max_distance = spalg.translation_rotation_error(self.current_target_pose, initial_pose)
-            self.max_distance = np.clip(self.max_distance, [0.01, 0.01, 0.01, 0.01, 0.01, 0.01], [1, 1, 1, np.pi*2, np.pi*2, np.pi*2])
-        
-        t1 = threading.Thread(target=reset_pose)
-        t2 = threading.Thread(target=self.update_scene)
-        t1.start()
-        t2.start()
-        t1.join()
-        t2.join()
-        # self.update_scene()
+            def reset_pose():
+                # Go to initial pose
+                initial_pose = transformations.transform_pose(self.current_target_pose, [-0.05, 0, 0.035, 0, 0, 0], rotated_frame=False)
+                self.ur3e_arm.set_target_pose(pose=initial_pose, wait=True, t=self.reset_time)
+
+                self.max_distance = spalg.translation_rotation_error(self.current_target_pose, initial_pose)
+                self.max_distance = np.clip(self.max_distance, [0.01, 0.01, 0.01, 0.01, 0.01, 0.01], [1, 1, 1, np.pi*2, np.pi*2, np.pi*2])
+
+            t1 = threading.Thread(target=reset_pose)
+            t2 = threading.Thread(target=self.update_scene)
+            t1.start()
+            t2.start()
+            t1.join()
+            t2.join()
+            # self.update_scene()
 
         self.ur3e_arm.zero_ft_sensor()
         self.controller.start()
@@ -209,7 +211,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         if self.action_result == FORCE_TORQUE_EXCEEDED:
             self.logger.error("Collision! Aborting")
 
-            self.ur3e_arm.activate_joint_trajectory_controller()
+            self.controller.stop()
             return True
 
         pose_error = np.abs(observations[:6]*self.max_distance)
@@ -218,7 +220,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
             if self.cumulated_episode_reward <= self.termination_reward_threshold:
                 rospy.loginfo("Fail on reward: %s" % np.round(pose_error[:3], 4))
                 self.success_end = False
-                self.ur3e_arm.activate_joint_trajectory_controller()
+                self.controller.stop()
                 return True
 
         # Check how close we are to the target pose (Only y and z, x could be anywhere and its fine)
@@ -232,7 +234,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
 
         # After 0.1 seconds, terminate the episode
         # if self.success_counter > (0.05 / self.agent_control_dt):
-        if self.success_counter > 5:
+        if self.success_counter > self.successes_threshold:
             self.logger.info("goal reached: %s" % np.round(pose_error[:3], 4))
             self.success_end = True
             if self.real_robot:
@@ -240,14 +242,14 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
                 reset_time = 5.0
                 self.ur3e_arm.set_target_pose(pose=xc, t=reset_time, wait=True)
 
-            self.ur3e_arm.activate_joint_trajectory_controller()
+            self.controller.stop()
             return True
 
         # Check whether we took every available step for this episode
         if self.step_count == self.steps_per_episode-1:
             self.logger.error("Fail!: %s" % np.round(pose_error[:3], 4))
 
-            self.ur3e_arm.activate_joint_trajectory_controller()
+            self.controller.stop()
             return True
 
         return False

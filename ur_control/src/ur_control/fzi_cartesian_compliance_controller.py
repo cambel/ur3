@@ -262,7 +262,8 @@ class CompliantController(Arm):
                 position_error = np.linalg.norm(trajectory[trajectory_index][:3] - self.end_effector()[:3])
                 # from position_error < 0.01m increase scale error
                 factor = 1 - np.tanh(100 * position_error)
-                scale_error = np.interp(factor, [0, 1], [0.01, max_scale_error])
+                # scale_error = np.interp(factor, [0, 1], [0.01, max_scale_error])
+                scale_error = np.interp(factor, [0, 1], [1.5, max_scale_error])
                 self.set_solver_parameters(error_scale=np.round(scale_error,3))
 
             if func:

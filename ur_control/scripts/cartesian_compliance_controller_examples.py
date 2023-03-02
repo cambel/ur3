@@ -54,8 +54,8 @@ def move_cartesian():
     arm.set_joint_positions(q, t=1, wait=True)
 
     arm.set_position_control_mode(False)
-    # arm.set_control_mode(mode="spring-mass-damper")
-    arm.set_control_mode(mode="parallel")
+    arm.set_control_mode(mode="spring-mass-damper")
+    # arm.set_control_mode(mode="parallel")
 
     selection_matrix = [0.5, 0.5, 1, 0.5, 0.5, 0.5]
     arm.update_selection_matrix(selection_matrix)
@@ -76,7 +76,7 @@ def move_cartesian():
     def f(x): return print(np.round(trajectory[:3] - x[:3], 4))
     arm.zero_ft_sensor()
     res = arm.execute_compliance_control(trajectory, target_wrench=target_force, max_force_torque=[50., 50., 50., 5., 5., 5.],
-                                         duration=5, func=f, scale_up_error=True, max_scale_error=1.0)
+                                         duration=5, func=f, scale_up_error=True, max_scale_error=1.5)
     print("EE change", ee - arm.end_effector())
     print("ok", np.round(trajectory[:3] - arm.end_effector()[:3], 4))
 

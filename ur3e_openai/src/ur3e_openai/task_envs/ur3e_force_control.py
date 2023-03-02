@@ -375,6 +375,8 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         self.controller.start()
 
     def update_target_pose(self):
+        self.current_target_pose = rospy.get_param("ur3e_gym/target_pose", False)
+
         if not self.real_robot and self.update_target:
             if self.object_centric:
                 if self.ee_centric:

@@ -37,10 +37,13 @@ class ComplianceController(controller.Controller):
         controller.Controller.__init__(self, arm, agent_control_dt, robot_control_dt, n_actions)
 
     def start(self):
-        self.ur3e_arm.auto_switch_controllers = False
         self.ur3e_arm.activate_cartesian_controller()
+        self.ur3e_arm.auto_switch_controllers = False
 
     def stop(self):
+        self.ur3e_arm.set_position_control_mode(True)
+        self.ur3e_arm.set_cartesian_target_pose(self.ur3e_arm.end_effector())
+        rospy.sleep(0.1)
         self.ur3e_arm.auto_switch_controllers = False
         self.ur3e_arm.activate_joint_trajectory_controller()
 
@@ -69,11 +72,11 @@ class ComplianceController(controller.Controller):
             self.set_parallel_parameters(actions)
         if action_type == "slicing":
             # C. slicing
-            self.set_slicing_parameters(actions[:4]) 
+            self.set_slicing_parameters(actions[:4])
             # Compute target pose with an attractor or with a "speed" action
             attractor_strength = np.interp(actions[-3:], [-1, 1], [0, 1.0])
             # remaining distance scale by attractor strength
-            target_pose[:3] = self.ur3e_arm.end_effector()[:3] + ((target[:3] - self.ur3e_arm.end_effector()[:3]) * attractor_strength )
+            target_pose[:3] = self.ur3e_arm.end_effector()[:3] + ((target[:3] - self.ur3e_arm.end_effector()[:3]) * attractor_strength)
             # print(np.round(target_pose[:3], 4), np.round(target_pose[:3]- self.ur3e_arm.end_effector()[:3], 4))
         if action_type == "slicing_parallel":
             # C. slicing
@@ -95,7 +98,7 @@ class ComplianceController(controller.Controller):
                                                         duration=self.agent_control_dt,
                                                         auto_stop=False,
                                                         scale_up_error=True,
-                                                        max_scale_error=0.05)
+                                                        max_scale_error=2.5)  # 0.05
 
     def set_parallel_parameters(self, actions):
         selection_matrix = np.interp(actions[:6], [-1, 1], [0, 1])
@@ -143,15 +146,15 @@ class ComplianceController(controller.Controller):
             Goal: optimize force control for speed and minimizing contact force
         """
         # w.r.t end effector link
-        stiff_x = np.interp(actions[0], [0, 1], [100, 4000])
-        stiff_ay = np.interp(actions[1], [0, 1], [5, 100])
+        stiff_x = np.interp(actions[0], [0, 1], [500, 5000])
+        stiff_ay = np.interp(actions[1], [0, 1], [20, 100])
         stiff_act = np.array([stiff_x, 2000, 2000, 40, stiff_ay, 40], dtype=int)
         # stiff_act = np.array([500, 500, 500, 20, 20, 20 ])
 
         # w.r.t base link
-        p_gains_z = np.interp(actions[2], [0, 1], [0.005, 0.05])
+        p_gains_z = np.interp(actions[2], [0, 1], [0.01, 0.05])
         p_gains_ay = np.interp(actions[3], [0, 1], [0.1, 1.5])
-        p_gains_act = np.array([0.01, 0.01, p_gains_z, 1.5, p_gains_ay, 1.5])
+        p_gains_act = np.array([0.01, 0.01, p_gains_z, 1.0, p_gains_ay, 1.0])
         # p_gains_act = np.array([0.01, 0.01, 0.01, 1.5, 1.5, 1.5])
 
         self.ur3e_arm.update_stiffness(stiff_act)

@@ -20,7 +20,7 @@ ur3e_gym: #namespace
     object_centric: False
     ee_centric: False
 
-    steps_per_episode: 500
+    steps_per_episode: 200
     
     actor_class: "wave"
     ft_hist: True
@@ -74,7 +74,7 @@ ur3e_gym: #namespace
     target_pose_uncertain: False
     uncertainty_std: [0.001, 0.0]
     random_target_pose: False
-    target_pose: [-0.02, 0.50, 0.194, -0.00812894,  0.70963372, -0.00882711,  0.70446859]
+    target_pose: [-0.02, 0.50, 0.195, -0.00812894,  0.70963372, -0.00882711,  0.70446859]
     
     # Reward parameters
     tgt_pose_indices: [0,1,2,3,4,5]
@@ -95,9 +95,10 @@ ur3e_gym: #namespace
     w_dist: 1.0
     w_force: 1.0
     w_jerkiness: 1.0
+    successes_threshold: 10
         
 # Controller parameters
 ur3e_force_control:
     max_twist: [0.001, 0.001, 0.001, 0.001, 0.001, 0.001]
     max_force_torque: [50, 50.0, 50.0, 5, 5, 5]
-    desired_force_torque: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    desired_force_torque: [0.0, 0.0, -5.0, 0.0, 0.0, 0.0]
