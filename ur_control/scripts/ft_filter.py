@@ -30,7 +30,7 @@ import collections
 import rospy
 
 import numpy as np
-from ur_control import utils, filters, conversions
+from ur_control import spalg, utils, filters, conversions
 
 from std_srvs.srv import Empty, EmptyResponse, SetBool, SetBoolResponse
 
@@ -40,18 +40,20 @@ from geometry_msgs.msg import WrenchStamped
 class FTsensor(object):
 
     def __init__(self, in_topic, out_topic=None,
-                 sampling_frequency=500, cutoff=2.5, 
+                 sampling_frequency=500, cutoff=2.5,
                  order=3, data_window=100, timeout=3.0,
                  republish=False):
-        
+
         self.enable_publish = republish
         self.enable_filtering = True
 
         self.in_topic = utils.solve_namespace(in_topic)
         if out_topic:
             self.out_topic = utils.solve_namespace(out_topic)
+            self.out_tcp_topic = utils.solve_namespace(out_topic) + "tcp"
         else:
             self.out_topic = self.in_topic + 'filtered'
+            self.out_tcp_topic = self.in_topic + "tcp"
 
         rospy.loginfo("Publishing filtered FT to %s" % self.out_topic)
 
@@ -61,6 +63,9 @@ class FTsensor(object):
 
         # Publisher to outward topic
         self.pub = rospy.Publisher(self.out_topic, WrenchStamped, queue_size=10)
+        # Publish a wrench transformed/converted to a TCP point
+        self.pub_tcp = rospy.Publisher(self.out_tcp_topic, WrenchStamped, queue_size=10)
+
         # Service for zeroing the filtered signal
         rospy.Service(self.in_topic + "zero_ftsensor", Empty, self._srv_zeroing)
         rospy.Service(self.in_topic + "enable_publish", SetBool, self._srv_publish)
@@ -98,11 +103,22 @@ class FTsensor(object):
         if self.enable_publish:
             if self.enable_filtering:
                 current_wrench = self.get_filtered_wrench()
+
             if current_wrench is not None:
                 data = current_wrench - self.wrench_offset
                 msg = WrenchStamped()
                 msg.wrench = conversions.to_wrench(data)
                 self.pub.publish(msg)
+
+                if rospy.has_param(self.out_tcp_topic+"/pose_sensor_to_tcp"):
+                    # Convert torques to force at a TCP point
+                    pose_sensor_to_tcp = rospy.get_param(self.out_tcp_topic+"/pose_sensor_to_tcp")
+                    tcp_wrench = data.copy()
+                    tcp_wrench[:3] += spalg.sensor_torque_to_tcp_force(tcp_position=pose_sensor_to_tcp, sensor_torques=current_wrench[3:])
+                    tcp_wrench[3:] = np.zeros(3)
+                    msg = WrenchStamped()
+                    msg.wrench = conversions.to_wrench(tcp_wrench)
+                    self.pub_tcp.publish(msg)
 
     # function to filter out high frequency signal
     def get_filtered_wrench(self):
@@ -117,7 +133,7 @@ class FTsensor(object):
             self.wrench_offset = current_wrench
             if self.wrench_offset is not None:
                 rospy.set_param('%s/ft_offset' % self.out_topic, self.wrench_offset.tolist())
-    
+
     def set_enable_publish(self, enable):
         self.enable_publish = enable
 
@@ -135,6 +151,7 @@ class FTsensor(object):
     def _srv_filtering(self, req):
         self.set_enable_filtering(req.data)
         return SetBoolResponse(success=True)
+
 
 def main():
     """ Main function to be run. """

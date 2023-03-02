@@ -26,8 +26,13 @@
 
 import argparse
 import rospy
+import numpy as np
 
-from ur_control.compliant_controller import CompliantController
+from geometry_msgs.msg import WrenchStamped
+from ur_control import conversions, spalg
+from ur_control.arm import Arm
+
+
 
 def main():
     """ Main function to be run. """
@@ -43,35 +48,33 @@ def main():
 
     ns = ''
     joints_prefix = None
-    robot_urdf = "ur3e"
-    rospackage = None
 
     if args.namespace:
         ns = args.namespace
         joints_prefix = args.namespace + "_"
-        robot_urdf = args.namespace
-        rospackage = ""
     
     global arm
-    arm = CompliantController(ft_sensor=True,
+    arm = Arm(ft_topic="wrench",
               namespace=ns, 
               joint_names_prefix=joints_prefix, 
-              robot_urdf=robot_urdf, 
-              robot_urdf_package=rospackage, 
-              relative_to_ee=args.relative)
+              ee_link="gripper_tip_link")
 
-    rospy.sleep(0.5)
-    arm.set_wrench_offset(override=args.zero)
+    r = rospy.Rate(500)
 
-    offset_cnt = 0
+    pub = rospy.Publisher(ns + "/wrench/knife", WrenchStamped, queue_size=10)
 
     while not rospy.is_shutdown():
-        arm.publish_wrench()
+        sensor_wrench = arm.get_ee_wrench()
+        knife_wrench = sensor_wrench.copy()
+        knife_wrench[:3] += spalg.sensor_torque_to_tcp_force(tcp_position=[0.0, -0.158, 0.0], sensor_torques=sensor_wrench[3:])
+        knife_wrench[3:] = np.zeros(3)
+        
+        msg = WrenchStamped()
+        msg.wrench = conversions.to_wrench(knife_wrench)
 
-        if offset_cnt > 100:
-            arm.set_wrench_offset(False)
-            offset_cnt = 0
-        offset_cnt += 1
+        pub.publish(msg)
+        
+        r.sleep()
 
 
 main()
