@@ -127,11 +127,11 @@ class CompliantController(Arm):
         self.set_end_effector_link(self.ee_link)
 
     def activate_cartesian_controller(self):
-        self.controller_manager.switch_controllers(controllers_on=[CARTESIAN_COMPLIANCE_CONTROLLER],
+        return self.controller_manager.switch_controllers(controllers_on=[CARTESIAN_COMPLIANCE_CONTROLLER],
                                                    controllers_off=[JOINT_TRAJECTORY_CONTROLLER])
 
     def activate_joint_trajectory_controller(self):
-        self.controller_manager.switch_controllers(controllers_on=[JOINT_TRAJECTORY_CONTROLLER],
+        return self.controller_manager.switch_controllers(controllers_on=[JOINT_TRAJECTORY_CONTROLLER],
                                                    controllers_off=[CARTESIAN_COMPLIANCE_CONTROLLER])
 
     def set_cartesian_target_wrench(self, wrench: list):

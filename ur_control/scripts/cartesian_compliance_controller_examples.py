@@ -45,31 +45,38 @@ signal.signal(signal.SIGINT, signal_handler)
 
 
 def move_joints():
-    q = [1.0639, -1.6225, 1.9346, -1.8819, -1.5647, -0.5853]
+    q = [1.3506, -1.6493, 1.9597, -1.8814, -1.5652, 1.3323]
     arm.set_joint_positions(q, t=5, wait=True)
 
 
 def move_cartesian():
+    q = [1.3524, -1.5555, 1.7697, -1.7785, -1.5644, 1.3493]
+    arm.set_joint_positions(q, t=1, wait=True)
 
     arm.set_position_control_mode(False)
-    arm.set_control_mode(mode="spring-mass-damper")
+    # arm.set_control_mode(mode="spring-mass-damper")
+    arm.set_control_mode(mode="parallel")
+
+    selection_matrix = [0.5, 0.5, 1, 0.5, 0.5, 0.5]
+    arm.update_selection_matrix(selection_matrix)
 
     ee = arm.end_effector()
 
     p1 = ee.copy()
-    p1[2] += 0.005
+    p1[2] -= 0.03
 
     p2 = p1.copy()
     p2[2] += 0.005
 
+    trajectory = p1
     # trajectory = np.stack((p1, p2))
-    trajectory = np.array([-0.02, 0.50, 0.195, -0.00812894,  0.70963372, -0.00882711,  0.70446859])
+    # trajectory = np.array([-0.02, 0.50, 0.195, -0.00812894,  0.70963372, -0.00882711,  0.70446859])
     target_force = np.zeros(6)
 
     def f(x): return print(np.round(trajectory[:3] - x[:3], 4))
-
+    arm.zero_ft_sensor()
     res = arm.execute_compliance_control(trajectory, target_wrench=target_force, max_force_torque=[50., 50., 50., 5., 5., 5.],
-                                         duration=10, func=f, scale_up_error=True, max_scale_error=0.3)
+                                         duration=5, func=f, scale_up_error=True, max_scale_error=1.0)
     print("EE change", ee - arm.end_effector())
     print("ok", np.round(trajectory[:3] - arm.end_effector()[:3], 4))
 
@@ -86,7 +93,7 @@ def move_force():
 
     ee = arm.end_effector()
 
-    target_force = [0, 0, -5, 0, 0, 0]  # express in the end_effector_link
+    target_force = [0, 0, -10, 0, 0, 0]  # express in the end_effector_link
 
     res = arm.execute_compliance_control(ee, target_wrench=target_force,
                                          max_force_torque=[50., 50., 50., 5., 5., 5.], duration=15,
@@ -147,6 +154,19 @@ def free_drive():
     print("EE change", ee - arm.end_effector())
 
 
+def test():
+    # start here
+    move_joints()
+
+    for _ in range(3):
+        # Move down (cut)
+        arm.move_relative(transformation=[0, 0, -0.03, 0, 0, 0], relative_to_tcp=False, duration=0.5, wait=True)
+
+        # Move back up and to the next initial pose
+        arm.move_relative(transformation=[0, 0, 0.03, 0, 0, 0], relative_to_tcp=False, duration=0.25, wait=True)
+        arm.move_relative(transformation=[0, 0.01, 0, 0, 0, 0], relative_to_tcp=False, duration=0.25, wait=True)
+
+
 def main():
     """ Main function to be run. """
     parser = argparse.ArgumentParser(description='Test force control')
@@ -162,6 +182,8 @@ def main():
                         help='Spring-mass-damper force control demo')
     parser.add_argument('-s', '--slicing', action='store_true',
                         help='Push down while oscillating on X-axis')
+    parser.add_argument('-t', '--test', action='store_true',
+                        help='Test')
     parser.add_argument('--namespace', type=str,
                         help='Namespace of arm', default=None)
     args = parser.parse_args()
@@ -194,6 +216,8 @@ def main():
         slicing()
     if args.move_joints:
         move_joints()
+    if args.test:
+        test()
     # if args.hand_frame_control:
     #     move_hand_frame_control()
 
