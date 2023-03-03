@@ -68,6 +68,16 @@ class ControllersConnection():
         except Exception as e:
             rospy.logerr("Unload controllers service call failed: %s" % e)
 
+    def check_controllers_state(self, on_controllers, off_controllers):
+        for c in on_controllers:
+            if self.get_controller_state(c) != "running":
+                return False
+            
+        for c in off_controllers:
+            if self.get_controller_state(c) != "stopped":
+                return False
+        return True
+
     def switch_controllers(self, controllers_on, controllers_off,
                            strictness=1):
         """
@@ -87,6 +97,9 @@ class ControllersConnection():
             switch_request_object.start_controllers = controllers_on
             switch_request_object.stop_controllers = controllers_off
             switch_request_object.strictness = strictness
+
+            if self.check_controllers_state(controllers_on, controllers_off):
+                return True
 
             switch_result = self.switch_service(switch_request_object)
             """

@@ -125,14 +125,15 @@ class CompliantController(Arm):
         rospy.on_shutdown(self.activate_joint_trajectory_controller)
         self.set_hand_frame_control(False)
         self.set_end_effector_link(self.ee_link)
+        self.min_scale_error = 1.5
 
     def activate_cartesian_controller(self):
         return self.controller_manager.switch_controllers(controllers_on=[CARTESIAN_COMPLIANCE_CONTROLLER],
-                                                   controllers_off=[JOINT_TRAJECTORY_CONTROLLER])
+                                                          controllers_off=[JOINT_TRAJECTORY_CONTROLLER])
 
     def activate_joint_trajectory_controller(self):
         return self.controller_manager.switch_controllers(controllers_on=[JOINT_TRAJECTORY_CONTROLLER],
-                                                   controllers_off=[CARTESIAN_COMPLIANCE_CONTROLLER])
+                                                          controllers_off=[CARTESIAN_COMPLIANCE_CONTROLLER])
 
     def set_cartesian_target_wrench(self, wrench: list):
         # Publish the target wrench
@@ -203,6 +204,25 @@ class CompliantController(Arm):
             parameters["solver"].update({"publish_state_feedback": publish_state_feedback})
         self.update_controller_parameters(parameters)
 
+    def wait_for_robot_to_stop(self, wait_time=5):
+        remaining_time = wait_time
+        start_time = rospy.get_time()
+
+        prev_state = self.joint_angles()
+
+        no_motion_count = 0
+
+        rate = rospy.Rate(500)
+
+        while remaining_time > 0 and no_motion_count < 3:
+            rate.sleep()
+            remaining_time = wait_time - (rospy.get_time() - start_time)
+            curr_state = self.joint_angles()
+            if np.allclose(prev_state, curr_state, atol=0.0001):
+                no_motion_count += 1
+            else:
+                no_motion_count = 0
+
     @switch_cartesian_controllers
     def execute_compliance_control(self, trajectory: np.array, target_wrench: np.array, max_force_torque: list,
                                    duration: float, stop_on_target_force=False, termination_criteria=None,
@@ -263,8 +283,8 @@ class CompliantController(Arm):
                 # from position_error < 0.01m increase scale error
                 factor = 1 - np.tanh(100 * position_error)
                 # scale_error = np.interp(factor, [0, 1], [0.01, max_scale_error])
-                scale_error = np.interp(factor, [0, 1], [1.5, max_scale_error])
-                self.set_solver_parameters(error_scale=np.round(scale_error,3))
+                scale_error = np.interp(factor, [0, 1], [self.min_scale_error, max_scale_error])
+                self.set_solver_parameters(error_scale=np.round(scale_error, 3))
 
             if func:
                 func(self.end_effector())
@@ -275,5 +295,6 @@ class CompliantController(Arm):
             # set position control only, then fix the pose to the current one
             self.set_position_control_mode()
             self.set_cartesian_target_pose(self.end_effector())
+            self.wait_for_robot_to_stop(wait_time=5)
 
         return result
