@@ -26,7 +26,7 @@
 
 import sys
 import signal
-from ur_control import utils, traj_utils, constants
+from ur_control import spalg, utils, traj_utils, constants
 from ur_control.fzi_cartesian_compliance_controller import CompliantController
 import argparse
 import rospy
@@ -85,15 +85,19 @@ def move_force():
     """ Linear push. Move until the target force is felt and stop. """
     arm.zero_ft_sensor()
 
-    selection_matrix = [1, 1, 0, 1, 1, 1]
+    selection_matrix = [1, 0, 1, 1, 1, 1]
     arm.update_selection_matrix(selection_matrix)
 
-    pd_gains = [0.01, 0.01, 0.01, 1.0, 1.0, 1.0]
+    pd_gains = [0.03, 0.03, 0.03, 1.0, 1.0, 1.0]
     arm.update_pd_gains(pd_gains)
 
     ee = arm.end_effector()
 
-    target_force = [0, 0, -10, 0, 0, 0]  # express in the end_effector_link
+    target_force = [0, 5, 0, 0, 0, 0]  # express in the end_effector_link
+    # transform = arm.end_effector(tip_link="b_bot_tool0")
+    # tf = spalg.convert_wrench(target_force, transform)
+    # print(transform)
+    # print("TF", tf[:3])
 
     res = arm.execute_compliance_control(ee, target_wrench=target_force,
                                          max_force_torque=[50., 50., 50., 5., 5., 5.], duration=15,

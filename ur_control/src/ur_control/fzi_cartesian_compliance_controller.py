@@ -229,7 +229,7 @@ class CompliantController(Arm):
 
         while not rospy.is_shutdown() and (rospy.get_time() - initial_time) < duration:
 
-            current_wrench = self.get_ee_wrench(hand_frame_control=False)
+            current_wrench = self.get_ee_wrench(hand_frame_control=True)
 
             if termination_criteria is not None:
                 assert isinstance(termination_criteria, types.LambdaType), "Invalid termination criteria, expecting lambda/function with one argument[current pose array[7]]"

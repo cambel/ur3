@@ -35,7 +35,7 @@ from ur_control.constants import JOINT_ORDER, JOINT_TRAJECTORY_CONTROLLER, FT_SU
     DONE, SPEED_LIMIT_EXCEEDED, IK_NOT_FOUND, get_arm_joint_names, \
     BASE_LINK, EE_LINK
 
-from std_srvs.srv import Empty, SetBool
+from std_srvs.srv import Empty, SetBool, Trigger
 
 try:
     from ur_ikfast import ur_kinematics as ur_ikfast
@@ -164,9 +164,13 @@ class Arm(object):
         ft_namespace = '%s/%s/filtered' % (self.ns, self.ft_topic)
         rospy.Subscriber(ft_namespace, WrenchStamped, self.__ft_callback__)
 
-        self._zero_ft = rospy.ServiceProxy('%s/%s/zero_ftsensor' % (self.ns, self.ft_topic), Empty)
+        self._zero_ft_filtered = rospy.ServiceProxy('%s/%s/filtered/zero_ftsensor' % (self.ns, self.ft_topic), Empty)
+        self._zero_ft_filtered.wait_for_service(rospy.Duration(2.0))
+        
+        self._zero_ft = rospy.ServiceProxy('%s/ur_hardware_interface/zero_ftsensor' % self.ns, Trigger)
         self._zero_ft.wait_for_service(rospy.Duration(2.0))
-        self._ft_filtered = rospy.ServiceProxy('%s/%s/enable_filtering' % (self.ns, self.ft_topic), SetBool)
+
+        self._ft_filtered = rospy.ServiceProxy('%s/%s/filtered/enable_filtering' % (self.ns, self.ft_topic), SetBool)
         self._ft_filtered.wait_for_service(rospy.Duration(1.0))
 
         # Check that the FT topic is publishing
@@ -259,13 +263,18 @@ class Arm(object):
         else:
             # Transform force to end effector frame
             # Fix, the forces need to be converted by the transform between the wrist_3_link and the end effector link
-            transform = self.kdl.get_transform_between_links(self.joint_names_prefix + "wrist_3_link", self.ee_link)
+            # transform = self.kdl.get_transform_between_links(self.joint_names_prefix + "wrist_3_link", self.ee_link)
+            # transform = self.kdl.get_transform_between_links(self.joint_names_prefix + "gripper_tip_link", self.base_link)
+            transform = self.end_effector(tip_link=self.joint_names_prefix + "tool0")
             ee_wrench_force = spalg.convert_wrench(wrench_force, transform)
 
             return ee_wrench_force
 
     def zero_ft_sensor(self):
+        # First try to zero FT from ur_driver
         self._zero_ft()
+        # Then update filtered one
+        self._zero_ft_filtered()
 
     def set_ft_filtering(self, active=True):
         self._ft_filtered(active)

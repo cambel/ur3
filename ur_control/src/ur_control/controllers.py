@@ -253,7 +253,7 @@ class JointControllerBase(object):
                 retry = True
                 continue
             elif (rospy.get_time() - start_time) > timeout and retry:
-                rospy.logerr('Timed out waiting for joint_states topic')
+                rospy.logerr('Timed out waiting for %sjoint_states topic'% self.ns)
                 return
             rospy.sleep(0.01)
             if rospy.is_shutdown():

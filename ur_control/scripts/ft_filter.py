@@ -30,35 +30,54 @@ import collections
 import rospy
 
 import numpy as np
+from ur_control.constants import get_arm_joint_names
+from ur_pykdl import ur_kinematics
 from ur_control import spalg, utils, filters, conversions
 
 from std_srvs.srv import Empty, EmptyResponse, SetBool, SetBoolResponse
 
-from geometry_msgs.msg import WrenchStamped
+from geometry_msgs.msg import WrenchStamped, Wrench
+from ur_control.controllers import JointControllerBase
 
 
 class FTsensor(object):
 
-    def __init__(self, in_topic, out_topic=None,
+    def __init__(self, in_topic, namespace="", out_topic=None,
                  sampling_frequency=500, cutoff=2.5,
                  order=3, data_window=100, timeout=3.0,
-                 republish=False):
+                 republish=False, gravity_compensation=False):
 
+        self.ns = namespace
         self.enable_publish = republish
         self.enable_filtering = True
+        self.gravity_compensation = gravity_compensation
 
-        self.in_topic = utils.solve_namespace(in_topic)
+        self.in_topic = utils.solve_namespace(namespace + "/" + in_topic)
         if out_topic:
-            self.out_topic = utils.solve_namespace(out_topic)
-            self.out_tcp_topic = utils.solve_namespace(out_topic) + "tcp"
+            self.out_topic = utils.solve_namespace(namespace + "/" + out_topic)
+            self.out_tcp_topic = utils.solve_namespace(namespace + "/" + out_topic) + "tcp"
         else:
-            self.out_topic = self.in_topic + 'filtered'
+            self.out_topic = utils.solve_namespace(self.in_topic + 'filtered')
             self.out_tcp_topic = self.in_topic + "tcp"
+
+        if self.gravity_compensation:
+            prefix = "" if not namespace else namespace + "_"
+            base_link = "base_link"
+            ft_sensor_link = "tool0"
+            self.robot_state = JointControllerBase(namespace, timeout=1, joint_names=get_arm_joint_names(prefix))
+            self.kdl = ur_kinematics(base_link=prefix + base_link, ee_link=prefix + ft_sensor_link)
+
+            # gravity compensation
+            # In base frame
+            self.mass = 1.250
+            self.gravity = np.array([0, 0, -0.981])
+            self.center_of_mass = np.array([0.001, -0.0016, 0.05])
+            self.weight_force = np.concatenate([self.mass * self.gravity, np.zeros(3)])
 
         rospy.loginfo("Publishing filtered FT to %s" % self.out_topic)
 
         # Load previous offset to zero filtered signal
-        self.wrench_offset = rospy.get_param('%s/ft_offset' % self.out_topic, None)
+        self.wrench_offset = rospy.get_param('%sft_offset' % self.out_topic, None)
         self.wrench_offset = np.zeros(6) if self.wrench_offset is None else self.wrench_offset
 
         # Publisher to outward topic
@@ -67,9 +86,9 @@ class FTsensor(object):
         self.pub_tcp = rospy.Publisher(self.out_tcp_topic, WrenchStamped, queue_size=10)
 
         # Service for zeroing the filtered signal
-        rospy.Service(self.in_topic + "zero_ftsensor", Empty, self._srv_zeroing)
-        rospy.Service(self.in_topic + "enable_publish", SetBool, self._srv_publish)
-        rospy.Service(self.in_topic + "enable_filtering", SetBool, self._srv_filtering)
+        rospy.Service(self.out_topic + "zero_ftsensor", Empty, self._srv_zeroing)
+        rospy.Service(self.out_topic + "enable_publish", SetBool, self._srv_publish)
+        rospy.Service(self.out_topic + "enable_filtering", SetBool, self._srv_filtering)
 
         # Low pass filter
         self.filter = filters.ButterLowPass(cutoff, sampling_frequency, order)
@@ -91,6 +110,20 @@ class FTsensor(object):
         rospy.sleep(1)  # wait some time to fill the filter
         # rospy.sleep(self.data_window * (1/sampling_frequency))  # wait some time to fill the filter
 
+    def apply_gravity_compensation(self, wrench):
+        compensated_wrench = wrench.copy()
+        # Compute actual gravity effects in sensor frame
+        gravity_component = np.zeros(6)
+        gravity_component[:3] = spalg.convert_wrench(self.weight_force, self.kdl.forward(self.robot_state.get_joint_positions()))[:3]
+        gravity_component[3:] = self.center_of_mass * gravity_component[:3]  # M = r x F
+
+        rospy.loginfo_throttle(1, "gravity compensation %s" % np.round(gravity_component, 3)[:3])
+        
+        # Add actual gravity compensation
+        compensated_wrench -= gravity_component
+
+        return compensated_wrench
+
     def add_wrench_observation(self, wrench):
         self.data_queue.append(np.array(wrench))
 
@@ -105,7 +138,11 @@ class FTsensor(object):
                 current_wrench = self.get_filtered_wrench()
 
             if current_wrench is not None:
-                data = current_wrench - self.wrench_offset
+                if self.gravity_compensation:
+                    data = self.apply_gravity_compensation(current_wrench)
+                    data = data - self.wrench_offset
+                else:
+                    data = current_wrench - self.wrench_offset
                 msg = WrenchStamped()
                 msg.wrench = conversions.to_wrench(data)
                 self.pub.publish(msg)
@@ -132,7 +169,7 @@ class FTsensor(object):
         if current_wrench is not None:
             self.wrench_offset = current_wrench
             if self.wrench_offset is not None:
-                rospy.set_param('%s/ft_offset' % self.out_topic, self.wrench_offset.tolist())
+                rospy.set_param('%sft_offset' % self.out_topic, self.wrench_offset.tolist())
 
     def set_enable_publish(self, enable):
         self.enable_publish = enable
@@ -156,14 +193,20 @@ class FTsensor(object):
 def main():
     """ Main function to be run. """
     parser = argparse.ArgumentParser(description='Filter FT signal')
+    parser.add_argument('-ns', '--namespace', type=str, help='Namespace', required=False)
     parser.add_argument('-t', '--ft_topic', type=str, help='FT sensor data topic', required=True)
+    parser.add_argument('-ot', '--out_topic', type=str, help='Topic where filtered data will be published')
     parser.add_argument('-z', '--zero', action='store_true', help='Zero FT signal')
+    parser.add_argument('-g', '--gravity_compensation', action='store_true', help='Gravity compensation applied')
 
     args, unknown = parser.parse_known_args()
 
     rospy.init_node('ft_filter')
 
-    ft_sensor = FTsensor(in_topic=args.ft_topic, republish=True)
+    out_topic = None if not args.out_topic else args.out_topic
+
+    ft_sensor = FTsensor(namespace=args.namespace, in_topic=args.ft_topic, out_topic=out_topic,
+                         republish=True, gravity_compensation=args.gravity_compensation)
     if args.zero:
         ft_sensor.update_wrench_offset()
 
