@@ -67,6 +67,7 @@ def test_policy(env, policy, num_tests, custom_path=False, training=False):
         start_time = timeit.default_timer()
         collision = False
         for j in range(steps_per_episode):
+            st = rospy.get_time()
             action = policy.get_action(obs, test=(not training))
             next_obs, reward, done, info = env.step(action)
             episode_return += reward
@@ -88,10 +89,10 @@ def test_policy(env, policy, num_tests, custom_path=False, training=False):
             if custom_path:
                 env.straight_path(np.array([-0.40012212, -0.16659674,  0.37670753, -0.49865593,  0.49269791,  0.52005059, -0.48799429]), np.array([10., 0, 0, 0, 0, 0]), duration=2)  # elec1
 
-        hz = 1. / ((timeit.default_timer() - start_time) / total_steps)
+        hz = timeit.default_timer() - start_time
         # print("Total Epi: {0: 5} Episode Steps: {1: 5} Return: {2: 5.4f} Hz: {3: 5.2f}".format(
         #             i+1, total_steps, episode_return, hz))
-        logger.info("Total Epi: {0: 5} Episode Steps: {1: 5} Return: {2: 5.4f} Hz: {3: 5.2f}".format(
+        logger.info("Total Epi: {0: 5} Episode Steps: {1: 5} Return: {2: 5.2f} Duration: {3: 5.2f}".format(
                     i+1, total_steps, episode_return, hz))
     env.reset()
     # print("Successes:", successes,"of",num_tests)

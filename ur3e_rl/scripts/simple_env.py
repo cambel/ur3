@@ -1,17 +1,21 @@
 #!/usr/bin/env python
+import timeit
+import signal
+import sys
+import ur_control.utils as utils
 import argparse
 import rospy
 import numpy as np
 from ur3e_openai.common import load_environment, clear_gym_params, load_ros_params
 np.set_printoptions(suppress=True)
 np.set_printoptions(linewidth=np.inf)
-import ur_control.utils as utils
-import sys
-import signal
-import timeit
+
+
 def signal_handler(sig, frame):
     print('You pressed Ctrl+C!')
     sys.exit(0)
+
+
 signal.signal(signal.SIGINT, signal_handler)
 
 
@@ -52,6 +56,7 @@ class Agent(object):
         else:
             return np.clip(np.random.normal(0.0, 0.5, size=(self.action_size,)), np.ones(self.action_size)*-1, np.ones(self.action_size))
 
+
 if __name__ == '__main__':
 
     rospy.init_node('ur3e_test_gym_env',
@@ -62,7 +67,6 @@ if __name__ == '__main__':
     parser.add_argument('-e', '--env_id', type=int, help='environment ID', default=None)
     parser.add_argument('-a', '--action_type', type=int, help='Action type', default=0)
     parser.add_argument('-r', '--repetitions', type=int, help='repetitions', default=1)
-
 
     args = parser.parse_args(rospy.myargv()[1:])
     args = parser.parse_args()
@@ -119,7 +123,7 @@ if __name__ == '__main__':
 
     p = utils.TextColors()
     p.error("GYM Environment:{} ".format(param_file))
-    
+
     load_ros_params(rospackage_name="ur3e_rl",
                     rel_path_from_package_to_file="config",
                     yaml_file_name=param_file)
@@ -128,7 +132,7 @@ if __name__ == '__main__':
     # rospy.set_param('ur3e_gym/output_dir', '/root/dev/results')
     episode_lenght = rospy.get_param("ur3e_gym/steps_per_episode", 100)
     env = load_environment(rospy.get_param("ur3e_gym/env_id"),
-                        max_episode_steps=episode_lenght)
+                           max_episode_steps=episode_lenght)
     episodes = args.repetitions
     agent = Agent(env.n_actions, args.action_type)
     obs = None
@@ -141,15 +145,20 @@ if __name__ == '__main__':
     print('>>>> START Moving <<<<')
     while i < episodes:
         if steps >= episode_lenght or done:
-            print('>>>> Reset episode')
+            print('>>>> Reset episode. # of steps', steps)
             end_time = timeit.default_timer()
-            print('>>>> Time', end_time-start_time)
+            print('>>>> Actual Time', end_time-start_time, "expected time", steps*env.agent_control_dt)
             done = False
             steps = 0
             i += 1
+            st = rospy.get_time()
             env.reset()
+            # print("reset time", rospy.get_time()-st)
             start_time = timeit.default_timer()
         action = agent.act(obs)
+        st = rospy.get_time()
         obs, reward, done, info = env.step(action)
+        # print("act time", rospy.get_time()-st)
+        steps += 1
 
     # env.reset()

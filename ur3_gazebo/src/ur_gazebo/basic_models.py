@@ -385,7 +385,7 @@ BUTTON = """
           </friction>
           <contact>
             <ode> 
-              <kp>1e+6</kp> 
+              <kp>1.5e+5</kp> 
               <kd>1</kd> 
               <max_vel>0.01</max_vel> 
               <min_depth>0.0</min_depth> 
