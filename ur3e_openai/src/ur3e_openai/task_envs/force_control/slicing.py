@@ -73,7 +73,6 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         self.successes_threshold = rospy.get_param(prefix + "/successes_threshold", 0)
 
     def _set_init_pose(self):
-        self.controller.stop()
         if not self.real_robot:
             self.set_environment_conditions()
 

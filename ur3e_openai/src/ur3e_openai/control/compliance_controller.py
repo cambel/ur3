@@ -39,8 +39,10 @@ class ComplianceController(controller.Controller):
     def start(self):
         self.ur3e_arm.activate_cartesian_controller()
         self.ur3e_arm.auto_switch_controllers = False
+        self.ur3e_arm.async_mode = True
 
     def stop(self):
+        self.ur3e_arm.async_mode = False
         self.ur3e_arm.set_position_control_mode(True)
         self.ur3e_arm.set_cartesian_target_pose(self.ur3e_arm.end_effector())
         rospy.sleep(0.1)
@@ -85,7 +87,7 @@ class ComplianceController(controller.Controller):
             attractor_strength = np.interp(actions[-3:], [-1, 1], [0, 1.0])
             # remaining distance scale by attractor strength
             target_pose[:3] = self.ur3e_arm.end_effector()[:3] + ((target[:3] - self.ur3e_arm.end_effector()[:3]) * attractor_strength)
-        
+
         ## go to a defined target pose ###
         return self.ur3e_arm.execute_compliance_control(trajectory=target_pose,
                                                         target_wrench=target_wrench,
@@ -119,18 +121,37 @@ class ComplianceController(controller.Controller):
         self.ur3e_arm.update_pd_gains(p_gains_act)
         self.ur3e_arm.set_control_mode("spring-mass-damper")
 
-    def set_slicing_parallel_parameters(self, actions):
-        selection_matrix = np.array([1, 1, 0.0, 1.0, 0.5, 1])
+    def set_slicing_parameters(self, actions):
+        """ 
+            Approach:
+            force/torque control of z-axis and rotation about x-axis
+            position control for remaining directions
 
-        p_gains_z = np.interp(actions[0], [0, 1], [0.005, 0.05])
-        p_gains_ay = np.interp(actions[1], [0, 1], [0.1, 1.5])
-        p_gains_act = np.array([0.01, 0.01, p_gains_z, 1.5, p_gains_ay, 1.5])
+            Target position will be given.
 
-        self.ur3e_arm.update_selection_matrix(selection_matrix)
-        self.ur3e_arm.update_pd_gains(p_gains_act)
+            Goal: optimize force control for speed and minimizing contact force
+        """
+        # w.r.t end effector link
+        stiff_x = np.interp(actions[0], [0, 1], [500, 5000])
+        stiff_ay = np.interp(actions[1], [0, 1], [20, 100])
+        stiff_act = np.array([stiff_x, 1000, 1000, 40, stiff_ay, 40], dtype=int)
+        # stiff_act = np.array([500, 500, 500, 20, 20, 20 ])
+
+        # w.r.t base link
+        p_gains_z = np.interp(actions[2], [0, 1], [0.01, 0.05])
+        p_gains_ay = np.interp(actions[3], [0, 1], [0.1, 1.5])
+        p_gains_act = np.array([0.1, 0.1, round(p_gains_z, 3), 1.0, round(p_gains_ay, 2), 1.0])
+        # p_gains_act = np.array([0.01, 0.01, 0.01, 1.5, 1.5, 1.5])
+
+        self.ur3e_arm.update_selection_matrix(np.array([1, 1, 0.5, 1, 0.5, 1]))
+        self.ur3e_arm.update_stiffness(stiff_act*2)
+        self.ur3e_arm.update_pd_gains(p_gains_act*2)
         self.ur3e_arm.set_control_mode("parallel")
 
-    def set_slicing_parameters(self, actions):
+        # self.ur3e_arm.update_pd_gains(p_gains_act)
+        # self.ur3e_arm.update_stiffness(stiff_act)
+        # self.ur3e_arm.set_control_mode("spring-mass-damper")
+
     def set_poking_parameters(self, actions):
         """ 
             Approach:
