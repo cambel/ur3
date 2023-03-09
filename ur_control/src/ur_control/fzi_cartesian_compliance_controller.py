@@ -22,6 +22,7 @@
 #
 # Author: Cristian Beltran
 
+import threading
 import types
 import rospy
 import numpy as np
@@ -101,6 +102,10 @@ class CompliantController(Arm):
         """ Compliant controller using FZI Cartesian Compliance controllers """
         Arm.__init__(self, **kwargs)
 
+        self.is_gazebo_sim = False
+        if rospy.has_param("use_gazebo_sim"):
+            self.is_gazebo_sim = True
+
         self.auto_switch_controllers = True  # Safety switching back to safe controllers
 
         self.cartesian_target_pose_pub = rospy.Publisher('%s/%s/target_frame' % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), PoseStamped, queue_size=10.0)
@@ -122,16 +127,22 @@ class CompliantController(Arm):
 
             "end_effector_link": dynamic_reconfigure.client.Client("%s/%s" % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), timeout=10),
         }
-        rospy.on_shutdown(self.activate_joint_trajectory_controller)
+        self.update_thread = None
+        self.async_mode = False
+
         self.set_hand_frame_control(False)
         self.set_end_effector_link(self.ee_link)
         self.min_scale_error = 1.5
+
+        rospy.on_shutdown(self.activate_joint_trajectory_controller)
 
     def activate_cartesian_controller(self):
         return self.controller_manager.switch_controllers(controllers_on=[CARTESIAN_COMPLIANCE_CONTROLLER],
                                                           controllers_off=[JOINT_TRAJECTORY_CONTROLLER])
 
     def activate_joint_trajectory_controller(self):
+        if self.update_thread and self.update_thread.isAlive():
+            self.update_thread.join()
         return self.controller_manager.switch_controllers(controllers_on=[JOINT_TRAJECTORY_CONTROLLER],
                                                           controllers_off=[CARTESIAN_COMPLIANCE_CONTROLLER])
 
@@ -154,9 +165,21 @@ class CompliantController(Arm):
             rospy.logerr("Fail to set_target_pose(): %s" % e)
 
     def update_controller_parameters(self, parameters: dict):
-        for param in parameters.keys():
-            rospy.logdebug("Setting parameters %s to the group %s" % (parameters[param], param))
-            self.dyn_config_clients[param].update_configuration(parameters[param])
+        if not self.async_mode and self.update_thread and self.update_thread.isAlive():
+            self.update_thread.join()
+
+        def update():
+            try:
+                for param in parameters.keys():
+                    rospy.logdebug("Setting parameters %s to the group %s" % (parameters[param], param))
+                    self.dyn_config_clients[param].update_configuration(parameters[param])
+            except:
+                pass
+        if self.async_mode:
+            self.update_thread = threading.Thread(target=update)
+            self.update_thread.start()
+        else:
+            update()
 
     def update_selection_matrix(self, selection_matrix):
         parameters = convert_selection_matrix_to_parameters(selection_matrix)
@@ -197,7 +220,8 @@ class CompliantController(Arm):
     def set_solver_parameters(self, error_scale=None, iterations=None, publish_state_feedback=None):
         parameters = {"solver": {}}
         if error_scale:
-            parameters["solver"].update({"error_scale": error_scale})
+            error_scale = error_scale if not self.is_gazebo_sim else error_scale * 0.01
+            parameters["solver"].update({"error_scale": round(error_scale, 4)})
         if iterations:
             parameters["solver"].update({"iterations": iterations})
         if publish_state_feedback:
@@ -245,8 +269,12 @@ class CompliantController(Arm):
         # Publish first trajectory point
         self.set_cartesian_target_pose(trajectory[trajectory_index])
 
-        rate = rospy.Rate(100)
+        if scale_up_error and max_scale_error:
+            self.sliding_error(trajectory[trajectory_index], max_scale_error)
 
+        rate = rospy.Rate(500)
+
+        st = rospy.get_time()
         while not rospy.is_shutdown() and (rospy.get_time() - initial_time) < duration:
 
             current_wrench = self.get_ee_wrench(hand_frame_control=True)
@@ -258,6 +286,7 @@ class CompliantController(Arm):
                     result = TERMINATION_CRITERIA
                     break
 
+            # TODO: fix, it should check the sign of the target wrench and the current one too
             if stop_on_target_force and np.all(np.abs(current_wrench)[target_wrench != 0] > np.abs(target_wrench)[target_wrench != 0]):
                 rospy.loginfo('Target F/T reached {}'.format(np.round(current_wrench, 3)) + ' Stopping!')
                 result = STOP_ON_TARGET_FORCE
@@ -277,18 +306,14 @@ class CompliantController(Arm):
                 # push next point to the controller
                 self.set_cartesian_target_pose(trajectory[trajectory_index])
 
-            # Scale error_scale as position error decreases until a max scale error
-            if scale_up_error and max_scale_error:
-                position_error = np.linalg.norm(trajectory[trajectory_index][:3] - self.end_effector()[:3])
-                # from position_error < 0.01m increase scale error
-                factor = 1 - np.tanh(100 * position_error)
-                # scale_error = np.interp(factor, [0, 1], [0.01, max_scale_error])
-                scale_error = np.interp(factor, [0, 1], [self.min_scale_error, max_scale_error])
-                self.set_solver_parameters(error_scale=np.round(scale_error, 3))
+                if scale_up_error and max_scale_error:
+                    self.sliding_error(trajectory[trajectory_index], max_scale_error)
 
             if func:
                 func(self.end_effector())
+            break
             rate.sleep()
+        # print(round(rospy.get_time()-st, 3))
 
         if auto_stop:
             # Stop moving
@@ -298,3 +323,12 @@ class CompliantController(Arm):
             self.wait_for_robot_to_stop(wait_time=5)
 
         return result
+
+    def sliding_error(self, target_pose, max_scale_error):
+        # Scale error_scale as position error decreases until a max scale error
+        position_error = np.linalg.norm(target_pose[:3] - self.end_effector()[:3])
+        # from position_error < 0.01m increase scale error
+        factor = 1 - np.tanh(100 * position_error)
+        # scale_error = np.interp(factor, [0, 1], [0.01, max_scale_error])
+        scale_error = np.interp(factor, [0, 1], [self.min_scale_error, max_scale_error])
+        self.set_solver_parameters(error_scale=np.round(scale_error, 3))
