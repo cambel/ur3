@@ -167,8 +167,9 @@ class Arm(object):
         self._zero_ft_filtered = rospy.ServiceProxy('%s/%s/filtered/zero_ftsensor' % (self.ns, self.ft_topic), Empty)
         self._zero_ft_filtered.wait_for_service(rospy.Duration(2.0))
         
-        self._zero_ft = rospy.ServiceProxy('%s/ur_hardware_interface/zero_ftsensor' % self.ns, Trigger)
-        self._zero_ft.wait_for_service(rospy.Duration(2.0))
+        if not rospy.has_param("use_gazebo_sim"):
+            self._zero_ft = rospy.ServiceProxy('%s/ur_hardware_interface/zero_ftsensor' % self.ns, Trigger)
+            self._zero_ft.wait_for_service(rospy.Duration(2.0))
 
         self._ft_filtered = rospy.ServiceProxy('%s/%s/filtered/enable_filtering' % (self.ns, self.ft_topic), SetBool)
         self._ft_filtered.wait_for_service(rospy.Duration(1.0))
@@ -271,8 +272,9 @@ class Arm(object):
             return ee_wrench_force
 
     def zero_ft_sensor(self):
-        # First try to zero FT from ur_driver
-        self._zero_ft()
+        if not rospy.has_param("use_gazebo_sim"):
+            # First try to zero FT from ur_driver
+            self._zero_ft()
         # Then update filtered one
         self._zero_ft_filtered()
 
