@@ -78,19 +78,14 @@ class ComplianceController(controller.Controller):
             # remaining distance scale by attractor strength
             target_pose[:3] = self.ur3e_arm.end_effector()[:3] + ((target[:3] - self.ur3e_arm.end_effector()[:3]) * attractor_strength)
             # print(np.round(target_pose[:3], 4), np.round(target_pose[:3]- self.ur3e_arm.end_effector()[:3], 4))
-        if action_type == "slicing_parallel":
+        if action_type == "poking":
             # C. slicing
-            self.set_slicing_parallel_parameters(actions)
-            f_act = np.interp(actions[-1], [-1, 1], [-15, 15])
-            target_wrench = np.array([0, 0, f_act, 0, 0, 0])
-
-        ### The action decides where to move next ###
-        # motion_acts = actions[-6:]
-        # motion_action = np.array([np.interp(motion_acts[i], [-1, 1], [-1*self.max_twist[i], self.max_twist[i]]) for i in range(6)])
-        # print(np.round(motion_action, 4))
-        # current_pose = self.ur3e_arm.end_effector()
-        # target_pose = transformations.transform_pose(current_pose, actions[-6:], rotated_frame=False)
-
+            self.set_poking_parameters(actions[:4])
+            # Compute target pose with an attractor or with a "speed" action
+            attractor_strength = np.interp(actions[-3:], [-1, 1], [0, 1.0])
+            # remaining distance scale by attractor strength
+            target_pose[:3] = self.ur3e_arm.end_effector()[:3] + ((target[:3] - self.ur3e_arm.end_effector()[:3]) * attractor_strength)
+        
         ## go to a defined target pose ###
         return self.ur3e_arm.execute_compliance_control(trajectory=target_pose,
                                                         target_wrench=target_wrench,
@@ -136,6 +131,7 @@ class ComplianceController(controller.Controller):
         self.ur3e_arm.set_control_mode("parallel")
 
     def set_slicing_parameters(self, actions):
+    def set_poking_parameters(self, actions):
         """ 
             Approach:
             force/torque control of z-axis and rotation about x-axis
@@ -146,22 +142,21 @@ class ComplianceController(controller.Controller):
             Goal: optimize force control for speed and minimizing contact force
         """
         # w.r.t end effector link
-        stiff_x = np.interp(actions[0], [0, 1], [500, 5000])
-        stiff_ay = np.interp(actions[1], [0, 1], [20, 100])
-        stiff_act = np.array([stiff_x, 2000, 2000, 40, stiff_ay, 40], dtype=int)
+        stiff_x = np.interp(actions[0], [0, 1], [500, 2000])
+        stiff_ay = np.interp(actions[1], [0, 1], [20, 40])
+        stiff_act = np.array([stiff_x, 1000, 1000, 40, stiff_ay, 40], dtype=int)
         # stiff_act = np.array([500, 500, 500, 20, 20, 20 ])
 
         # w.r.t base link
         p_gains_z = np.interp(actions[2], [0, 1], [0.01, 0.05])
         p_gains_ay = np.interp(actions[3], [0, 1], [0.1, 1.5])
-        p_gains_act = np.array([0.01, 0.01, p_gains_z, 1.0, p_gains_ay, 1.0])
+        p_gains_act = np.array([0.1, 0.1, round(p_gains_z, 3), 1.0, round(p_gains_ay, 2), 1.0])
         # p_gains_act = np.array([0.01, 0.01, 0.01, 1.5, 1.5, 1.5])
 
-        self.ur3e_arm.update_stiffness(stiff_act)
-        self.ur3e_arm.update_pd_gains(p_gains_act)
-        self.ur3e_arm.set_control_mode("spring-mass-damper")
+        self.ur3e_arm.update_selection_matrix(np.array([1, 1, 0.5, 1, 0.5, 1]))
+        self.ur3e_arm.update_stiffness(stiff_act*2)
+        self.ur3e_arm.update_pd_gains(p_gains_act*2)
+        self.ur3e_arm.set_control_mode("parallel")
 
     def compute_target_wrench(self):
-        # transform = self.ur3e_arm.kdl.get_transform_between_links("b_bot_wrist_3_link", self.ur3e_arm.ee_link)
-        # return spalg.convert_wrench(self.desired_force_torque, transform)
         return self.desired_force_torque

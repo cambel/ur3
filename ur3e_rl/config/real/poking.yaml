@@ -1,0 +1,58 @@
+ur3e_gym: #namespace
+    # General Agent parameters
+    env_id: "UR3ePokingEnv-v1"
+    controller_type: "cartesian_compliance"
+
+    reset_robot: False
+    real_robot: True
+    test_mode: False
+
+    relative_to_ee: False
+    robot_control_dt: 0.002
+    agent_control_dt: 0.02
+    reset_time: 0.5
+    # actions parameters
+    n_actions: 7
+    action_type: "poking"
+
+    object_name: "target_block_tmp"
+    object_centric: False
+    ee_centric: False
+
+    steps_per_episode: 500
+
+    actor_class: "default"
+    ft_hist: False
+
+    duration_as_obs: False
+    last_action_as_obs: True
+    normalize_velocity: True
+
+    rand_seed: 123 #3215
+    rand_interval: 1
+
+    init_q: [1.3524, -1.5555, 1.7697, -1.7785, -1.5644, 1.3493] # sim button
+
+    target_pose: [-0.02, 0.50, 0.1935, -0.00812894, 0.70963372, -0.00882711, 0.70446859]
+
+    # Reward parameters
+    tgt_pose_indices: [0, 1, 2, 3, 4, 5]
+
+    position_threshold: 0.002
+
+    reward_type: "slicing"
+    
+    cost:
+        collision: -100.0
+        done: 100
+        step: -1.0 # new -1
+    w_dist: 1.0
+    w_force: 1.0
+    w_jerkiness: 1.0
+    successes_threshold: 5
+
+# Controller parameters
+ur3e_force_control:
+    max_twist: [0.001, 0.001, 0.001, 0.001, 0.001, 0.001]
+    max_force_torque: [50, 50.0, 50.0, 5, 5, 5]
+    desired_force_torque: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]

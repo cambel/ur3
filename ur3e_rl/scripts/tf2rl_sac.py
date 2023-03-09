@@ -32,7 +32,7 @@ if __name__ == '__main__':
     parser.set_defaults(batch_size=256)
     parser.set_defaults(n_warmup=1e3)  # still don't know what it this for
     parser.set_defaults(max_steps=30000)  # 10000 for training 200 for evaluation
-    parser.set_defaults(save_model_interval=10000)
+    parser.set_defaults(save_model_interval=5000)
     parser.set_defaults(test_interval=1e10)  # 1e4 for training 200 for evaluation
     parser.set_defaults(test_episodes=1)
     parser.set_defaults(normalize_obs=False)
@@ -112,6 +112,9 @@ if __name__ == '__main__':
     elif args.env_id == 19:
         args.dir_suffix = "slicing"
         param_file = "simulation/force_control/slicing.yaml"
+    elif args.env_id == 20:
+        args.dir_suffix = "poking"
+        param_file = "simulation/poking.yaml"
     else:
         raise Exception("invalid env_id")
 

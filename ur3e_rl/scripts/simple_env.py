@@ -112,6 +112,8 @@ if __name__ == '__main__':
         param_file = "simulation/force_control/peg_in_hole_public.yaml"
     elif args.env_id == 19:
         param_file = "simulation/force_control/slicing.yaml"
+    elif args.env_id == 20:
+        param_file = "real/poking.yaml"
     else:
         raise Exception("invalid env_id")
 
