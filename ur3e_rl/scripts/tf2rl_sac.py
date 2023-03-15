@@ -6,8 +6,6 @@ from ur3e_openai.common import load_environment, log_ros_params, clear_gym_param
 import ur_control.utils as utils
 from tf2rl.experiments.cb_trainer import Trainer
 from tf2rl.algos.sac import SAC
-from gym.envs.registration import register
-import argparse
 import timeit
 import rospy
 from shutil import copyfile

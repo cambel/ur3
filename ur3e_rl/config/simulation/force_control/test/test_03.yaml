@@ -1,0 +1,11 @@
+ur3e_gym: #namespace
+    agent_control_dt: 0.02
+
+    actor_class: "default"
+    ft_hist: False
+    wrench_hist_size: 1
+
+    last_action_as_obs: True
+    normalize_velocity: True
+
+    rand_seed: 2991

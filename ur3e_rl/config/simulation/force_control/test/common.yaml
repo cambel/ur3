@@ -1,22 +1,26 @@
 ur3e_gym: #namespace
     # General Agent parameters
-    env_id: "UR3ePegInHoleEnv-v1"
-    controller_type: "parallel_position_force" # or "admittance"
+    env_id: "UR3eSlicingEnv-v1"
+    controller_type: "cartesian_compliance"
+    namespace: "b_bot"
 
     reset_robot: True
+    real_robot: False
+    test_mode: False
 
-    ft_sensor: True
     relative_to_ee: False
     robot_control_dt: 0.002
-    agent_control_dt: 0.05
-    reset_time: 2.0
+    agent_control_dt: 0.02
+    reset_time: 0.5
     # actions parameters 
-    n_actions: 24
-    action_type: "m24"
+    n_actions: 7
+    action_type: "slicing"
+    
+    object_name: "target_block_tmp"
     object_centric: False
     ee_centric: False
 
-    steps_per_episode: 1000
+    steps_per_episode: 500
     
     actor_class: "wave"
     ft_hist: True
@@ -25,81 +29,76 @@ ur3e_gym: #namespace
     last_action_as_obs: True
     normalize_velocity: True
 
-    rand_seed: 10   
+    rand_seed: 123 #3215   
     rand_interval: 1
 
-    randomize_board_properties: True
+    # Curriculum parameters
+    initial_curriculum_level: 0.05
+    curriculum_level_step: 0.05
+    cl_upgrade_level: 0.9
+    cl_downgrade_level: 0.2
+    cumulative_episode_num: 0 # for linear curriculum
+    curriculum_learning: False
+    progressive_cl: False
+    reward_based_on_cl: False
+
+    # Domain Randomization Parameters
+    object_friction: 1
+    object_stiffness: 600
+    max_stiffness_range: [500, 1200]
+    max_damping_range: [0, 1]
+    max_kp_range: [1.0e+5, 5.0e+5]
+    max_kd_range: [1, 2]
+    max_friction_range: [0, 2]
+
+    ## Target object configuration
+    randomize_object_properties: True
     normal_randomization: True
     basic_randomization: False
-    board_initial_pose: [-0.10, 0.38, 0.11, 3.141592, 0, 0.0]
-    # board_initial_pose: [-0.10, 0.40, 0.12, 3.641592, 0, 0.0] # inclined
-    board_workspace: [[-0.05, 0.05], [-0.05, 0.05], [-0.05, 0.0], [-20, 20], [-20, 20], [-60, 60]] # easy
-    # board_workspace: [[-0.07, 0.0], [-0.05, 0.05], [0.0, 0.05], [-5, 5], [-5, 5], [-10, 10]] # mid
-    # board_workspace: [[-0.07, 0.07], [-0.07, 0.07], [0.0, 0.05], [-10, 10], [-10, 10], [-90, 90]] # hard
-    # max_board_workspace: [0.10, 0.10, 0.08, 10, 10, 45]
-    max_board_workspace: [0.05, 0.05, 0.05, 20, 20, 60]
-    min_board_workspace: [0.01, 0.01, 0.01, 5, 5, 10]
-    initial_curriculum_level: 0.1
-    curriculum_level_step: 0.1
-    cl_upgrade_level: 0.9
-    cl_downgrade_level: 0.1
-    board_mu: 0.5
-    board_mu2: 0
-    board_stiffness: 1.0e+5
-    max_mu_range: [1, 3]
-    max_stiffness_range: [8.0e+4, 5.0e+5]
-    max_scale_range: [1.05, 1.0]
+    # object_initial_pose: [-0.12, 0.0, 0.88, 1.5707, -1.5707, 3.1415] # cucumber
+    object_initial_pose: [-0.12, 0.03, 0.875, 0, 0, 1.5707] # button
+    object_workspace: [[-0.05, 0.05], [-0.05, 0.05], [0.08, 0.02], [-20, 20], [-20, 20], [-60, 60]]
+    max_object_workspace: [0.08, 0.08, 0.08, 20, 20, 60]
+    min_object_workspace: [0.02, 0.02, 0.02, 5, 5, 10]
 
-    uncertainty_error: True
-    uncertainty_error_max_range: [0.001, 0.001, 0.001, 0.00174533, 0.00174533, 0.0174533] # 1mm and 0.1deg/1deg for gripper
-    
     # initial conditions
-    random_initial_pose: False
+    random_initial_pose: True
     # for each dimension define upper and lower bound from initial pose
     max_distance: [0.1, 0.1, 0.1, 0.785398, 0.785398, 1.5707]
-    workspace: [[-0.1,0.1], [-0.1, 0.1], [0.0, 0.05], [20, -20], [20, -20], [20, -20]]
-    init_q: [1.5045, -1.1956, 1.6012, -1.9544, -1.5742, -0.0636]
-    # init_q: [1.4924, -1.2674, 1.9757, -2.6997, -1.5407, -0.0687] # inclined
+    workspace: [[0,0], [0, 0], [0.0, 0.02], [0, -0], [0, -0], [0, -0]]
+    # init_q: [1.3494, -1.5217, 1.8083, -1.8459, -1.564, 1.3481] # real slice 
+    init_q: [1.3524, -1.5555, 1.7697, -1.7785, -1.5644, 1.3493] # sim button
+    
 
     target_duration: 6
     target_pose_uncertain: False
     uncertainty_std: [0.001, 0.0]
     random_target_pose: False
-    target_pose: [-0.101, 0.40824, 0.14391, 0.7072, 0.70637, -0.00665, 0.02936]
+    target_pose: [-0.02, 0.50, 0.1935, -0.00812894,  0.70963372, -0.00882711,  0.70446859]
     
     # Reward parameters
     tgt_pose_indices: [0,1,2,3,4,5]
     
-    cumulative_episode_num: 0
-
-    position_threshold: 0.01
+    position_threshold: 0.002
     max_position_threshold: 0.01   # new 0.05
     orientation_threshold: 0.0349066
     max_orientation_threshold: 0.07
 
-    reward_type: 'dense-distance-velocity-force'
-    termination_on_negative_reward: True
-    termination_reward_threshold: -500 # new -500
+    reward_type: 'slicing'
+    termination_on_negative_reward: False
+    termination_reward_threshold: -300 # new -500
 
     cost:
-        collision: -200.0
-        done: 200
+        collision: -100.0
+        done: 100
         step: -1.0  # new -1
     w_dist: 1.0
-    w_force: 1.0
+    w_force: 0.0
+    w_jerkiness: 2.0
+    successes_threshold: 20
         
 # Controller parameters
 ur3e_force_control:
-    max_twist: [0.05, 0.05, 0.05, 0.785398, 0.785398, 0.785398]
-
-    max_force_torque: [50, 50.0, 50.0, 4, 4, 4]
+    max_twist: [0.001, 0.001, 0.001, 0.001, 0.001, 0.001]
+    max_force_torque: [50, 50.0, 50.0, 5, 5, 5]
     desired_force_torque: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    
-    # parallel control parameters
-    pd_range_type: 'mult' # or 'sum'
-    base_position_kp: [3.0, 3.0, 3.0, 50.0, 50.0, 100.0]
-    kpd_range: 2
-    base_force_kp: [0.02, 0.02, 0.02, 0.5, 0.5, 0.5]
-    kpi_range: 2
-    
-    alpha: [0.5,0.5,0.5,0.5,0.5,0.5] # keep a degree of compliance

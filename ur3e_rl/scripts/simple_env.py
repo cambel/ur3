@@ -158,7 +158,7 @@ if __name__ == '__main__':
         action = agent.act(obs)
         st = rospy.get_time()
         obs, reward, done, info = env.step(action)
-        # print("act time", rospy.get_time()-st)
+        print("act time", rospy.get_time()-st)
         steps += 1
 
     # env.reset()

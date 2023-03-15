@@ -22,9 +22,9 @@ ur3e_gym: #namespace
 
     steps_per_episode: 500
     
-    actor_class: "default"
-    ft_hist: False
-    wrench_hist_size: 1
+    actor_class: "wave"
+    ft_hist: True
+    wrench_hist_size: 3
     duration_as_obs: False
     last_action_as_obs: True
     normalize_velocity: True

@@ -19,7 +19,7 @@ def get_cl_range(range, curriculum_level):
     return [range[0], range[0] + (range[1] - range[0]) * curriculum_level]
 
 
-class UR3eSlicingEnv(UR3eForceControlEnv):
+class UR3ePokingEnv(UR3eForceControlEnv):
     """ Peg in hole with UR3e environment """
 
     def __init__(self):

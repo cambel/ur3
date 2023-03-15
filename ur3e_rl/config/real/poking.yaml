@@ -2,6 +2,7 @@ ur3e_gym: #namespace
     # General Agent parameters
     env_id: "UR3ePokingEnv-v1"
     controller_type: "cartesian_compliance"
+    namespace: "b_bot"
 
     reset_robot: False
     real_robot: True
