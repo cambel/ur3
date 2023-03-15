@@ -274,7 +274,6 @@ class CompliantController(Arm):
 
         rate = rospy.Rate(500)
 
-        st = rospy.get_time()
         while not rospy.is_shutdown() and (rospy.get_time() - initial_time) < duration:
 
             current_wrench = self.get_ee_wrench(hand_frame_control=True)
@@ -311,9 +310,8 @@ class CompliantController(Arm):
 
             if func:
                 func(self.end_effector())
-            break
+
             rate.sleep()
-        # print(round(rospy.get_time()-st, 3))
 
         if auto_stop:
             # Stop moving

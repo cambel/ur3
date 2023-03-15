@@ -71,8 +71,6 @@ def map_keyboard():
         x = arm.end_effector()
         delta = np.zeros(6)
 
-        n = 500
-
         if dim <= 2:  # position
             delta[dim] += delta_x * sign
         else:  # rotation
