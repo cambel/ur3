@@ -53,18 +53,18 @@ class ImuFake(object):
         self.robot_state = JointControllerBase(namespace, timeout=1, joint_names=get_arm_joint_names(prefix))
         self.kdl = ur_kinematics(base_link=prefix + base_link, ee_link=prefix + ft_sensor_link)
 
-        gravity_on_base_link = np.array([0, 0, -0.981])
+        gravity_on_base_link = np.array([0, 0, 9.81])
 
         rate = rospy.Rate(frequency)
 
         while not rospy.is_shutdown():
-            fk = self.kdl.forward(self.robot_state.get_joint_positions())
-            gravity_on_ft_sensor = - transformations.quaternion_rotate_vector(fk[3:], gravity_on_base_link)
+            # fk = self.kdl.forward(self.robot_state.get_joint_positions())
+            # gravity_on_ft_sensor = - transformations.quaternion_rotate_vector(fk[3:], gravity_on_base_link)
             msg = Imu()
-            msg.header.frame_id = prefix + ft_sensor_link
-            msg.linear_acceleration.x = gravity_on_ft_sensor[0]
-            msg.linear_acceleration.y = gravity_on_ft_sensor[1]
-            msg.linear_acceleration.z = gravity_on_ft_sensor[2]
+            msg.header.frame_id = prefix + base_link
+            msg.linear_acceleration.x = gravity_on_base_link[0]
+            msg.linear_acceleration.y = gravity_on_base_link[1]
+            msg.linear_acceleration.z = gravity_on_base_link[2]
             self.pub.publish(msg)
             rate.sleep()
 

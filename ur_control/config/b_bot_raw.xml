@@ -144,8 +144,8 @@
                                     <field>wrench/force/z</field>
                                     <field_type>0</field_type>
                                     <scale>
-                                        <absolute_maximum>30</absolute_maximum>
-                                        <absolute_minimum>-30</absolute_minimum>
+                                        <absolute_maximum>20</absolute_maximum>
+                                        <absolute_minimum>-20</absolute_minimum>
                                         <relative_maximum>0</relative_maximum>
                                         <relative_minimum>-1000</relative_minimum>
                                         <type>1</type>

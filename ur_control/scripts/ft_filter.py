@@ -43,8 +43,8 @@ from ur_control.controllers import JointControllerBase
 class FTsensor(object):
 
     def __init__(self, in_topic, namespace="", out_topic=None,
-                 sampling_frequency=500, cutoff=2.5,
-                 order=3, data_window=100, timeout=3.0,
+                 sampling_frequency=500, cutoff=5,
+                 order=2, data_window=100, timeout=3.0,
                  republish=False, gravity_compensation=False):
 
         self.ns = namespace
@@ -143,9 +143,10 @@ class FTsensor(object):
                     data = data - self.wrench_offset
                 else:
                     data = current_wrench - self.wrench_offset
-                msg = WrenchStamped()
-                msg.wrench = conversions.to_wrench(data)
-                self.pub.publish(msg)
+                filtered_msg = WrenchStamped()
+                filtered_msg.wrench = conversions.to_wrench(data)
+                filtered_msg.header.frame_id = msg.header.frame_id
+                self.pub.publish(filtered_msg)
 
                 if rospy.has_param(self.out_tcp_topic+"/pose_sensor_to_tcp"):
                     # Convert torques to force at a TCP point
@@ -153,9 +154,9 @@ class FTsensor(object):
                     tcp_wrench = data.copy()
                     tcp_wrench[:3] += spalg.sensor_torque_to_tcp_force(tcp_position=pose_sensor_to_tcp, sensor_torques=current_wrench[3:])
                     tcp_wrench[3:] = np.zeros(3)
-                    msg = WrenchStamped()
-                    msg.wrench = conversions.to_wrench(tcp_wrench)
-                    self.pub_tcp.publish(msg)
+                    tcp_msg = WrenchStamped()
+                    tcp_msg.wrench = conversions.to_wrench(tcp_wrench)
+                    self.pub_tcp.publish(tcp_msg)
 
     # function to filter out high frequency signal
     def get_filtered_wrench(self):
