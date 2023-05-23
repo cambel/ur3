@@ -95,6 +95,8 @@ class ur_kinematics(object):
         self._arm_chain = self._kdl_tree.getChain(self._base_link,
                                                   self._tip_link)
 
+        self.chain_dict = {f'{self._base_link}-{self._tip_link}': self._arm_chain}
+
         # UR Interface Limb Instances
         self._joint_names = JOINT_ORDER if prefix is None else [prefix + joint for joint in JOINT_ORDER]
         self._num_jnts = len(self._joint_names)
@@ -142,18 +144,24 @@ class ur_kinematics(object):
             for j in range(data.columns()):
                 mat[i, j] = data[i, j]
         return mat
-    
-    def get_transform_between_links(self, parent_link, child_link):
-        chain = self._kdl_tree.getChain(parent_link, child_link)
-        frame = chain.getSegment(0).getFrameToTip()
-        return frame_to_list(frame)
+
+    def end_effector_transform(self, joint_values, tip_link=None):
+        pose = self.forward(joint_values, tip_link)
+        translation = np.array([pose[:3]])
+        transform = transformations.quaternion_matrix(pose[3:])
+        transform[:3, 3] = translation
+        return transform
 
     def forward(self, joint_values, tip_link=None):
         if not tip_link or tip_link == self._tip_link:
             return self.forward_position_kinematics(joint_values)
 
-        arm_chain = self._kdl_tree.getChain(self._base_link,
-                                            tip_link)
+        chain_key = f'{self._base_link}-{tip_link}'
+        arm_chain = self.chain_dict.get(chain_key, None)
+
+        if arm_chain is None:
+            arm_chain = self._kdl_tree.getChain(self._base_link, tip_link)
+            self.chain_dict.update({chain_key: arm_chain})
         fk_p_kdl = PyKDL.ChainFkSolverPos_recursive(arm_chain)
         end_frame = PyKDL.Frame()
         fk_p_kdl.JntToCart(self.joints_to_kdl('positions', joint_values),
@@ -181,12 +189,10 @@ class ur_kinematics(object):
                                  orientation[2], orientation[3])
         # Populate seed with current angles if not provided
         seed_array = PyKDL.JntArray(self._num_jnts)
-        if isinstance(seed, (np.ndarray, np.generic, list)):
+        if seed is not None:
             seed_array.resize(len(seed))
             for idx, jnt in enumerate(seed):
                 seed_array[idx] = jnt
-        else:
-            seed_array = self.joints_to_kdl('positions', None)  # TODO: Fixme
 
         # Make IK Call
         if orientation.size != 0:
