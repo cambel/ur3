@@ -33,7 +33,7 @@ from geometry_msgs.msg import WrenchStamped
 from ur_control import utils, spalg, conversions, transformations
 from ur_control.constants import JOINT_ORDER, JOINT_TRAJECTORY_CONTROLLER, FT_SUBSCRIBER, IKFAST, TRAC_IK, \
     DONE, SPEED_LIMIT_EXCEEDED, IK_NOT_FOUND, get_arm_joint_names, \
-    BASE_LINK, EE_LINK
+    BASE_LINK, EE_LINK, KDL
 
 from std_srvs.srv import Empty, SetBool, Trigger
 
@@ -64,10 +64,10 @@ class Arm(object):
     def __init__(self,
                  robot_urdf='ur3e',
                  robot_urdf_package=None,
-                 ik_solver=TRAC_IK,
+                 ik_solver=KDL,
                  namespace=None,
                  gripper=False,
-                 joint_names_prefix=None,
+                 joint_names_prefix="",
                  ft_topic=None,
                  base_link=None,
                  ee_link=None):
@@ -150,12 +150,14 @@ class Arm(object):
         elif self.ik_solver == TRAC_IK:
             try:
                 if not rospy.has_param("robot_description"):
-                    self.trac_ik = TRACK_IK_SOLVER(base_link=base_link, tip_link=ee_link, solve_type="Distance", timeout=0.002, epsilon=1e-5,
+                    self.trac_ik = TRACK_IK_SOLVER(base_link=base_link, tip_link=ee_link, solve_type="Distance", timeout=0.001, epsilon=1e-5,
                                                    urdf_string=utils.load_urdf_string(self._robot_urdf_package, self._robot_urdf))
                 else:
                     self.trac_ik = TRACK_IK_SOLVER(base_link=base_link, tip_link=ee_link, solve_type="Distance")
             except Exception as e:
                 rospy.logerr("Could not instantiate TRAC_IK" + str(e))
+        elif self.ik_solver == KDL:
+            pass
         else:
             raise Exception("unsupported ik_solver", self.ik_solver)
 
@@ -204,12 +206,11 @@ class Arm(object):
 
         self._flex_trajectory_pub.publish(action_msg)
 
-    def _solve_ik(self, pose, q_guess=None, attempts=5, verbose=True):
+    def _solve_ik(self, pose, q_guess=None, attempts=0, verbose=True):
         q_guess_ = q_guess if q_guess is not None else self.joint_angles()
 
         if isinstance(q_guess, np.float64):
             q_guess_ = None
-
         if self.ik_solver == IKFAST:
             ik = self.arm_ikfast.inverse(pose, q_guess=q_guess_)
 
@@ -220,7 +221,9 @@ class Arm(object):
                     return self._solve_ik(pose, q_guess, attempts-1)
                 if verbose:
                     rospy.logwarn("TRACK-IK: solution not found!")
-
+        elif self.ik_solver == KDL:
+            if ik is None:
+                rospy.logwarn("TRACK-IK: solution not found!")
         return ik
 
 ### Public methods ###
@@ -264,8 +267,6 @@ class Arm(object):
         else:
             # Transform force to end effector frame
             # Fix, the forces need to be converted by the transform between the wrist_3_link and the end effector link
-            # transform = self.kdl.get_transform_between_links(self.joint_names_prefix + "wrist_3_link", self.ee_link)
-            # transform = self.kdl.get_transform_between_links(self.joint_names_prefix + "gripper_tip_link", self.base_link)
             transform = self.end_effector(tip_link=self.joint_names_prefix + "tool0")
             ee_wrench_force = spalg.convert_wrench(wrench_force, transform)
 
