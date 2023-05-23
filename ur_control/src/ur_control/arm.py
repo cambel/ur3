@@ -43,7 +43,7 @@ except ImportError:
     print("Import ur_ikfast not available, IKFAST would not be supported without it")
 
 from ur_control.controllers_connection import ControllersConnection
-from ur_control.controllers import JointTrajectoryController, FTsensor, GripperController
+from ur_control.controllers import JointTrajectoryController, GripperController
 from ur_pykdl import ur_kinematics
 from trac_ik_python.trac_ik import IK as TRACK_IK_SOLVER
 
@@ -222,8 +222,9 @@ class Arm(object):
                 if verbose:
                     rospy.logwarn("TRACK-IK: solution not found!")
         elif self.ik_solver == KDL:
+            ik = self.kdl.inverse_kinematics(pose[:3], pose[3:], seed=q_guess_)
             if ik is None:
-                rospy.logwarn("TRACK-IK: solution not found!")
+                rospy.logwarn("KDL IK: solution not found!")
         return ik
 
 ### Public methods ###
@@ -381,9 +382,9 @@ class Arm(object):
         qc = self.joint_angles()
         speed = (qc - position) / t
         cmd = position
-        if np.any(np.abs(speed) > self.max_joint_speed):
-            rospy.logwarn("Exceeded max speed %s deg/s, ignoring command" % np.round(np.rad2deg(speed), 0))
-            return SPEED_LIMIT_EXCEEDED
+        # if np.any(np.abs(speed) > self.max_joint_speed):
+        #     # rospy.logwarn("Exceeded max speed %s deg/s, ignoring command" % np.round(np.rad2deg(speed), 0))
+        #     return SPEED_LIMIT_EXCEEDED
         self._flexible_trajectory(cmd, t, v)
         return DONE
 

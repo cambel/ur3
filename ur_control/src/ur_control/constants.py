@@ -1,6 +1,6 @@
 IKFAST = 'ikfast'
 TRAC_IK = 'trac_ik'
-
+KDL = 'kdl'
 CARTESIAN_COMPLIANCE_CONTROLLER = 'cartesian_compliance_controller'
 JOINT_TRAJECTORY_CONTROLLER = 'scaled_pos_joint_traj_controller'
 JOINT_SUBSCRIBER = '/arm_controller/state'
