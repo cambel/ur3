@@ -11,9 +11,11 @@ from ur_control import spalg, transformations
 from ur_control.constants import FORCE_TORQUE_EXCEEDED, IK_NOT_FOUND
 from ur_gazebo.basic_models import get_box_model, get_button_model, get_cucumber_model
 from ur_gazebo.model import Model
+from o2ac_msgs.srv import resetDisect
+from std_srvs.srv import Trigger
 
 import threading
-
+import timeit
 
 def get_cl_range(range, curriculum_level):
     return [range[0], range[0] + (range[1] - range[0]) * curriculum_level]
@@ -34,6 +36,8 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
                                             base_mass=1., button_mass=0.1, color=[1, 0, 0, 0], kp=self.object_kp, kd=self.object_kd, max_vel=100.0)
             self.box_model = Model("block", self.object_initial_pose, file_type="string",
                                    string_model=string_model, model_id="target_block", reference_frame="o2ac_ground")
+            self.reset_service = rospy.ServiceProxy('reset_simulation', resetDisect) 
+            self.desync_service = rospy.ServiceProxy('desync_simulation', Trigger)
 
     def __load_env_params(self):
         prefix = "ur3e_gym"
@@ -106,6 +110,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         self.controller.start()
 
     def update_scene(self):
+        self.start = timeit.default_timer()
         if self.real_robot:
             return
 
@@ -142,12 +147,20 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
                                             base_mass=1., button_mass=0.1, color=color, kp=kp, kd=kd, max_vel=100.0)
             self.box_model = Model("block", block_pose, file_type="string",
                                    string_model=string_model, model_id="target_block")
-            self.spawner.reset_model(self.box_model)
+            # self.spawner.reset_model(self.box_model)
         else:
             self.box_model.set_pose(block_pose)
-            self.spawner.update_model_state(self.box_model)
+            # self.spawner.update_model_state(self.box_model)
 
         self.current_board_pose = transformations.pose_euler_to_quat(block_pose)
+        # Handling the desync message
+        self.desync_service()
+        # Handling the reset message
+        reset_mode = "random"
+        config_file_path = "abc"
+        viz = False
+        self.reset_service(reset_mode, config_file_path, viz)
+
 
     def randomize_block_position(self):
         rand = self.rng.random(size=6)
@@ -242,6 +255,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
                 self.ur3e_arm.set_target_pose(pose=xc, t=reset_time, wait=True)
 
             self.controller.stop()
+            print("time after pause", timeit.default_timer()-self.start)
             return True
 
         # Check whether we took every available step for this episode

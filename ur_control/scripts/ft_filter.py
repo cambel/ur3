@@ -42,7 +42,7 @@ from ur_control.controllers import JointControllerBase
 
 class FTsensor(object):
 
-    def __init__(self, in_topic, namespace="", out_topic=None,
+    def __init__(self, in_topic, in_topic2 = None, namespace="", out_topic=None,
                  sampling_frequency=500, cutoff=5,
                  order=2, data_window=100, timeout=3.0,
                  republish=False, gravity_compensation=False):
@@ -59,6 +59,7 @@ class FTsensor(object):
         else:
             self.out_topic = utils.solve_namespace(self.in_topic + 'filtered')
             self.out_tcp_topic = self.in_topic + "tcp"
+        self.in_topic2 = in_topic2
 
         if self.gravity_compensation:
             prefix = "" if not namespace else namespace + "_"
@@ -99,6 +100,8 @@ class FTsensor(object):
 
         # Subscribe to incoming topic
         rospy.Subscriber(self.in_topic, WrenchStamped, self.cb_raw)
+        if self.in_topic2 != None : rospy.Subscriber(self.in_topic2, WrenchStamped, self.cb_adder)
+        self.added_wrench = np.zeros(6)
 
         # Check that the incoming topic is publishing data
         self._active = None
@@ -127,11 +130,16 @@ class FTsensor(object):
     def add_wrench_observation(self, wrench):
         self.data_queue.append(np.array(wrench))
 
+    def cb_adder(self, msg):
+        if rospy.is_shutdown():
+            return
+        self.added_wrench = conversions.from_wrench(msg.wrench)
+
     def cb_raw(self, msg):
         if rospy.is_shutdown():
             return
         self._active = True
-        current_wrench = conversions.from_wrench(msg.wrench)
+        current_wrench = conversions.from_wrench(msg.wrench) + self.added_wrench
         self.add_wrench_observation(current_wrench)
         if self.enable_publish:
             if self.enable_filtering:
@@ -196,6 +204,7 @@ def main():
     parser = argparse.ArgumentParser(description='Filter FT signal')
     parser.add_argument('-ns', '--namespace', type=str, help='Namespace', required=False)
     parser.add_argument('-t', '--ft_topic', type=str, help='FT sensor data topic', required=True)
+    parser.add_argument('-t2', '--ft_topic2', type=str, help='FT sensor data topic (2nd)', required=False, default=None)
     parser.add_argument('-ot', '--out_topic', type=str, help='Topic where filtered data will be published')
     parser.add_argument('-z', '--zero', action='store_true', help='Zero FT signal')
     parser.add_argument('-g', '--gravity_compensation', action='store_true', help='Gravity compensation applied')
@@ -206,7 +215,7 @@ def main():
 
     out_topic = None if not args.out_topic else args.out_topic
 
-    ft_sensor = FTsensor(namespace=args.namespace, in_topic=args.ft_topic, out_topic=out_topic,
+    ft_sensor = FTsensor(namespace=args.namespace, in_topic=args.ft_topic, in_topic2=args.ft_topic2, out_topic=out_topic,
                          republish=True, gravity_compensation=args.gravity_compensation)
     if args.zero:
         ft_sensor.update_wrench_offset()

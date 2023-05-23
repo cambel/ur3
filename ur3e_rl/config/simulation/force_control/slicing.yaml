@@ -74,7 +74,7 @@ ur3e_gym: #namespace
     target_pose_uncertain: False
     uncertainty_std: [0.001, 0.0]
     random_target_pose: False
-    target_pose: [-0.02, 0.50, 0.1935, -0.00812894,  0.70963372, -0.00882711,  0.70446859]
+    target_pose: [-0.02, 0.50, 0.1475, -0.00812894,  0.70963372, -0.00882711,  0.70446859]
     
     # Reward parameters
     tgt_pose_indices: [0,1,2,3,4,5]
