@@ -9,17 +9,21 @@ def sparse(self, done):
     return 0
 
 def slicing(self, obs, done):
-    distance = np.linalg.norm(obs[:6])
-    jerkiness = np.linalg.norm(self.info[6:9])
+    num_dims = 6 if self.target_dims is None else len(self.target_dims)
 
-    wrench_size = self.wrench_hist_size*6
-    force = np.reshape(obs[-wrench_size:], (6,-1))
-    force = np.average(force, axis=1)
-    norm_force_torque = np.linalg.norm(force)
+    distance = np.linalg.norm(obs[:num_dims]) #,6
+    jerkiness = np.linalg.norm(obs[num_dims*2:num_dims*3]) # 12,18
 
-    r_distance = 1 - np.tanh(10.0 * distance)
-    r_force = -1/(1 + np.exp(-norm_force_torque*20+5))
-    r_jerkiness = -1 * np.tanh(5e-4 * jerkiness)
+    max_force_torque = np.array([self.controller.max_force_torque[i] for i in self.target_dims])
+
+    wrench_size = self.wrench_hist_size*num_dims
+    force = np.reshape(obs[-wrench_size:], (-1, num_dims)) * max_force_torque
+    force = np.average(force, axis=0)
+    norm_force_torque = np.linalg.norm(force[:3])
+
+    r_distance = -l1l2(self, distance)
+    r_force = -1/(1 + np.exp(-norm_force_torque/2+3))  # s-shaped penalization, no penalization for lower values, max penalization for high values
+    r_jerkiness = -1 * jerkiness # penalize jerkiness
 
     r_collision = self.cost_collision if self.action_result == FORCE_TORQUE_EXCEEDED else 0.0
     # reward discounted by the percentage of steps left for the episode (encourage faster termination)
@@ -33,6 +37,38 @@ def slicing(self, obs, done):
     reward = self.w_dist*r_distance + self.w_force*r_force + self.w_jerkiness*r_jerkiness + r_collision + r_done + r_step
     # print('r', round(reward, 4), round(r_distance, 4), round(r_force, 4), round(r_jerkiness, 4), r_done, jerkiness)
     return reward, [r_distance, r_force, r_jerkiness, r_collision, r_done, r_step]
+
+def peg_in_hole(self, obs, done):
+    num_dims = 6 if self.target_dims is None else len(self.target_dims)
+
+    distance = np.linalg.norm(obs[:num_dims]) #,6
+    jerkiness = np.linalg.norm(obs[num_dims*2:num_dims*3]) # 12,18
+    compliance = np.linalg.norm(np.interp(obs[num_dims*4:num_dims*5], [-1., 1.], [0., 1.])) / np.linalg.norm(np.ones(6)) # last action[24:30]
+
+    max_force_torque = np.array([self.controller.max_force_torque[i] for i in self.target_dims])
+
+    wrench_size = self.wrench_hist_size*num_dims
+    force = np.reshape(obs[-wrench_size:], (-1, num_dims)) * max_force_torque
+    force = np.average(force, axis=0)
+    norm_force_torque = np.linalg.norm(force[:3])
+
+    r_distance = -l1l2(self, distance)
+    r_force = -1/(1 + np.exp(-norm_force_torque/2+3))  # s-shaped penalization, no penalization for lower values, max penalization for high values
+    r_jerkiness = -1 * jerkiness # penalize jerkiness
+    r_compliance = compliance # encourage high compliance
+
+    r_collision = self.cost_collision if self.action_result == FORCE_TORQUE_EXCEEDED else 0.0
+    # reward discounted by the percentage of steps left for the episode (encourage faster termination)
+    # r_done = self.cost_done + (1-self.step_count/self.steps_per_episode) if done and self.action_result != FORCE_TORQUE_EXCEEDED else 0.0
+    position_reached = np.all(obs[1:3]*self.max_distance[1:3] < self.position_threshold_cl)
+    r_done = self.cost_done if done and position_reached and self.action_result != FORCE_TORQUE_EXCEEDED else 0.0
+
+    # encourage faster termination
+    r_step = self.cost_step
+
+    reward = self.w_dist*r_distance + self.w_force*r_force + self.w_jerkiness*r_jerkiness + self.w_compliance*r_compliance + r_collision + r_done + r_step
+    # print('r', round(reward, 4), round(r_distance, 4), round(r_force, 4), round(r_jerkiness, 4), r_done, jerkiness)
+    return reward, [r_distance, r_force, r_jerkiness, r_compliance, r_collision, r_done, r_step]
 
 def dense_distance(self, obs, done):
     reward = 0
@@ -48,6 +84,7 @@ def dense_distance(self, obs, done):
 
     return reward, [r_distance, r_collision, r_done]
 
+
 def dense_pft(self, obs, done):
     reward = 0
 
@@ -55,7 +92,7 @@ def dense_pft(self, obs, done):
     r_orientation = 1 - np.tanh(10.0 * np.linalg.norm(obs[3:6]))
     # If multiple reading, compute average force before applying l1l2 norm
     wrench_size = self.wrench_hist_size*6
-    force = np.reshape(obs[-wrench_size:], (6,-1))
+    force = np.reshape(obs[-wrench_size:], (6, -1))
     force = np.average(force, axis=1)
     r_force = 1 - np.tanh(10.0 * np.linalg.norm(force))
 
@@ -65,6 +102,7 @@ def dense_pft(self, obs, done):
     reward = 0.25*r_distance + 0.25*r_orientation + 0.5*r_force + r_collision + r_done
     return reward, [0.25*r_distance, 0.25*r_orientation, 0.5*r_force, r_collision, r_done]
 
+
 def dense_pdft(self, obs, done):
     reward = 0
 
@@ -73,7 +111,7 @@ def dense_pdft(self, obs, done):
     r_distance = 0.5*r_position + 0.5*r_orientation
     # If multiple reading, compute average force before applying l1l2 norm
     wrench_size = self.wrench_hist_size*6
-    force = np.reshape(obs[-wrench_size:], (6,-1))
+    force = np.reshape(obs[-wrench_size:], (6, -1))
     force = np.average(force, axis=1)
     norm_force = np.linalg.norm(force) if np.linalg.norm(force) > 2 else 0.0
     r_force = -np.tanh(10.0 * norm_force)
@@ -81,28 +119,37 @@ def dense_pdft(self, obs, done):
     r_collision = self.cost_collision if self.action_result == FORCE_TORQUE_EXCEEDED else 0.0
     r_done = self.steps_per_episode - self.step_count if done and self.action_result != FORCE_TORQUE_EXCEEDED else 0.0
 
-    reward = self.w_dist*r_distance + self.w_force*r_force + r_collision + r_done+  + r_step
+    reward = self.w_dist*r_distance + self.w_force*r_force + r_collision + r_done + + r_step
     # print("r", self.w_dist*r_distance, self.w_force*r_force, r_collision, r_done)
     return reward, [r_distance, r_force, r_collision, r_done]
+
 
 def dense_distance_force(self, obs, done):
     reward = 0
 
-    r_distance = 1 - np.tanh(5.0 * np.linalg.norm(obs[:6]))
+    distance = np.linalg.norm(obs[:6])
+
+    r_distance = -distance
 
     wrench_size = self.wrench_hist_size*6
-    force = np.reshape(obs[-wrench_size:], (6,-1))
-    force = np.average(force, axis=1)
-    norm_force_torque = np.linalg.norm(force)
-    r_force = -1/(1 + np.exp(-norm_force_torque*15+5))
+    force = np.reshape(obs[-wrench_size:], (-1, 6)) * self.controller.max_force_torque
+    force = np.average(force, axis=0)
+    norm_force_torque = np.linalg.norm(force[:3])
+
+    r_force = -1/(1 + np.exp(-norm_force_torque/2+3))  # s-shaped penalization, no penalization for lower values, max penalization for high values
 
     r_collision = self.cost_collision if self.action_result == FORCE_TORQUE_EXCEEDED else 0.0
-    position_reached = np.all(obs[:3] < self.position_threshold)
+    # reward discounted by the percentage of steps left for the episode (encourage faster termination)
+    position_reached = np.all(obs[:3]*self.max_distance[:3] < self.position_threshold_cl)
     r_done = self.cost_done if done and position_reached and self.action_result != FORCE_TORQUE_EXCEEDED else 0.0
+
+    # encourage faster termination
     r_step = self.cost_step
 
     reward = self.w_dist*r_distance + self.w_force*r_force + r_collision + r_done + r_step
-    return reward, [r_distance, r_force, r_collision, r_done]
+    # print('r', round(reward, 4), round(self.w_dist*r_distance, 4), round(r_force, 4), r_done)
+    return reward, [r_distance, r_force, r_collision, r_done, r_step]
+
 
 def dense_distance_velocity_force(self, obs, done):
     reward = 0
@@ -110,14 +157,15 @@ def dense_distance_velocity_force(self, obs, done):
     distance = np.linalg.norm(obs[:6])
     velocity = np.linalg.norm(obs[6:12])
 
-    r_distance_velocity = (1-np.tanh(distance*5.)) * (1-velocity) + (velocity*0.5)**2
-    
+    # r_distance_velocity = (1-np.tanh(distance*5.)) * (1-velocity) + (velocity*0.5)**2
+    r_distance_velocity = (1-distance) * (1-velocity) + (velocity*0.25)**2 - 1
+
     wrench_size = self.wrench_hist_size*6
-    force = np.reshape(obs[-wrench_size:], (6,-1))
-    force = np.average(force, axis=1)
+    force = np.reshape(obs[-wrench_size:], (-1, 6)) * self.controller.max_force_torque
+    force = np.average(force, axis=0)
     norm_force_torque = np.linalg.norm(force)
     # r_force = - np.tanh(5*norm_force_torque) # monotonic penalization
-    r_force = -1/(1 + np.exp(-norm_force_torque*15+5)) # s-shaped penalization, no penalization for lower values, max penalization for high values
+    r_force = -1/(1 + np.exp(-norm_force_torque/2+3))  # s-shaped penalization, no penalization for lower values, max penalization for high values
     # print(round(r_distance_velocity, 4), round(r_force, 4))
 
     r_collision = self.cost_collision if self.action_result == FORCE_TORQUE_EXCEEDED else 0.0
@@ -130,8 +178,9 @@ def dense_distance_velocity_force(self, obs, done):
     r_step = self.cost_step
 
     reward = self.w_dist*r_distance_velocity + self.w_force*r_force + r_collision + r_done + r_step
-    # print('r', round(reward, 4), round(r_distance_velocity, 4), round(r_force, 4), r_done)
+    # print('r', round(reward, 4), round(self.w_dist*r_distance_velocity, 4), round(r_force, 4), r_done)
     return reward, [r_distance_velocity, r_force, r_collision, r_done, r_step]
+
 
 def dense_factors(self, obs, done):
     # Reward proximity to the goal but discount the contact force perceived
@@ -140,16 +189,17 @@ def dense_factors(self, obs, done):
     r_distance = 1 - np.tanh(10.0 * np.linalg.norm(obs[:6]))
 
     wrench_size = self.wrench_hist_size*6
-    force = np.reshape(obs[-wrench_size:], (6,-1))
+    force = np.reshape(obs[-wrench_size:], (6, -1))
     force = np.average(force, axis=1)
     norm_force_torque = np.linalg.norm(force)
     r_force = 1 - np.tanh(10.0 * norm_force_torque)
-    
+
     r_collision = self.cost_collision if self.action_result == FORCE_TORQUE_EXCEEDED else 0.0
     r_done = self.steps_per_episode if done and self.action_result != FORCE_TORQUE_EXCEEDED else 0.0
 
     reward = r_distance * r_force + r_collision + r_done
     return reward, [r_distance * r_force, r_collision, r_done]
+
 
 def distance(self, obs, norm='standard'):
     pose = obs[:6] / self.max_distance
@@ -166,9 +216,9 @@ def distance(self, obs, norm='standard'):
     return np.interp(distance_norm, [30, -70], [0, 1])
 
 
-def l1l2(self, dist, weights=[1, 1, 1, 1, 1, 1.]):
-    l1 = self.cost_l1 * np.array(weights)
-    l2 = self.cost_l2 * np.array(weights)
+def l1l2(self, dist):
+    l1 = self.cost_l1
+    l2 = self.cost_l2
     dist = dist
     norm = (0.5 * (dist ** 2) * l2 +
             np.log(self.cost_alpha + (dist ** 2)) * l1)
@@ -185,9 +235,9 @@ def weighted_norm(vector, weights=None):
 def contact_force(self, obs):
     # If multiple reading, compute average force before applying l1l2 norm
     wrench_size = self.wrench_hist_size*6
-    force = np.reshape(obs[-wrench_size:], (6,-1))
+    force = np.reshape(obs[-wrench_size:], (6, -1))
     force = np.average(force, axis=1)
-    net_force = l1l2(self, force, weights=[0.35, 0.35, 0.35, 0.1, 0.1, 0.1]) #TODO fix hardcoded param
+    net_force = l1l2(self, force, weights=[0.35, 0.35, 0.35, 0.1, 0.1, 0.1])  # TODO fix hardcoded param
     return max_range(net_force, 10, -15) if self.cost_positive else np.interp(net_force, [10, -15], [0, 1])
 
 

@@ -13,7 +13,7 @@ ur3e_gym: #namespace
     agent_control_dt: 0.02
     reset_time: 0.5
     # actions parameters 
-    n_actions: 7
+    n_actions: 4
     action_type: "slicing"
     
     object_name: "target_block_tmp"
@@ -74,10 +74,10 @@ ur3e_gym: #namespace
     target_pose_uncertain: False
     uncertainty_std: [0.001, 0.0]
     random_target_pose: False
-    target_pose: [-0.02, 0.50, 0.1475, -0.00812894,  0.70963372, -0.00882711,  0.70446859]
+    target_pose: [-0.02, 0.50, 0.1825, -0.00812894,  0.70963372, -0.00882711,  0.70446859]
     
     # Reward parameters
-    tgt_pose_indices: [0,1,2,3,4,5]
+    target_dims: [0,1,2,3,4,5]
     
     position_threshold: 0.002
     max_position_threshold: 0.01   # new 0.05
@@ -89,12 +89,15 @@ ur3e_gym: #namespace
     termination_reward_threshold: -300 # new -500
 
     cost:
-        collision: -100.0
-        done: 100
-        step: -1.0  # new -1
+        collision: -500.0
+        done: 500
+        step: -1.0
+        l1: 0.1
+        l2: 2.0
+        alpha: 1.0e-10
     w_dist: 1.0
-    w_force: 0.0
-    w_jerkiness: 2.0
+    w_force: 1.0
+    w_jerkiness: 0.5
     successes_threshold: 20
         
 # Controller parameters

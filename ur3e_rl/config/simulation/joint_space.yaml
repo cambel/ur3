@@ -27,7 +27,7 @@ ur3e_gym: #namespace
     n_actions: 6
     
     # Reward parameters
-    tgt_pose_indices: [0,1,2,3,4,5]
+    target_dims: [0,1,2,3,4,5]
     distance_threshold: 5.0
     reward_type: 'distance'
     cost_positive: True

@@ -235,7 +235,7 @@ class DualUR3eTaskSpaceFTEnv(DualUR3eEnv):
         prefix = "ur3e_gym"
         load_param_vars(self, prefix)
 
-        self.param_use_gazebo = False
+        self.use_gazebo_sim = False
         
         self.ft_topic = rospy.get_param(prefix + "/ft_topic", None)
 

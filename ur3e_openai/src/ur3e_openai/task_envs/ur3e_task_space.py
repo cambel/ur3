@@ -77,7 +77,7 @@ class UR3eTaskSpaceEnv(ur3e_env.UR3eEnv):
         prefix = "ur3e_gym"
         load_param_vars(self, prefix)
 
-        self.param_use_gazebo = False
+        self.use_gazebo_sim = False
 
         self.relative_to_ee = rospy.get_param(prefix + "/relative_to_ee", False)
 
@@ -136,9 +136,9 @@ class UR3eTaskSpaceEnv(ur3e_env.UR3eEnv):
         error *= [1000, 1000, 1000, 1000., 1000., 1000.]
 
         # Extract only positions of interest
-        if self.tgt_pose_indices is not None:
-            error = np.array([error[i] for i in self.tgt_pose_indices])
-            velocity = np.array([velocity[i] for i in self.tgt_pose_indices])
+        if self.target_dims is not None:
+            error = np.array([error[i] for i in self.target_dims])
+            velocity = np.array([velocity[i] for i in self.target_dims])
 
         return error, velocity
 

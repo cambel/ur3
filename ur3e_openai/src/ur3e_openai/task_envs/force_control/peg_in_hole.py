@@ -178,7 +178,7 @@ class UR3ePegInHoleEnv2(UR3eForceControlEnv):
             self.position_threshold_cl = 0.005 + (1-curriculum_level) * self.max_position_threshold
             # set gripper peg
 
-            if self.param_use_gazebo:
+            if self.use_gazebo_sim:
                 old_peg_shape = rospy.get_param("/ur3e_gym/current_peg_shape", "")
                 if self.peg_shape:
                     self.current_peg_shape = self.peg_shape  # multi peg training
@@ -198,7 +198,7 @@ class UR3ePegInHoleEnv2(UR3eForceControlEnv):
             self.scale_range = self.max_scale_range
             self.current_board_workspace = self.board_workspace
             self.position_threshold_cl = self.position_threshold
-            if self.param_use_gazebo:
+            if self.use_gazebo_sim:
                 old_peg_shape = rospy.get_param("/ur3e_gym/current_peg_shape", None)
                 if not old_peg_shape:
                     old_peg_shape = PEG_SHAPES[0]

@@ -26,7 +26,6 @@ import sys
 import rospy
 import numpy as np
 
-from ur_control import spalg, transformations
 from ur3e_openai.control import controller
 
 
@@ -72,14 +71,23 @@ class ComplianceController(controller.Controller):
         if action_type == "parallel":
             # B. selection matrix + pd_gains
             self.set_parallel_parameters(actions)
-        if action_type == "slicing":
+        if action_type == "slicing-1d-4act":
+            # C. slicing
+            self.set_slicing_parameters(actions[:4])
+            # remaining distance scale by attractor strength
+            target_pose[:3] = self.ur3e_arm.end_effector()[:3] + ((target[:3] - self.ur3e_arm.end_effector()[:3]))
+        if action_type == "slicing-1d-7act":
             # C. slicing
             self.set_slicing_parameters(actions[:4])
             # Compute target pose with an attractor or with a "speed" action
             attractor_strength = np.interp(actions[-3:], [-1, 1], [0, 1.0])
             # remaining distance scale by attractor strength
             target_pose[:3] = self.ur3e_arm.end_effector()[:3] + ((target[:3] - self.ur3e_arm.end_effector()[:3]) * attractor_strength)
-            # print(np.round(target_pose[:3], 4), np.round(target_pose[:3]- self.ur3e_arm.end_effector()[:3], 4))
+        if action_type == "slicing-3d":
+            # C. slicing
+            self.set_slicing_parameters(actions[:4])
+            # remaining distance scale by attractor strength
+            target_pose[:3] = self.ur3e_arm.end_effector()[:3] + ((target[:3] - self.ur3e_arm.end_effector()[:3]))
         if action_type == "poking":
             # C. slicing
             self.set_poking_parameters(actions[:4])

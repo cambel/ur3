@@ -139,6 +139,13 @@ def register_environment(task_env, max_episode_steps=10000):
             max_episode_steps=max_episode_steps,
         )
 
+    elif task_env == 'UR3eDisectSlicingEnv-v1':
+        register(
+            id=task_env,
+            entry_point='ur3e_openai.task_envs.force_control.disect_slicing:UR3eSlicingEnv',
+            max_episode_steps=max_episode_steps,
+        )
+
     elif task_env == 'UR3ePokingEnv-v1':
         register(
             id=task_env,

@@ -69,7 +69,7 @@ ur3e_gym: #namespace
     target_pose: [0.1752261, -0.4610272, 0.4615621, -0.0032208, -0.0006339, 0.9999945, 0.0004608]
 
     # Reward parameters
-    tgt_pose_indices: [0,1,2,3,4,5]
+    target_dims: [0,1,2,3,4,5]
     
     position_threshold: 0.0025 # minimum distance to goal
     max_position_threshold: 0.01   # CL parameter

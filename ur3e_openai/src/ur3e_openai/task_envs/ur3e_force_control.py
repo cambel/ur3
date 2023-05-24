@@ -22,8 +22,6 @@
 #
 # Author: Cristian C Beltran-Hernandez
 
-# tf2 workaround for Python3
-import tf
 from ur3e_openai.initialize_logger import initialize_logger
 from ur_gazebo.model import Model
 from ur_gazebo.basic_models import SPHERE
@@ -31,18 +29,16 @@ from ur_gazebo.gazebo_spawner import GazeboModels
 from ur3e_openai.robot_envs.utils import load_param_vars, save_log, randomize_pose, simple_random
 from ur3e_openai.control.admittance_controller import AdmittanceController
 from ur3e_openai.control.compliance_controller import ComplianceController
-from ur3e_openai.control.parallel_controller import ALL, ParallelController
+from ur3e_openai.control.parallel_controller import ParallelController
 from ur3e_openai.robot_envs import ur3e_env
 from gym import spaces
 import ur3e_openai.cost_utils as cost
 from ur_control import conversions, transformations, spalg
 from ur_control.constants import FORCE_TORQUE_EXCEEDED, IK_NOT_FOUND
-from numpy.random import default_rng
 import numpy as np
 import rospy
 import datetime
-import sys
-sys.path[:0] = ['/usr/local/lib/python3.6/dist-packages/']
+import tf
 
 
 class UR3eForceControlEnv(ur3e_env.UR3eEnv):
@@ -96,8 +92,6 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
 
         self.logger = initialize_logger(log_tag="dummy", save_log=False)
 
-        self.trials = 1
-        self.rng = default_rng(self.rand_seed)
         if not self.real_robot:
             self.spawner = GazeboModels('ur3_gazebo')
             self.target_model = Model("target", [0, 0, 0, 0, 0, 0], file_type='string', string_model=SPHERE.format(
@@ -112,10 +106,18 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         prefix = "ur3e_gym"
         load_param_vars(self, prefix)
 
-        self.param_use_gazebo = rospy.get_param(prefix + "/reset_robot", False)
-        self.real_robot = rospy.get_param(prefix + "/real_robot", False)
+        self.use_gazebo_sim = rospy.get_param(prefix +"/use_gazebo_sim", False)
+        self.test_mode = rospy.get_param(prefix + "/test_mode", False)
+        if not self.test_mode:
+            self.curriculum_learning = rospy.get_param(prefix + "/curriculum_learning", False)
+            self.reward_based_on_cl = rospy.get_param(prefix + "/reward_based_on_cl", 0)
+        else:
+            self.curriculum_learning = False
+            self.reward_based_on_cl = False
 
-        self.action_type = rospy.get_param(prefix + "/action_type", ALL)
+        self.real_robot = rospy.get_param(prefix + "/real_robot", False)
+        self.reset_gazebo_robot = rospy.get_param(prefix + "/reset_robot", False)
+        self.action_type = rospy.get_param(prefix + "/action_type", None)
 
         # Observations
         self.ft_hist = rospy.get_param(prefix + "/ft_hist", False)
@@ -123,10 +125,13 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         self.duration_as_obs = rospy.get_param(prefix + "/duration_as_obs", False)
         self.target_duration = rospy.get_param(prefix + "/target_duration", 0)
         self.last_action_as_obs = rospy.get_param(prefix + "/last_action_as_obs", False)
+        self.jerkiness_as_obs = rospy.get_param(prefix + "/jerkiness_as_obs", False)
         self.max_distance = rospy.get_param(
             prefix + "/max_distance", [0.05, 0.05, 0.05, np.deg2rad(45),
                                        np.deg2rad(45),
                                        np.deg2rad(90)])
+        
+        self.target_dims = rospy.get_param(prefix + "/target_dims", [1,1,1,1,1,1])
 
         self.random_initial_pose = rospy.get_param(prefix + "/random_initial_pose", False)
 
@@ -136,10 +141,11 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         self.fixed_uncertainty_error = rospy.get_param(prefix + "/fixed_uncertainty_error", False)
         self.current_target_pose_uncertain_per_step = rospy.get_param(prefix + "/target_pose_uncertain_per_step", False)
         self.current_target_pose = rospy.get_param(prefix + "/target_pose", False)
-        self.rand_seed = rospy.get_param(prefix + "/rand_seed", None)
-        self.rand_interval = rospy.get_param(prefix + "/rand_interval", 5)
+        
+        self.rand_interval = rospy.get_param(prefix + "/rand_interval", 1)
 
-        self.rand_initial_counter = 0
+        self.update_target = rospy.get_param(prefix + "/update_target", True)
+
         self.rand_initial_pose = None
         self.simple_rand_initial_pose = False
         self.rand_target_counter = 0
@@ -150,19 +156,14 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         else:
             self.wrench_hist_size = 1
         self.randomize_desired_force = rospy.get_param(prefix + "/randomize_desired_force", False)
-        self.test_mode = rospy.get_param(prefix + "/test_mode", False)
 
         self.object_centric = rospy.get_param(prefix + "/object_centric", False)
         self.ee_centric = rospy.get_param(prefix + "/ee_centric", True)
         self.object_name = rospy.get_param(prefix + "/object_name", "target_board_tmp")
 
-        self.update_target = rospy.get_param(prefix + "/update_target", True)
-
-        self.curriculum_learning = rospy.get_param(prefix + "/curriculum_learning", False)
         self.cumulative_episode_num = rospy.get_param(prefix + "/cumulative_episode_num", 0)
         self.curriculum_level = rospy.get_param(prefix + "/initial_curriculum_level", 0.1)
         self.curriculum_level_step = rospy.get_param(prefix + "/curriculum_level_step", 0.1)
-        self.reward_based_on_cl = rospy.get_param(prefix + "/reward_based_on_cl", 0)
         self.progressive_cl = rospy.get_param(prefix + "/progressive_cl", False)
         self.two_steps = rospy.get_param(prefix + "/two_steps", False)
         self.normalize_velocity = rospy.get_param(prefix + "/normalize_velocity", False)
@@ -205,51 +206,43 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
             ee_points, ee_velocities, ee_acceleration, ee_jerkiness = self.get_endeffector_relative_position_and_velocity(
                 joint_angles)
 
-        if self.normalize_velocity:
-            ee_velocities /= np.array([0.5, 0.5, 0.5, 1.5707, 1.5707, 1.5707])
-
         # Normalize distance error
         ee_points /= self.max_distance
+        
+        if self.normalize_velocity:
+            ee_velocities /= np.array([0.5, 0.5, 0.5, 0.785398, 0.785398, 0.785398])
+        
+        ee_jerkiness /= 100.0 # normalize, no clipping
 
         ee_points = np.clip(ee_points, -1, 1)
         ee_velocities = np.clip(ee_velocities, -1, 1)
 
-        desired_force_wrt_goal = np.array([])
         target_force = np.zeros(6)
-        if self.target_force_as_obs:
-            desired_force_wrt_goal = -1.0 * \
-                spalg.convert_wrench(self.controller.target_force_torque, self.current_target_pose)
-            target_force += desired_force_wrt_goal
-
-        # velocity of action (mean desired velocity)
-        # duration of action
-        duration = np.array([])
-        if self.duration_as_obs:
-            duration = np.array([self.target_duration])
 
         last_action = np.array([])
         if self.last_action_as_obs:
             last_action = self.last_actions
 
+        jerkiness_obs = np.array([])
+        if self.jerkiness_as_obs:
+            jerkiness_obs = ee_jerkiness
+
         if self.ft_hist:
             force_torque = (self.ur3e_arm.get_ee_wrench_hist(
                 self.wrench_hist_size) - target_force) / self.controller.max_force_torque
+            force_torque = np.array([force_torque[:,i] for i in self.target_dims])
         else:
             force_torque = (self.ur3e_arm.get_ee_wrench() -
                             target_force) / self.controller.max_force_torque
+            force_torque = np.array([force_torque[i] for i in self.target_dims])
+        
 
         obs = np.concatenate([
             ee_points.ravel(),  # [6]
             ee_velocities.ravel(),  # [6]
-            duration.ravel(),  # None or [1]
-            desired_force_wrt_goal.ravel(),  # None or [6]
+            jerkiness_obs.ravel(), # [6]
             last_action.ravel(),  # None or [*]
             force_torque.ravel(),  # [6] or [6]*24
-        ])
-
-        self.info = np.concatenate([
-            ee_acceleration.ravel(),
-            ee_jerkiness.ravel()
         ])
 
         return obs.copy()
@@ -298,6 +291,13 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
             self.previous_pose = np.copy(ee_pos_oc_now)
             self.previous_velocity = np.copy(current_velocity)
             self.previous_acceleration = np.copy(current_acceleration)
+
+            # Extract only directions of interest
+            if self.target_dims is not None:
+                error = np.array([error[i] for i in self.target_dims])
+                current_velocity = np.array([current_velocity[i] for i in self.target_dims])
+                current_acceleration = np.array([current_acceleration[i] for i in self.target_dims])
+                current_jerkiness = np.array([current_jerkiness[i] for i in self.target_dims])
 
             return error, current_velocity, current_acceleration, current_jerkiness
         except Exception as e:
@@ -350,7 +350,6 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         Otherwise, use manually defined initial pose.
         Then move the Robot to its initial pose
         """
-        self.controller.stop()
         if self.random_initial_pose:
             qc = self.init_q
             self.ur3e_arm.set_joint_positions(position=qc,
@@ -372,6 +371,7 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         self.update_scene()
         self.update_target_pose()
         self.ur3e_arm.zero_ft_sensor()
+        self.controller.reset()
         self.controller.start()
 
     def update_target_pose(self):
@@ -414,22 +414,18 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         self.target_model.set_pose(self.current_target_pose)
         self.spawner.update_model_state(self.target_model)
 
-    def _randomize_initial_pose(self, override=False):
-        if self.rand_initial_pose is None or self.rand_initial_counter >= self.rand_interval or override:
-            if self.simple_rand_initial_pose:
-                rand_step = simple_random(self.workspace, self.rng)
-                self.rand_initial_pose = transformations.transform_pose(
-                    self.ur3e_arm.end_effector(self.init_q), rand_step)
-            else:
-                self.rand_initial_pose = randomize_pose(self.ur3e_arm.end_effector(
-                    self.init_q), self.workspace, self.reset_time, rng=self.rng)
-            self.rand_initial_counter = 0
-        self.rand_initial_counter += 1
+    def _randomize_initial_pose(self):
+        if self.simple_rand_initial_pose:
+            rand_step = simple_random(self.workspace, self.np_random)
+            self.rand_initial_pose = transformations.transform_pose(self.ur3e_arm.end_effector(self.init_q), rand_step)
+        else:
+            self.rand_initial_pose = randomize_pose(self.ur3e_arm.end_effector(self.init_q),
+                                                    self.workspace, self.reset_time, rng=self.np_random)
 
     def _randomize_target_pose(self):
         if self.rand_target_pose is None or self.rand_target_counter >= self.rand_interval:
             self.rand_target_pose = randomize_pose(
-                self.target_pose, self.workspace, self.reset_time)
+                self.target_pose, self.workspace, self.reset_time, self.np_random)
             self.rand_target_counter = 0
         self.rand_target_counter += 1
         return self.rand_target_pose
@@ -440,33 +436,36 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
                 self.obs_logfile = rospy.get_param("ur3e_gym/output_dir") + "/state_" + \
                     datetime.datetime.now().strftime('%Y%m%dT%H%M%S') + '.npy'
                 print("obs_logfile", self.obs_logfile)
-                self.logger = initialize_logger(filename=rospy.get_param("ur3e_gym/output_dir") + "/console.log")
+                if self.test_mode:
+                    self.logger = initialize_logger(filename=rospy.get_param("ur3e_gym/output_dir") + "/test_console.log", log_tag="ur3e_openai_test")
+                else:
+                    self.logger = initialize_logger(filename=rospy.get_param("ur3e_gym/output_dir") + "/console.log")
             except Exception:
                 return
 
         if len(self.obs_per_step) == 0:
             return
 
-        data = []
-        # if self.test_mode:
-        #     data.append(self.obs_per_step)
-        # else:
-        #     data.append([])
-        data.append([])
-        data.append(self.reward_per_step)
-        data.append(self.reward_details_per_step)
+        # data = []
+        # # if self.test_mode:
+        # #     data.append(self.obs_per_step)
+        # # else:
+        # #     data.append([])
+        # data.append([])
+        # data.append(self.reward_per_step)
+        # data.append(self.reward_details_per_step)
 
-        try:
-            tmp = np.load(self.obs_logfile, allow_pickle=True).tolist()
-            tmp.append(data)
-            np.save(self.obs_logfile, tmp)
-            tmp = None
-        except IOError:
-            np.save(self.obs_logfile, [data], allow_pickle=True)
+        # try:
+        #     tmp = np.load(self.obs_logfile, allow_pickle=True).tolist()
+        #     tmp.append(data)
+        #     np.save(self.obs_logfile, tmp)
+        #     tmp = None
+        # except IOError:
+        #     np.save(self.obs_logfile, [data], allow_pickle=True)
 
-        self.reward_per_step = []
-        self.obs_per_step = []
-        self.reward_details_per_step = []
+        # self.reward_per_step = []
+        # self.obs_per_step = []
+        # self.reward_details_per_step = []
 
     def _compute_reward(self, observations, done):
         """
@@ -491,7 +490,8 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         #         observations.ravel(),
         #         [self.action_result]
         #     ])
-        self.obs_per_step.append([state])
+        # self.obs_per_step.append([state])
+        self.obs_per_step = []
 
         reward = 0
         reward_details = []
@@ -502,6 +502,8 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
             reward_details = [r_sparse, r_collision]
         elif self.reward_type == 'slicing':  # position - target force
             reward, reward_details = cost.slicing(self, observations, done)
+        elif self.reward_type == 'peg-in-hole':  # position - target force
+            reward, reward_details = cost.peg_in_hole(self, observations, done)
         elif self.reward_type == 'dense-pft':  # position - target force
             reward, reward_details = cost.dense_pft(self, observations, done)
         # elif self.reward_type == 'dense-pvfr': # position & velocity - target force
@@ -519,7 +521,7 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         else:
             raise AssertionError("Unknown reward function", self.reward_type)
 
-        if self.reward_based_on_cl and self.action_result != FORCE_TORQUE_EXCEEDED:
+        if self.reward_based_on_cl:
             reward *= self.difficulty_ratio
         self.reward_per_step.append(reward)
         self.reward_details_per_step.append(reward_details)
@@ -534,10 +536,15 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
 
         if self.termination_on_negative_reward and self.cumulated_episode_reward <= self.termination_reward_threshold:
             rospy.loginfo("Fail: %s" % (pose_error))
+            self.controller.stop()
             return True
 
-        return (position_reached and orientation_reached) \
-            or self.action_result == FORCE_TORQUE_EXCEEDED  # Stop on collision
+        done = (position_reached and orientation_reached) \
+            or self.action_result == FORCE_TORQUE_EXCEEDED
+
+        if done:
+            self.controller.stop()
+        return done  # Stop on collision
 
     def _init_env_variables(self):
         self._log()

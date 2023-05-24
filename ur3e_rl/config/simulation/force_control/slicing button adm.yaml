@@ -76,7 +76,7 @@ ur3e_gym: #namespace
     target_pose: [-0.02025, 0.51132, 0.19749, -0.00455, 0.70882, -0.00528, 0.70535]
     
     # Reward parameters
-    tgt_pose_indices: [0,1,2,3,4,5]
+    target_dims: [0,1,2,3,4,5]
     
     position_threshold: 0.005
     max_position_threshold: 0.01   # new 0.05

@@ -58,7 +58,7 @@ class UR3eEnv(robot_env.RobotGazeboEnv):
                                       controllers_on=self.controllers_on,
                                       robot_name_space=self.robot_namespace,
                                       reset_controls=reset_controls_bool,
-                                      use_gazebo=self.param_use_gazebo,
+                                      use_gazebo=self.use_gazebo_sim,
                                       start_init_physics_parameters=False,
                                       reset_world_or_sim=reset_method,
                                       seed=self.rand_seed)

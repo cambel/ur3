@@ -133,6 +133,12 @@ if __name__ == '__main__':
     episode_lenght = rospy.get_param("ur3e_gym/steps_per_episode", 100)
     env = load_environment(rospy.get_param("ur3e_gym/env_id"),
                            max_episode_steps=episode_lenght)
+    
+    seed = rospy.get_param("ur3e_gym/rand_seed", 0)
+    env.action_space.seed(seed)
+    env.observation_space.seed(seed)
+    env.seed(seed)
+
     episodes = args.repetitions
     agent = Agent(env.n_actions, args.action_type)
     obs = None
@@ -140,25 +146,50 @@ if __name__ == '__main__':
     steps = 0
     i = 0
     env.reset()
-    start_time = timeit.default_timer()
+    start_time = rospy.get_time()
     # moving agent
     print('>>>> START Moving <<<<')
+    program_start_time = timeit.default_timer()
+    time_per_episode = 0.0
+    # force_profile = []
+    cumulative_reward = 0 
     while i < episodes:
         if steps >= episode_lenght or done:
-            print('>>>> Reset episode. # of steps', steps)
-            end_time = timeit.default_timer()
-            print('>>>> Actual Time', end_time-start_time, "expected time", steps*env.agent_control_dt)
+            print('>>>> End of episode', i+1, '# of steps', steps)
+            end_time = rospy.get_time()
+            print('>>>> Actual Time', round(end_time-start_time, 4),
+                  "expected time", round(steps*env.agent_control_dt, 4),
+                  "avg time x step", round(time_per_episode/steps, 4))
+
+            print("Reward x episode", round(cumulative_reward, 3))
+            # fp = np.array(force_profile)
+            # print("Net force", round(np.sum(np.linalg.norm(fp, axis=1)), 3))
+            ### Reset ###
+            # force_profile = []
             done = False
             steps = 0
+            time_per_episode = 0.0
+            cumulative_reward = 0 
             i += 1
+            if i >= episodes:
+                break
             st = rospy.get_time()
             env.reset()
             # print("reset time", rospy.get_time()-st)
-            start_time = timeit.default_timer()
-        action = agent.act(obs)
+            start_time = rospy.get_time()
+        action = agent.act(env)
         st = rospy.get_time()
+        wall_st = timeit.default_timer()
         obs, reward, done, info = env.step(action)
-        print("act time", rospy.get_time()-st)
+
+        ## Force analysis ##
+        # force = np.reshape(obs[-(6*6):], (6, -1))
+        # force = np.average(force, axis=1)
+        # force_profile.append(obs)
+        ## Reward analysis ##
+        cumulative_reward += reward
+        # print("act time", round(rospy.get_time()-st, 3), "wall", round(timeit.default_timer()-wall_st, 3))
+        time_per_episode += rospy.get_time()-st
         steps += 1
 
-    # env.reset()
+    print("Wall time:", round(timeit.default_timer()-program_start_time, 3)) 

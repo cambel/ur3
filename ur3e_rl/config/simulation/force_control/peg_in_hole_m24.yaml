@@ -74,7 +74,7 @@ ur3e_gym: #namespace
     target_pose: [0.27776, -0.44213, 0.34415, -0.02157, -0.03467, 0.77988, 0.6246]
     
     # Reward parameters
-    tgt_pose_indices: [0,1,2,3,4,5]
+    target_dims: [0,1,2,3,4,5]
     
     cumulative_episode_num: 0
 

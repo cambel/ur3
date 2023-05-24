@@ -46,7 +46,7 @@ ur3e_gym: #namespace
     n_actions: 14 # 6 positions force + 2 kp parameters + 2 alphas
     
     # Reward parameters
-    tgt_pose_indices: [0,1,2,3,4,5]
+    target_dims: [0,1,2,3,4,5]
     midpoint_dist_threshold: 8.0
     distance_threshold: 1.0
     reward_type: 'force'

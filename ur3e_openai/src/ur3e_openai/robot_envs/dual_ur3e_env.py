@@ -55,7 +55,7 @@ class DualUR3eEnv(robot_env.RobotGazeboEnv):
         super(DualUR3eEnv, self).__init__(controllers_list=self.controllers_list,
                                         robot_name_space=self.robot_name_space,
                                         reset_controls=reset_controls_bool,
-                                        use_gazebo=self.param_use_gazebo,
+                                        use_gazebo=self.use_gazebo_sim,
                                         start_init_physics_parameters=False,
                                         reset_world_or_sim="WORLD")
         self.robot_connection.unpause()

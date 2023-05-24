@@ -8,14 +8,12 @@ import numpy as np
 from ur3e_openai.robot_envs.utils import get_board_color
 from ur3e_openai.task_envs.ur3e_force_control import UR3eForceControlEnv
 from ur_control import spalg, transformations
-from ur_control.constants import FORCE_TORQUE_EXCEEDED, IK_NOT_FOUND
-from ur_gazebo.basic_models import get_box_model, get_button_model, get_cucumber_model
+from ur_control.constants import FORCE_TORQUE_EXCEEDED
+from ur_gazebo.basic_models import get_button_model
 from ur_gazebo.model import Model
-from o2ac_msgs.srv import resetDisect
-from std_srvs.srv import Trigger
 
 import threading
-import timeit
+
 
 def get_cl_range(range, curriculum_level):
     return [range[0], range[0] + (range[1] - range[0]) * curriculum_level]
@@ -29,15 +27,10 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         self.__load_env_params()
 
         if not self.real_robot:
-            # string_model = get_box_model("cube", self.object_size, color=[0, 1, 0, 0],
-            #                              mass=self.object_mass, mu=self.object_friction, kp=self.object_stiffness)
-            # string_model = get_cucumber_model(kp=self.object_stiffness, soft_cfm=self.object_soft_cfm, soft_erp=self.object_soft_erp)
             string_model = get_button_model(spring_stiffness=self.object_stiffness, damping=self.object_damping, friction=self.object_friction,
                                             base_mass=1., button_mass=0.1, color=[1, 0, 0, 0], kp=self.object_kp, kd=self.object_kd, max_vel=100.0)
             self.box_model = Model("block", self.object_initial_pose, file_type="string",
                                    string_model=string_model, model_id="target_block", reference_frame="o2ac_ground")
-            self.reset_service = rospy.ServiceProxy('reset_simulation', resetDisect) 
-            self.desync_service = rospy.ServiceProxy('desync_simulation', Trigger)
 
     def __load_env_params(self):
         prefix = "ur3e_gym"
@@ -85,11 +78,8 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         # Update target pose if needed
         self.update_target_pose()
 
+        # For real robot, do nothing for reset, reset somewhere else
         if rospy.get_param("ur3e_gym/update_initial_conditions", True):
-            # Move away
-            # reset_time = 0.5 if not self.real_robot else 5.0
-            # self.ur3e_arm.move_relative([0, 0, 0.03, 0, 0, 0], duration=reset_time, relative_to_tcp=False)
-
             def reset_pose():
                 # Go to initial pose
                 initial_pose = transformations.transform_pose(self.current_target_pose, [-0.05, 0, 0.035, 0, 0, 0], rotated_frame=False)
@@ -104,28 +94,26 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
             t2.start()
             t1.join()
             t2.join()
-            # self.update_scene()
 
         self.ur3e_arm.zero_ft_sensor()
         self.controller.start()
 
     def update_scene(self):
-        self.start = timeit.default_timer()
         if self.real_robot:
             return
 
         self.stage = 0
-        block_pose = self.object_initial_pose  # self.randomize_block_position()
+        block_pose = self.object_initial_pose
         if self.randomize_object_properties:
             # Randomization type:
             # Uniform within the curriculum level's range
             if not self.curriculum_learning or self.random_type == "uniform":
-                randomize_value = self.rng.uniform(low=0.0, high=1.0, size=4)
+                randomize_value = self.np_random.uniform(low=0.0, high=1.0, size=4)
             # Normal within the curriculum level's range
             elif "normal" in self.random_type:
                 mean = self.curriculum_level
-                variance = 0.3
-                randomize_value = self.rng.normal(loc=mean, scale=variance, size=4)
+                variance = 0.15
+                randomize_value = self.np_random.normal(loc=mean, scale=variance, size=4)
                 randomize_value = np.clip(randomize_value, 0.0, 1.0)
                 # Normal within the max range
                 if self.random_type == "normal-full":
@@ -147,29 +135,12 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
                                             base_mass=1., button_mass=0.1, color=color, kp=kp, kd=kd, max_vel=100.0)
             self.box_model = Model("block", block_pose, file_type="string",
                                    string_model=string_model, model_id="target_block")
-            # self.spawner.reset_model(self.box_model)
+            self.spawner.reset_model(self.box_model)
         else:
             self.box_model.set_pose(block_pose)
-            # self.spawner.update_model_state(self.box_model)
+            self.spawner.update_model_state(self.box_model)
 
         self.current_board_pose = transformations.pose_euler_to_quat(block_pose)
-        # Handling the desync message
-        self.desync_service()
-        # Handling the reset message
-        reset_mode = "random"
-        config_file_path = "abc"
-        viz = False
-        self.reset_service(reset_mode, config_file_path, viz)
-
-
-    def randomize_block_position(self):
-        rand = self.rng.random(size=6)
-        rand = np.array([np.interp(rand[i], [0, 1.], self.object_workspace[i]) for i in range(6)])
-        rand[3:] = np.deg2rad(rand[3:])
-        self.x = rand
-        pose = np.copy(self.object_initial_pose)
-        pose[:2] += rand[:2]  # only x and y
-        return pose
 
     def set_environment_conditions(self):
         if self.curriculum_learning:
@@ -219,53 +190,55 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
             self.position_threshold_cl = self.position_threshold
 
     def _is_done(self, observations):
-        # Check for excessive contact force
-        if self.action_result == FORCE_TORQUE_EXCEEDED:
-            self.logger.error("Collision! Aborting")
-
-            self.controller.stop()
-            return True
-
         pose_error = np.abs(observations[:6]*self.max_distance)
 
-        if self.termination_on_negative_reward:
-            if self.cumulated_episode_reward <= self.termination_reward_threshold:
-                rospy.loginfo("Fail on reward: %s" % np.round(pose_error[:3], 4))
-                self.success_end = False
-                self.controller.stop()
-                return True
+        collision = self.action_result == FORCE_TORQUE_EXCEEDED
+        self.goal_reached = np.all(pose_error[:3] < self.position_threshold_cl) and np.all(pose_error[3:] < self.orientation_threshold)
+        fail_on_reward = self.termination_on_negative_reward
+        out_of_workspace = np.any(pose_error[:3] > [0.05,0.05,0.1]) or np.any(pose_error[3:] > np.deg2rad(10.))
 
-        # Check how close we are to the target pose (Only y and z, x could be anywhere and its fine)
-        position_reached = np.all(pose_error[1:3] < self.position_threshold_cl)
-
+        if out_of_workspace:
+            self.logger.error("Out of workspace, failed: %s" % np.round(pose_error, 4))
+        
         # If the end effector remains on the target pose for several steps. Then terminate the episode
-        if position_reached:
+        if self.goal_reached:
             self.success_counter += 1
         else:
             self.success_counter = 0
 
-        # After 0.1 seconds, terminate the episode
-        # if self.success_counter > (0.05 / self.agent_control_dt):
-        if self.success_counter > self.successes_threshold:
-            self.logger.info("goal reached: %s" % np.round(pose_error[:3], 4))
-            self.success_end = True
+        # Relaxed goal reached
+        if self.step_count == self.steps_per_episode-2:
+            self.goal_reached = np.all(pose_error[:3] < 0.01) and np.all(pose_error[3:] < self.orientation_threshold)
+
+        if self.step_count == self.steps_per_episode-1:
+            self.logger.error("Max steps x episode reached, failed: %s" % np.round(pose_error, 4))
+
+        if collision:
+            self.logger.error("Collision!")
+
+        elif fail_on_reward:
+            if self.reward_based_on_cl:
+                if self.cumulated_episode_reward <= self.termination_reward_threshold*self.difficulty_ratio:
+                    rospy.loginfo("Fail on reward: %s" % (pose_error))
+            if self.cumulated_episode_reward <= self.termination_reward_threshold:
+                rospy.loginfo("Fail on reward: %s" % (pose_error))
+
+        elif self.goal_reached and self.success_counter > self.successes_threshold:
+            self.controller.stop()
+            self.logger.green("goal reached: %s" % np.round(pose_error[:3], 4))
+            if not self.done_once:
+                self.success_end = True
             if self.real_robot:
                 xc = transformations.transform_pose(self.ur3e_arm.end_effector(), [0, 0, 0.013, 0, 0, 0], rotated_frame=True)
                 reset_time = 5.0
                 self.ur3e_arm.set_target_pose(pose=xc, t=reset_time, wait=True)
 
+        done = self.goal_reached or collision or fail_on_reward or out_of_workspace
+
+        if self.goal_reached:
             self.controller.stop()
-            print("time after pause", timeit.default_timer()-self.start)
-            return True
 
-        # Check whether we took every available step for this episode
-        if self.step_count == self.steps_per_episode-1:
-            self.logger.error("Fail!: %s" % np.round(pose_error[:3], 4))
-
-            self.controller.stop()
-            return True
-
-        return False
+        return done
 
     def _get_info(self):
         if self.action_result == FORCE_TORQUE_EXCEEDED:

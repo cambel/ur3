@@ -45,7 +45,7 @@ ur3e_gym: #namespace
     action_type: "adm-guided" # "adm"
     
     # Reward parameters
-    tgt_pose_indices: [0,1,2,3,4,5]
+    target_dims: [0,1,2,3,4,5]
     
     position_threshold: 0.01
     orientation_threshold: 0.1
