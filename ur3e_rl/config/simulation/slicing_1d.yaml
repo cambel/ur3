@@ -29,18 +29,7 @@ ur3e_gym: #namespace
     last_action_as_obs: True
     normalize_velocity: True
 
-    rand_seed: 123 #3215   
-    rand_interval: 1
-
-    # Curriculum parameters
-    initial_curriculum_level: 0.05
-    curriculum_level_step: 0.05
-    cl_upgrade_level: 0.9
-    cl_downgrade_level: 0.2
-    cumulative_episode_num: 0 # for linear curriculum
-    curriculum_learning: False
-    progressive_cl: False
-    reward_based_on_cl: False
+    rand_seed: 123456
 
     # Domain Randomization Parameters
     object_friction: 1
@@ -69,8 +58,9 @@ ur3e_gym: #namespace
     workspace: [[0,0], [0, 0], [0.0, 0.02], [0, -0], [0, -0], [0, -0]]
     # init_q: [1.3494, -1.5217, 1.8083, -1.8459, -1.564, 1.3481] # real slice 
     init_q: [1.3524, -1.5555, 1.7697, -1.7785, -1.5644, 1.3493] # sim button
-    
 
+    reset_motion: [-0.05, 0, 0.035, 0, 0, 0]
+    
     target_duration: 6
     target_pose_uncertain: False
     uncertainty_std: [0.001, 0.0]

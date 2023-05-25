@@ -55,6 +55,8 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
 
         self.update_target = rospy.get_param(prefix + "/update_target", False)
 
+        self.reset_motion = rospy.get_param(prefix + "/reset_motion", [-0.05, 0, 0.035, 0, 0, 0])
+
         # How often to generate a new model, number of episodes
         self.refresh_rate = rospy.get_param(prefix + "/refresh_rate", False)
         self.normal_randomization = rospy.get_param(prefix + "/normal_randomization", True)
@@ -77,7 +79,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         if rospy.get_param("ur3e_gym/update_initial_conditions", True):
             def reset_pose():
                 # Go to initial pose
-                initial_pose = transformations.transform_pose(self.current_target_pose, [-0.05, 0, 0.035, 0, 0, 0], rotated_frame=False)
+                initial_pose = transformations.transform_pose(self.current_target_pose, self.reset_motion, rotated_frame=False)
                 self.ur3e_arm.set_target_pose(pose=initial_pose, wait=True, t=self.reset_time)
 
             t1 = threading.Thread(target=reset_pose)
@@ -88,6 +90,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
             t2.join()
 
         self.ur3e_arm.zero_ft_sensor()
+        self.controller.reset()
         self.controller.start()
 
     def update_scene(self):
@@ -120,7 +123,6 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
 
     def _is_done(self, observations):
         pose_error = np.abs(observations[:len(self.target_dims)]*self.max_distance)
-        print(pose_error)
 
         collision = self.action_result == FORCE_TORQUE_EXCEEDED
         self.goal_reached = np.all(pose_error < self.goal_threshold)
