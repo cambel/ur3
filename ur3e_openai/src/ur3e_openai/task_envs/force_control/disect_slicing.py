@@ -52,7 +52,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         self.success_counter = 0
 
         # Update target pose if needed
-        self.update_target_pose()
+        self.current_target_pose = rospy.get_param("ur3e_gym/target_pose", False)
 
         def reset_pose():
             # Go to initial pose
