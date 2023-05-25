@@ -10,26 +10,26 @@ ur3e_gym: #namespace
 
     relative_to_ee: False
     robot_control_dt: 0.002
-    agent_control_dt: 0.05
-    reset_time: 2.0
+    agent_control_dt: 0.02
+    reset_time: 0.5
     # actions parameters 
-    n_actions: 12
-    action_type: "admittance"
+    n_actions: 2
+    action_type: "slicing-1d-2act"
     
     object_name: "target_block_tmp"
     object_centric: False
     ee_centric: False
 
-    steps_per_episode: 300
+    steps_per_episode: 500
     
     actor_class: "wave"
     ft_hist: True
-    wrench_hist_size: 6
+    wrench_hist_size: 3
     duration_as_obs: False
     last_action_as_obs: True
     normalize_velocity: True
 
-    rand_seed: 3215   
+    rand_seed: 123 #3215   
     rand_interval: 1
 
     # Curriculum parameters
@@ -44,27 +44,29 @@ ur3e_gym: #namespace
 
     # Domain Randomization Parameters
     object_friction: 1
-    object_stiffness: 400
-    max_stiffness_range: [200, 500]
+    object_stiffness: 600
+    max_stiffness_range: [500, 1200]
     max_damping_range: [0, 1]
-    max_kp_range: [4.0e+5, 1.0e+6]
+    max_kp_range: [1.0e+5, 5.0e+5]
     max_kd_range: [1, 2]
+    max_friction_range: [0, 2]
 
     ## Target object configuration
     randomize_object_properties: True
     normal_randomization: True
     basic_randomization: False
     # object_initial_pose: [-0.12, 0.0, 0.88, 1.5707, -1.5707, 3.1415] # cucumber
-    object_initial_pose: [-0.12, 0.03, 0.89, 0, 0, 1.5707] # button
+    object_initial_pose: [-0.12, 0.03, 0.875, 0, 0, 1.5707] # button
     object_workspace: [[-0.05, 0.05], [-0.05, 0.05], [0.08, 0.02], [-20, 20], [-20, 20], [-60, 60]]
     max_object_workspace: [0.08, 0.08, 0.08, 20, 20, 60]
     min_object_workspace: [0.02, 0.02, 0.02, 5, 5, 10]
 
     # initial conditions
-    random_initial_pose: False
+    random_initial_pose: True
     # for each dimension define upper and lower bound from initial pose
     max_distance: [0.1, 0.1, 0.1, 0.785398, 0.785398, 1.5707]
-    workspace: [[-0.1,0.1], [-0.1, 0.1], [0.0, 0.05], [20, -20], [20, -20], [20, -20]]
+    workspace_limit: [0.1]
+    workspace: [[0,0], [0, 0], [0.0, 0.02], [0, -0], [0, -0], [0, -0]]
     # init_q: [1.3494, -1.5217, 1.8083, -1.8459, -1.564, 1.3481] # real slice 
     init_q: [1.3524, -1.5555, 1.7697, -1.7785, -1.5644, 1.3493] # sim button
     
@@ -73,28 +75,31 @@ ur3e_gym: #namespace
     target_pose_uncertain: False
     uncertainty_std: [0.001, 0.0]
     random_target_pose: False
-    target_pose: [-0.02025, 0.51132, 0.19749, -0.00455, 0.70882, -0.00528, 0.70535]
+    target_pose: [-0.02, 0.50, 0.1825, -0.00812894,  0.70963372, -0.00882711,  0.70446859]
     
     # Reward parameters
-    target_dims: [0,1,2,3,4,5]
+    target_dims: [2]
     
-    position_threshold: 0.005
-    max_position_threshold: 0.01   # new 0.05
-    orientation_threshold: 0.0349066
-    max_orientation_threshold: 0.07
-
-    reward_type: 'dense-distance-velocity-force'
-    termination_on_negative_reward: True
-    termination_reward_threshold: -500 # new -500
+    goal_threshold: [0.002]
+    
+    reward_type: 'slicing'
+    termination_on_negative_reward: False
+    termination_reward_threshold: -300 # new -500
 
     cost:
         collision: -500.0
-        done: 200
-        step: -1.0  # new -1
+        done: 500
+        step: -1.0
+        l1: 0.1
+        l2: 2.0
+        alpha: 1.0e-10
     w_dist: 1.0
     w_force: 1.0
+    w_jerkiness: 0.5
+    successes_threshold: 20
         
 # Controller parameters
 ur3e_force_control:
-    max_force_torque: [30, 30.0, 30.0, 3, 3, 3]
-    desired_force_torque: [0.0, 0.0, -10.0, 0.0, 0.0, 0.0]
+    max_twist: [0.001, 0.001, 0.001, 0.001, 0.001, 0.001]
+    max_force_torque: [50, 50.0, 50.0, 5, 5, 5]
+    desired_force_torque: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]

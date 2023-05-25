@@ -77,47 +77,9 @@ if __name__ == '__main__':
     param_file = None
 
     if args.env_id == 0:
-        param_file = "simulation/task_space.yaml"
+        param_file = "simulation/slicing_1d.yaml"
     elif args.env_id == 1:
-        param_file = "simulation/peg_in_hole.yaml"
-    elif args.env_id == 2:
-        param_file = "simulation/task_space_parallel.yaml"
-    elif args.env_id == 3:
-        param_file = "simulation/parallel_midpoints.yaml"
-    elif args.env_id == 4:
-        param_file = "simulation/conical_helix.yaml"
-    elif args.env_id == 5:
-        param_file = "simulation/joint_space.yaml"
-    elif args.env_id == 6:
-        param_file = "simulation/dual_task_pipe_coating_3d.yaml"
-    elif args.env_id == 7:
-        param_file = "simulation/dual_task_space_parallel.yaml"
-    elif args.env_id == 8:
-        param_file = "simulation/force_control_parallel.yaml"
-    elif args.env_id == 9:
-        param_file = "simulation/force_control/push_button.yaml"
-    elif args.env_id == 10:
-        param_file = "simulation/force_control/push_block.yaml"
-    elif args.env_id == 11:
-        param_file = "simulation/force_control/peg_in_hole.yaml"
-    elif args.env_id == 12:
-        param_file = "simulation/force_control/peg_in_hole_parallel.yaml"
-    elif args.env_id == 13:
-        param_file = "simulation/force_control/peg_in_hole_parallel_all.yaml"
-    elif args.env_id == 14:
-        param_file = "simulation/force_control/peg_in_hole_m_all.yaml"
-    elif args.env_id == 15:
-        param_file = "simulation/force_control/peg_in_hole_mg12.yaml"
-    elif args.env_id == 16:
-        param_file = "simulation/force_control/peg_in_hole_m24.yaml"
-    elif args.env_id == 17:
-        param_file = "simulation/force_control/peg_in_hole_cartesian.yaml"
-    elif args.env_id == 18:
-        param_file = "simulation/force_control/peg_in_hole_public.yaml"
-    elif args.env_id == 19:
-        param_file = "simulation/force_control/slicing.yaml"
-    elif args.env_id == 20:
-        param_file = "real/poking.yaml"
+        param_file = "simulation/slicing_3d.yaml"
     else:
         raise Exception("invalid env_id")
 

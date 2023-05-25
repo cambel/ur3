@@ -4,24 +4,12 @@ project(ur3e_openai)
 find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
-  message_generation
 )
 
 catkin_python_setup()
 
-add_message_files(
-   FILES
-   RLExperimentInfo.msg
- )
-
-## Generate added messages and services with any dependencies listed here
-generate_messages(
-   DEPENDENCIES
-   std_msgs
- )
-
 catkin_package(
-  DEPENDS message_runtime rospy std_msgs
+  DEPENDS rospy std_msgs
 )
 
 ###########

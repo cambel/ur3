@@ -68,33 +68,33 @@ class ComplianceController(controller.Controller):
         if action_type == "admittance":
             # A. stiffness + pd_gains
             self.set_admittance_parameters(actions)
-        if action_type == "parallel":
+        elif action_type == "parallel":
             # B. selection matrix + pd_gains
             self.set_parallel_parameters(actions)
-        if action_type == "slicing-1d-4act":
+        elif action_type == "slicing-1d-2act":
+            # C. slicing
+            self.set_slicing_1d_parameters(actions[:2])
+            # remaining distance scale by attractor strength
+            target_pose[:3] = self.ur3e_arm.end_effector()[:3] + ((target[:3] - self.ur3e_arm.end_effector()[:3]))
+        elif action_type == "slicing-1d-4act":
             # C. slicing
             self.set_slicing_parameters(actions[:4])
             # remaining distance scale by attractor strength
             target_pose[:3] = self.ur3e_arm.end_effector()[:3] + ((target[:3] - self.ur3e_arm.end_effector()[:3]))
-        if action_type == "slicing-1d-7act":
+        elif action_type == "slicing-1d-7act":
             # C. slicing
             self.set_slicing_parameters(actions[:4])
             # Compute target pose with an attractor or with a "speed" action
             attractor_strength = np.interp(actions[-3:], [-1, 1], [0, 1.0])
             # remaining distance scale by attractor strength
             target_pose[:3] = self.ur3e_arm.end_effector()[:3] + ((target[:3] - self.ur3e_arm.end_effector()[:3]) * attractor_strength)
-        if action_type == "slicing-3d":
+        elif action_type == "slicing-3d":
             # C. slicing
             self.set_slicing_parameters(actions[:4])
             # remaining distance scale by attractor strength
             target_pose[:3] = self.ur3e_arm.end_effector()[:3] + ((target[:3] - self.ur3e_arm.end_effector()[:3]))
-        if action_type == "poking":
-            # C. slicing
-            self.set_poking_parameters(actions[:4])
-            # Compute target pose with an attractor or with a "speed" action
-            attractor_strength = np.interp(actions[-3:], [-1, 1], [0, 1.0])
-            # remaining distance scale by attractor strength
-            target_pose[:3] = self.ur3e_arm.end_effector()[:3] + ((target[:3] - self.ur3e_arm.end_effector()[:3]) * attractor_strength)
+        else:
+            raise ValueError("Invalid action_type %s" % action_type)
 
         ## go to a defined target pose ###
         return self.ur3e_arm.execute_compliance_control(trajectory=target_pose,
@@ -129,7 +129,30 @@ class ComplianceController(controller.Controller):
         self.ur3e_arm.update_pd_gains(p_gains_act)
         self.ur3e_arm.set_control_mode("spring-mass-damper")
 
-    def set_slicing_parameters(self, actions):
+    def set_slicing_1d_parameters(self, actions):
+        """ 
+            Approach:
+            force/torque control of z-axis and rotation about x-axis
+            position control for remaining directions
+
+            Target position will be given.
+
+            Goal: optimize force control for speed and minimizing contact force
+        """
+        # w.r.t end effector link
+        stiff_x = np.interp(actions[0], [0, 1], [500, 5000])
+        stiff_act = np.array([stiff_x, 1000, 1000, 40, 40, 40], dtype=int)
+
+        # w.r.t base link
+        p_gains_z = np.interp(actions[1], [0, 1], [0.02, 0.05])
+        p_gains_act = np.array([0.1, 0.1, round(p_gains_z, 3), 1.0, 1.0, 1.0])
+
+        self.ur3e_arm.update_selection_matrix(np.array([1, 1, 0.5, 1, 0.5, 1]))
+        self.ur3e_arm.update_stiffness(stiff_act*2)
+        self.ur3e_arm.update_pd_gains(p_gains_act*2)
+        self.ur3e_arm.set_control_mode("parallel")
+
+    def set_slicing_3d_parameters(self, actions):
         """ 
             Approach:
             force/torque control of z-axis and rotation about x-axis
@@ -142,37 +165,6 @@ class ComplianceController(controller.Controller):
         # w.r.t end effector link
         stiff_x = np.interp(actions[0], [0, 1], [500, 5000])
         stiff_ay = np.interp(actions[1], [0, 1], [20, 100])
-        stiff_act = np.array([stiff_x, 1000, 1000, 40, stiff_ay, 40], dtype=int)
-        # stiff_act = np.array([500, 500, 500, 20, 20, 20 ])
-
-        # w.r.t base link
-        p_gains_z = np.interp(actions[2], [0, 1], [0.01, 0.05])
-        p_gains_ay = np.interp(actions[3], [0, 1], [0.1, 1.5])
-        p_gains_act = np.array([0.1, 0.1, round(p_gains_z, 3), 1.0, round(p_gains_ay, 2), 1.0])
-        # p_gains_act = np.array([0.01, 0.01, 0.01, 1.5, 1.5, 1.5])
-
-        self.ur3e_arm.update_selection_matrix(np.array([1, 1, 0.5, 1, 0.5, 1]))
-        self.ur3e_arm.update_stiffness(stiff_act*2)
-        self.ur3e_arm.update_pd_gains(p_gains_act*2)
-        self.ur3e_arm.set_control_mode("parallel")
-
-        # self.ur3e_arm.update_pd_gains(p_gains_act)
-        # self.ur3e_arm.update_stiffness(stiff_act)
-        # self.ur3e_arm.set_control_mode("spring-mass-damper")
-
-    def set_poking_parameters(self, actions):
-        """ 
-            Approach:
-            force/torque control of z-axis and rotation about x-axis
-            position control for remaining directions
-
-            Target position will be given.
-
-            Goal: optimize force control for speed and minimizing contact force
-        """
-        # w.r.t end effector link
-        stiff_x = np.interp(actions[0], [0, 1], [500, 2000])
-        stiff_ay = np.interp(actions[1], [0, 1], [20, 40])
         stiff_act = np.array([stiff_x, 1000, 1000, 40, stiff_ay, 40], dtype=int)
         # stiff_act = np.array([500, 500, 500, 20, 20, 20 ])
 
