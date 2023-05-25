@@ -64,7 +64,7 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         rospy.sleep(1)
 
         self._init_controller()
-        self.previous_joints = None
+        self.previous_ee_pose = None
         self.previous_pose = None
         self.obs_logfile = None
         self.reward_per_step = []
@@ -75,8 +75,8 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         self.difficulty_ratio = 0.1
 
         self.last_actions = np.zeros(self.n_actions)
-        self.object_centric_transform = None
         self.object_current_pose = None
+
         obs = self._get_obs()
 
         self.reward_threshold = 500.0
@@ -106,7 +106,7 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         prefix = "ur3e_gym"
         load_param_vars(self, prefix)
 
-        self.use_gazebo_sim = rospy.get_param(prefix +"/use_gazebo_sim", False)
+        self.use_gazebo_sim = rospy.get_param(prefix + "/use_gazebo_sim", False)
         self.test_mode = rospy.get_param(prefix + "/test_mode", False)
         if not self.test_mode:
             self.curriculum_learning = rospy.get_param(prefix + "/curriculum_learning", False)
@@ -126,12 +126,14 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         self.target_duration = rospy.get_param(prefix + "/target_duration", 0)
         self.last_action_as_obs = rospy.get_param(prefix + "/last_action_as_obs", False)
         self.jerkiness_as_obs = rospy.get_param(prefix + "/jerkiness_as_obs", False)
-        self.max_distance = rospy.get_param(
-            prefix + "/max_distance", [0.05, 0.05, 0.05, np.deg2rad(45),
-                                       np.deg2rad(45),
-                                       np.deg2rad(90)])
         
-        self.target_dims = rospy.get_param(prefix + "/target_dims", [1,1,1,1,1,1])
+        self.target_dims = rospy.get_param(prefix + "/target_dims", [0, 1, 2, 3, 4, 5])
+        
+        max_distance = rospy.get_param(prefix + "/max_distance", [0.05, 0.05, 0.05, 0.785398, 0.785398, 0.785398])
+        max_velocity = rospy.get_param(prefix + "/max_velocity", [0.5, 0.5, 0.5, 0.785398, 0.785398, 0.785398])
+
+        self.max_velocity = np.array([max_velocity[i] for i in self.target_dims])
+        self.max_distance = np.array([max_distance[i] for i in self.target_dims])
 
         self.random_initial_pose = rospy.get_param(prefix + "/random_initial_pose", False)
 
@@ -141,7 +143,7 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         self.fixed_uncertainty_error = rospy.get_param(prefix + "/fixed_uncertainty_error", False)
         self.current_target_pose_uncertain_per_step = rospy.get_param(prefix + "/target_pose_uncertain_per_step", False)
         self.current_target_pose = rospy.get_param(prefix + "/target_pose", False)
-        
+
         self.rand_interval = rospy.get_param(prefix + "/rand_interval", 1)
 
         self.update_target = rospy.get_param(prefix + "/update_target", True)
@@ -199,23 +201,15 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         To know which Variables we have access
         :return: observations
         """
-        if self.object_centric:
-            ee_points, ee_velocities, ee_acceleration, ee_jerkiness = self.get_position_and_velocity_object_centric()
-        else:
-            joint_angles = self.ur3e_arm.joint_angles()
-            ee_points, ee_velocities, ee_acceleration, ee_jerkiness = self.get_endeffector_relative_position_and_velocity(
-                joint_angles)
+        ee_points, ee_velocities, ee_acceleration, ee_jerkiness = self.get_end_effector_relative_position_and_velocity()
 
         # Normalize distance error
         ee_points /= self.max_distance
-        
-        if self.normalize_velocity:
-            ee_velocities /= np.array([0.5, 0.5, 0.5, 0.785398, 0.785398, 0.785398])
-        
-        ee_jerkiness /= 100.0 # normalize, no clipping
 
-        ee_points = np.clip(ee_points, -1, 1)
-        ee_velocities = np.clip(ee_velocities, -1, 1)
+        if self.normalize_velocity:
+            ee_velocities /= self.max_velocity
+
+        ee_jerkiness /= 100.0  # normalize, no clipping
 
         target_force = np.zeros(6)
 
@@ -230,100 +224,38 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         if self.ft_hist:
             force_torque = (self.ur3e_arm.get_ee_wrench_hist(
                 self.wrench_hist_size) - target_force) / self.controller.max_force_torque
-            force_torque = np.array([force_torque[:,i] for i in self.target_dims])
+            force_torque = np.array([force_torque[:, i] for i in self.target_dims])
         else:
             force_torque = (self.ur3e_arm.get_ee_wrench() -
                             target_force) / self.controller.max_force_torque
             force_torque = np.array([force_torque[i] for i in self.target_dims])
-        
 
         obs = np.concatenate([
             ee_points.ravel(),  # [6]
             ee_velocities.ravel(),  # [6]
-            jerkiness_obs.ravel(), # [6]
+            jerkiness_obs.ravel(),  # [6]
             last_action.ravel(),  # None or [*]
             force_torque.ravel(),  # [6] or [6]*24
         ])
 
         return obs.copy()
 
-    def get_position_and_velocity_object_centric(self):
-        """
-        with respect to the target object.
-        """
-        try:
-            self.current_pose = conversions.to_pose_stamped('base_link', self.ur3e_arm.end_effector())
-            if self.ee_centric:
-                current_pose_obj_link = conversions.to_pose_stamped('target_board_tmp', [0.0, 0.0, 0, 0, 0, 0, 1])
-                # ee_pos_oc_now_msg = self.tf_listener.transformPose("gripper_tip_link", current_pose_obj_link)
-                obj_bc_now_msg = conversions.transform_pose(
-                    "base_link", self.object_centric_transform, current_pose_obj_link)
-                rotation_matrix = transformations.pose_to_transform(self.ur3e_arm.end_effector())
-                ee_pos_oc_now_msg = conversions.transform_pose(
-                    "gripper_tip_link", np.linalg.inv(rotation_matrix), obj_bc_now_msg)
-            else:
-                # ee_pos_oc_now_msg = self.tf_listener.transformPose(self.object_name, current_pose)
-                ee_pos_oc_now_msg = conversions.transform_pose(
-                    self.object_name, self.object_centric_transform, self.current_pose)
-            ee_pos_oc_now = conversions.from_pose_to_list(ee_pos_oc_now_msg.pose)
-
-            if self.previous_pose is None:
-                self.previous_pose = np.copy(ee_pos_oc_now)
-                self.previous_velocity = np.zeros(6)
-                self.previous_acceleration = np.zeros(6)
-
-            position_error = -ee_pos_oc_now[:3]
-            orientation_error = spalg.quaternions_orientation_error2([0, 0, 0, 1], ee_pos_oc_now[3:])
-            error = np.concatenate((position_error, orientation_error))
-
-            linear_velocity = (ee_pos_oc_now[:3] - self.previous_pose[:3]) / self.agent_control_dt
-            angular_velocity = transformations.angular_velocity_from_quaternions(
-                ee_pos_oc_now[3:], self.previous_pose[3:], self.agent_control_dt)
-
-            current_velocity = np.concatenate((linear_velocity, angular_velocity))
-
-            # Get velocity and acceleration using finite difference approximation
-            current_acceleration = (current_velocity - self.previous_velocity) / self.agent_control_dt
-
-            # Estimate jerkiness using finite difference approximation
-            current_jerkiness = (current_acceleration - self.previous_acceleration) / self.agent_control_dt
-
-            self.previous_pose = np.copy(ee_pos_oc_now)
-            self.previous_velocity = np.copy(current_velocity)
-            self.previous_acceleration = np.copy(current_acceleration)
-
-            # Extract only directions of interest
-            if self.target_dims is not None:
-                error = np.array([error[i] for i in self.target_dims])
-                current_velocity = np.array([current_velocity[i] for i in self.target_dims])
-                current_acceleration = np.array([current_acceleration[i] for i in self.target_dims])
-                current_jerkiness = np.array([current_jerkiness[i] for i in self.target_dims])
-
-            return error, current_velocity, current_acceleration, current_jerkiness
-        except Exception as e:
-            rospy.logerr("Fail to TF EEF to object frame, returning default method")
-            return self.get_endeffector_relative_position_and_velocity(self.ur3e_arm.joint_angles())
-
-    def get_endeffector_relative_position_and_velocity(self, joint_angles):
+    def get_end_effector_relative_position_and_velocity(self):
         """
         and velocities of the end effector with respect to the target pose
         """
 
-        if self.previous_joints is None:
-            self.previous_joints = self.ur3e_arm.joint_angles()
+        if self.previous_ee_pose is None:
+            self.previous_ee_pose = self.ur3e_arm.end_effector()
             self.previous_velocity = np.zeros(6)
             self.previous_acceleration = np.zeros(6)
 
         # Current position
-        ee_pos_now = self.ur3e_arm.end_effector(joint_angles=joint_angles)
-
-        # Last position
-        ee_pos_last = self.ur3e_arm.end_effector(joint_angles=self.previous_joints)
+        current_ee_pose = self.ur3e_arm.end_effector()
 
         # Use the past position to get the present velocity.
-        linear_velocity = (ee_pos_now[:3] - ee_pos_last[:3]) / self.agent_control_dt
-        angular_velocity = transformations.angular_velocity_from_quaternions(
-            ee_pos_now[3:], ee_pos_last[3:], self.agent_control_dt)
+        linear_velocity = (current_ee_pose[:3] - self.previous_ee_pose[:3]) / self.agent_control_dt
+        angular_velocity = transformations.angular_velocity_from_quaternions(current_ee_pose[3:], self.previous_ee_pose[3:], self.agent_control_dt)
         current_velocity = np.concatenate((linear_velocity, angular_velocity))
 
         # Get velocity and acceleration using finite difference approximation
@@ -333,14 +265,21 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         current_jerkiness = (current_acceleration - self.previous_acceleration) / self.agent_control_dt
 
         # Update variables
-        self.previous_joints = joint_angles
+        self.previous_ee_pose = current_ee_pose
         self.previous_velocity = np.copy(current_velocity)
         self.previous_acceleration = np.copy(current_acceleration)
 
         # Shift the present position by the End Effector target.
         # Since we subtract the target point from the current position, the optimal
         # value for this will be 0.
-        error = spalg.translation_rotation_error(self.current_target_pose, ee_pos_now)
+        error = spalg.translation_rotation_error(self.current_target_pose, current_ee_pose)
+
+        # Extract only directions of interest
+        if self.target_dims is not None:
+            error = np.array([error[i] for i in self.target_dims])
+            current_velocity = np.array([current_velocity[i] for i in self.target_dims])
+            current_acceleration = np.array([current_acceleration[i] for i in self.target_dims])
+            current_jerkiness = np.array([current_jerkiness[i] for i in self.target_dims])
 
         return error, current_velocity, current_acceleration, current_jerkiness
 

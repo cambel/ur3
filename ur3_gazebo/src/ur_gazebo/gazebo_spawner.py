@@ -25,7 +25,6 @@
 import rospy
 import rospkg
 
-from geometry_msgs.msg import Pose, Twist
 from gazebo_msgs.msg import ModelStates, ModelState
 from gazebo_msgs.srv import (
     SpawnModel,
@@ -35,6 +34,7 @@ from gazebo_msgs.srv import (
 import numpy as np
 
 from ur_control import conversions
+import threading
 
 
 class GazeboModels:
@@ -43,6 +43,12 @@ class GazeboModels:
     def __init__(self, model_pkg):
         self.loaded_models = []
         self.models_state = {}
+        
+        self.to_delete_models = None
+        self.to_spawn_models = None
+        
+        self.condition_variable = threading.Condition()
+
         self._pub_model_state = rospy.Publisher('/gazebo/set_model_state',
                                                 ModelState, queue_size=10)
         rospy.Subscriber("/gazebo/model_states", ModelStates, self._gazebo_callback)
@@ -54,8 +60,8 @@ class GazeboModels:
         rospy.wait_for_service('/gazebo/delete_model')
 
         rospy.sleep(0.5)
-        self.delete_models(self.loaded_models)
-        rospy.sleep(1.0)
+        self.delete_models(self.loaded_models)      
+
         # Get Models' Path
         # get an instance of RosPack with the default search paths
         rospack = rospkg.RosPack()
@@ -65,28 +71,28 @@ class GazeboModels:
 
     def delete_models(self, models, timeout=1.0):
         try:
-            for m in models:
-                start_time = rospy.get_time()
-                while start_time - rospy.get_time() < timeout:
+            with self.condition_variable:
+                self.to_delete_models = models
+                for m in models:
                     if m in self.loaded_models:
                         self.delete_model_srv(m)
-                        rospy.sleep(0.15)
                     else:
-                        break
+                        continue
+                self.condition_variable.wait(timeout)
         except rospy.ServiceException as e:
             rospy.loginfo("Delete Model service call failed: {0}".format(e))
+        finally:
+            self.to_delete_models = None
 
     def load_models(self, models):
-        for m in models:
-            for _ in range(20):
+        with self.condition_variable:
+            self.to_spawn_models = [m.model_id + '_tmp' if m.model_id is not None else m.name + '_tmp' for m in models]
+            for m in models:
                 if m.file_type == 'urdf':
                     self.load_urdf_model(m)
                 elif m.file_type == 'sdf' or m.file_type == 'string':
                     self.load_sdf_model(m)
-                rospy.sleep(0.1)
-                m_id = m.model_id if m.model_id is not None else m.name
-                if m_id + '_tmp' in self.loaded_models:
-                    break
+            self.condition_variable.wait(1.0)
 
     def _gazebo_callback(self, data):
         existing_models = []
@@ -97,6 +103,28 @@ class GazeboModels:
             if data.name[i].endswith("_tmp"):
                 existing_models.append(data.name[i])
         self.loaded_models = existing_models
+
+        ## Notify if the to delete models are not visible anymore
+        if self.to_delete_models is not None:
+            with self.condition_variable:
+                notify = True
+                for m in self.to_delete_models:
+                    if m in existing_models:
+                        notify = False
+                        break
+                if notify:
+                    self.condition_variable.notify()
+
+        ## Notify the to spawn models are already visible
+        if self.to_spawn_models is not None:
+            with self.condition_variable:
+                notify = True
+                for m in self.to_spawn_models:
+                    if m not in existing_models:
+                        notify = False
+                        break
+                if notify:
+                    self.condition_variable.notify()
 
     def reset_models(self, models):
         for m in models:

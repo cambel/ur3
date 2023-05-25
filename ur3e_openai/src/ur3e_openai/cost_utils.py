@@ -28,8 +28,7 @@ def slicing(self, obs, done):
     r_collision = self.cost_collision if self.action_result == FORCE_TORQUE_EXCEEDED else 0.0
     # reward discounted by the percentage of steps left for the episode (encourage faster termination)
     # r_done = self.cost_done + (1-self.step_count/self.steps_per_episode) if done and self.action_result != FORCE_TORQUE_EXCEEDED else 0.0
-    position_reached = np.all(obs[1:3]*self.max_distance[1:3] < self.position_threshold_cl)
-    r_done = self.cost_done if done and position_reached and self.action_result != FORCE_TORQUE_EXCEEDED else 0.0
+    r_done = self.cost_done if self.goal_reached and self.action_result != FORCE_TORQUE_EXCEEDED else 0.0
 
     # encourage faster termination
     r_step = self.cost_step
