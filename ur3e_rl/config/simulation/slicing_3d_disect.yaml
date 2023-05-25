@@ -1,6 +1,6 @@
 ur3e_gym: #namespace
     # General Agent parameters
-    env_id: "UR3eSlicingEnv-v1"
+    env_id: "UR3eDisectSlicingEnv-v1"
     controller_type: "cartesian_compliance"
     namespace: "b_bot"
 
@@ -32,23 +32,10 @@ ur3e_gym: #namespace
 
     rand_seed: 123456
 
-    # Domain Randomization Parameters
-    object_name: "target_block_tmp"
-    object_friction: 1
-    object_stiffness: 600
-    max_stiffness_range: [500, 1200]
-    max_damping_range: [0, 1]
-    max_kp_range: [1.0e+5, 5.0e+5]
-    max_kd_range: [1, 2]
-    max_friction_range: [0, 2]
-
     ## Target object configuration
     randomize_object_properties: True
     normal_randomization: True
     basic_randomization: False
-    # object_initial_pose: [-0.12, 0.0, 0.88, 1.5707, -1.5707, 3.1415] # cucumber
-    object_initial_pose: [-0.12, 0.03, 0.875, 0, 0, 1.5707] # button
-    object_workspace: [[-0.05, 0.05], [-0.05, 0.05], [0.08, 0.02], [-20, 20], [-20, 20], [-60, 60]]
 
     # initial conditions
     random_initial_pose: False
@@ -66,7 +53,7 @@ ur3e_gym: #namespace
     target_pose_uncertain: False
     uncertainty_std: [0.001, 0.0]
     random_target_pose: False
-    target_pose: [-0.02, 0.50, 0.1825, -0.00812894,  0.70963372, -0.00882711,  0.70446859]
+    target_pose: [-0.02, 0.50, 0.1475, -0.00812894,  0.70963372, -0.00882711,  0.70446859]
     
     # Reward parameters
     target_dims: [0,2,4]

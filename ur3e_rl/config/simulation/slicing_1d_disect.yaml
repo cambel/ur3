@@ -1,6 +1,6 @@
 ur3e_gym: #namespace
     # General Agent parameters
-    env_id: "UR3eSlicingEnv-v1"
+    env_id: "UR3eDisectSlicingEnv-v1"
     controller_type: "cartesian_compliance"
     namespace: "b_bot"
 
@@ -19,8 +19,8 @@ ur3e_gym: #namespace
     agent_control_dt: 0.02
     reset_time: 0.5
     # actions parameters 
-    n_actions: 6
-    action_type: "slicing-3d"
+    n_actions: 2
+    action_type: "slicing-1d-2act"
     
     steps_per_episode: 500
     
@@ -55,12 +55,12 @@ ur3e_gym: #namespace
     # for each dimension define upper and lower bound from initial pose
     max_distance: [0.1, 0.1, 0.1, 0.785398, 0.785398, 1.5707]
     
-    workspace_limit: [0.05, 0.1, 0.523599]
+    workspace_limit: [0.1]
     workspace: [[0,0], [0, 0], [0.0, 0.02], [0, -0], [0, -0], [0, -0]]
 
     init_q: [1.3524, -1.5555, 1.7697, -1.7785, -1.5644, 1.3493] # cut to button
 
-    reset_motion: [0.0, 0, 0.035, 0, 0, 0]    
+    reset_motion: [-0.05, 0, 0.035, 0, 0, 0]    
 
     target_duration: 6
     target_pose_uncertain: False
@@ -69,7 +69,7 @@ ur3e_gym: #namespace
     target_pose: [-0.02, 0.50, 0.1825, -0.00812894,  0.70963372, -0.00882711,  0.70446859]
     
     # Reward parameters
-    target_dims: [0,2,4]
+    target_dims: [2]
     goal_threshold: [0.002]
     
     reward_type: 'slicing'
@@ -90,6 +90,5 @@ ur3e_gym: #namespace
         
 # Controller parameters
 ur3e_force_control:
-    max_twist: [1.0, 3.1415]
     max_force_torque: [50, 50.0, 50.0, 5, 5, 5]
     desired_force_torque: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]

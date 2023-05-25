@@ -58,7 +58,6 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         self.reset_motion = rospy.get_param(prefix + "/reset_motion", [-0.05, 0, 0.035, 0, 0, 0])
 
         # How often to generate a new model, number of episodes
-        self.refresh_rate = rospy.get_param(prefix + "/refresh_rate", False)
         self.normal_randomization = rospy.get_param(prefix + "/normal_randomization", True)
         self.basic_randomization = rospy.get_param(prefix + "/basic_randomization", False)
         self.random_type = rospy.get_param(prefix + "/random_type", "uniform")

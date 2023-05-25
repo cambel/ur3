@@ -8,6 +8,12 @@ ur3e_gym: #namespace
     real_robot: False
     test_mode: False
 
+    # RL parameters
+    batch_size: 1024
+    lr: 1.0e-2
+    auto_alpha: True
+    update_interval: 2
+
     relative_to_ee: False
     robot_control_dt: 0.002
     agent_control_dt: 0.02
@@ -18,9 +24,9 @@ ur3e_gym: #namespace
     
     steps_per_episode: 500
     
-    actor_class: "wave"
-    ft_hist: True
-    wrench_hist_size: 6
+    actor_class: "default"
+    ft_hist: False
+    wrench_hist_size: 1
     last_action_as_obs: True
     normalize_velocity: True
 
@@ -45,7 +51,7 @@ ur3e_gym: #namespace
     object_workspace: [[-0.05, 0.05], [-0.05, 0.05], [0.08, 0.02], [-20, 20], [-20, 20], [-60, 60]]
 
     # initial conditions
-    random_initial_pose: True
+    random_initial_pose: False
     # for each dimension define upper and lower bound from initial pose
     max_distance: [0.1, 0.1, 0.1, 0.785398, 0.785398, 1.5707]
     
