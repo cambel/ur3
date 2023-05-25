@@ -60,8 +60,7 @@ class UR3eEnv(robot_env.RobotGazeboEnv):
                                       reset_controls=reset_controls_bool,
                                       use_gazebo=self.use_gazebo_sim,
                                       start_init_physics_parameters=False,
-                                      reset_world_or_sim=reset_method,
-                                      seed=self.rand_seed)
+                                      reset_world_or_sim=reset_method)
         self.robot_connection.unpause()
 
         rospy.loginfo("UR3eEnv unpause...")
@@ -72,17 +71,13 @@ class UR3eEnv(robot_env.RobotGazeboEnv):
                                             namespace=self.robot_namespace,
                                             joint_names_prefix=joint_names_prefix,)
 
-        if self.rand_seed is not None:
-            self.seed(self.rand_seed)
-            RandomState(self.rand_seed)
-            np.random.seed(self.rand_seed)
-
         rospy.logdebug("Finished UR3eEnv INIT...")
 
     # Methods needed by the RobotGazeboEnv
     # ----------------------------
 
     def _pause_env(self):
+        self.ur3e_arm.activate_joint_trajectory_controller()
         current_pose = self.ur3e_arm.joint_angles()
         input("Press Enter to continue")
         self.ur3e_arm.set_joint_positions(current_pose, wait=True, t=self.reset_time)
