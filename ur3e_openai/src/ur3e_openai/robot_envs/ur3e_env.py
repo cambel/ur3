@@ -48,7 +48,8 @@ class UR3eEnv(robot_env.RobotGazeboEnv):
 
         # It doesn't use namespace
         self.robot_namespace = rospy.get_param("ur3e_gym/namespace", "")
-
+        self.ee_link = rospy.get_param("ur3e_gym/ee_link", "gripper_tip_link")
+        
         reset_controls_bool = False
 
         # We launch the init function of the Parent Class robot_env.RobotGazeboEnv
@@ -66,8 +67,9 @@ class UR3eEnv(robot_env.RobotGazeboEnv):
         rospy.loginfo("UR3eEnv unpause...")
 
         joint_names_prefix = self.robot_namespace+'_' if self.robot_namespace else ''
+
         self.ur3e_arm = CompliantController(ft_topic='wrench',
-                                            ee_link="gripper_tip_link",
+                                            ee_link=self.ee_link,
                                             namespace=self.robot_namespace,
                                             joint_names_prefix=joint_names_prefix,)
 

@@ -3,6 +3,7 @@ ur3e_gym: #namespace
     env_id: "UR3eSlicingEnv-v1"
     controller_type: "cartesian_compliance"
     namespace: "b_bot"
+    ee_link: knife_center
 
     reset_robot: True
     real_robot: False
@@ -66,7 +67,7 @@ ur3e_gym: #namespace
     target_pose_uncertain: False
     uncertainty_std: [0.001, 0.0]
     random_target_pose: False
-    target_pose: [-0.02, 0.50, 0.1825, -0.00812894,  0.70963372, -0.00882711,  0.70446859]
+    target_pose: [0.11, 0.50, 0.1565, -0.00812894,  0.70963372, -0.00882711,  0.70446859]
     
     # Reward parameters
     target_dims: [2]
