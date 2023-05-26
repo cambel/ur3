@@ -72,7 +72,7 @@ ur3e_gym: #namespace
         alpha: 1.0e-10
     w_dist: 1.0
     w_force: 1.0
-    w_jerkiness: 0.5
+    w_jerkiness: 1.0
     successes_threshold: 20
         
 # Controller parameters

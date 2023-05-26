@@ -70,6 +70,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
 
     def _set_init_pose(self):
         self.success_counter = 0
+        self.goal_reached = False
 
         # Update target pose if needed
         self.update_target_pose()
@@ -124,7 +125,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         pose_error = np.abs(observations[:len(self.target_dims)]*self.max_distance)
 
         collision = self.action_result == FORCE_TORQUE_EXCEEDED
-        self.goal_reached = np.all(pose_error < self.goal_threshold)
+        position_goal_reached = np.all(pose_error < self.goal_threshold)
         fail_on_reward = self.termination_on_negative_reward
         out_of_workspace = np.any(pose_error > self.workspace_limit)
 
@@ -132,7 +133,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
             self.logger.error("Out of workspace, failed: %s" % np.round(pose_error, 4))
 
         # If the end effector remains on the target pose for several steps. Then terminate the episode
-        if self.goal_reached:
+        if position_goal_reached:
             self.success_counter += 1
         else:
             self.success_counter = 0
@@ -150,11 +151,11 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
             if self.cumulated_episode_reward <= self.termination_reward_threshold:
                 rospy.loginfo("Fail on reward: %s" % (pose_error))
 
-        elif self.goal_reached and self.success_counter > self.successes_threshold:
+        elif position_goal_reached and self.success_counter > self.successes_threshold:
+            self.goal_reached = True
             self.controller.stop()
             self.logger.green("goal reached: %s" % np.round(pose_error[:3], 4))
-            if not self.done_once:
-                self.success_end = True
+            
             if self.real_robot:
                 xc = transformations.transform_pose(self.ur3e_arm.end_effector(), [0, 0, 0.013, 0, 0, 0], rotated_frame=True)
                 reset_time = 5.0
