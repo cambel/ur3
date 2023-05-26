@@ -76,6 +76,7 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
 
         self.last_actions = np.zeros(self.n_actions)
         self.object_current_pose = None
+        self.out_of_workspace = False
 
         obs = self._get_obs()
 
@@ -462,8 +463,12 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
 
         if self.reward_based_on_cl:
             reward *= self.difficulty_ratio
-        self.reward_per_step.append(reward)
-        self.reward_details_per_step.append(reward_details)
+
+        reward += 0.0 if not self.out_of_workspace else self.cost_collision
+        
+        # self.reward_per_step.append(reward)
+        # self.reward_details_per_step.append(reward_details)
+        
         return reward
 
     def _is_done(self, observations):

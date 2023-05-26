@@ -127,9 +127,9 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         collision = self.action_result == FORCE_TORQUE_EXCEEDED
         position_goal_reached = np.all(pose_error < self.goal_threshold)
         fail_on_reward = self.termination_on_negative_reward
-        out_of_workspace = np.any(pose_error > self.workspace_limit)
+        self.out_of_workspace = np.any(pose_error > self.workspace_limit)
 
-        if out_of_workspace:
+        if self.out_of_workspace:
             self.logger.error("Out of workspace, failed: %s" % np.round(pose_error, 4))
 
         # If the end effector remains on the target pose for several steps. Then terminate the episode
@@ -161,7 +161,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
                 reset_time = 5.0
                 self.ur3e_arm.set_target_pose(pose=xc, t=reset_time, wait=True)
 
-        done = self.goal_reached or collision or fail_on_reward or out_of_workspace
+        done = self.goal_reached or collision or fail_on_reward or self.out_of_workspace
 
         if done:
             self.controller.stop()
