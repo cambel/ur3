@@ -97,7 +97,7 @@ class ComplianceController(controller.Controller):
             ay_cmd = np.interp(actions[5], [-1, 1], [-1.0*twist_limit[1], twist_limit[1]])
             self.added_motion_command[0] += x_cmd # translation in x
             self.added_motion_command[4] -= ay_cmd # rotation in ay
-            # remaining distance scale by attractor strength
+
             target_pose = transformations.transform_pose(target_pose, self.added_motion_command, rotated_frame=False)
         
         else:

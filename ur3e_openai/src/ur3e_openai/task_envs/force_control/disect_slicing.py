@@ -132,8 +132,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
             self.controller.stop()
             self.logger.green("goal reached: %s" % np.round(pose_error[:3], 4))
             print("time after pause", timeit.default_timer()-self.start)
-            # if not self.done_once: #Never defined anywhere ?
-            #     self.success_end = True
+            
             if self.real_robot:
                 xc = transformations.transform_pose(self.ur3e_arm.end_effector(), [0, 0, 0.013, 0, 0, 0], rotated_frame=True)
                 reset_time = 5.0

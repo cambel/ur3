@@ -4,7 +4,6 @@ import gym
 from gym.utils import seeding
 from ur3e_openai.peg_gazebo_connection import GazeboConnection, RobotConnection
 from ur3e_openai.controllers_connection import ControllersConnection
-from ur3e_openai.msg import RLExperimentInfo
 from std_msgs.msg import Bool
 import ur_control.log as utils
 color_log = utils.TextColors()
@@ -39,9 +38,6 @@ class RobotGazeboEnv(gym.Env):
         self.step_count = 0
         self.cumulated_episode_reward = 0
         self.pause = False
-        self.reward_pub = rospy.Publisher('/openai/reward',
-                                          RLExperimentInfo,
-                                          queue_size=1)
         self._log_message = None
         rospy.logdebug("END init RobotGazeboEnv")
 
@@ -113,30 +109,11 @@ class RobotGazeboEnv(gym.Env):
                          (self.episode_num, self.cumulated_episode_reward, self.step_count))
             color_log.warning(self._log_message)
 
-        rospy.logdebug("PUBLISHING REWARD...")
-        self._publish_reward_topic(self.cumulated_episode_reward,
-                                   self.episode_num)
-        rospy.logdebug("PUBLISHING REWARD...DONE=" +
-                       str(self.cumulated_episode_reward) + ",EP=" +
-                       str(self.episode_num))
         self.episode_hist[0:-1] = self.episode_hist[1:]
         self.episode_hist[-1] = 1.0 if self.success_end else 0.0
         self.episode_num += 1
         self.cumulated_episode_reward = 0
         self.success_end = False
-
-    def _publish_reward_topic(self, reward, episode_number=1):
-        """
-        This function publishes the given reward in the reward topic for
-        easy access from ROS infrastructure.
-        :param reward:
-        :param episode_number:
-        :return:
-        """
-        reward_msg = RLExperimentInfo()
-        reward_msg.episode_number = episode_number
-        reward_msg.episode_reward = reward
-        self.reward_pub.publish(reward_msg)
 
     # Extension methods
     # ----------------------------

@@ -8,13 +8,14 @@ def sparse(self, done):
         return self.cost_goal
     return 0
 
+
 def slicing(self, obs, done):
     num_dims = 6 if self.target_dims is None else len(self.target_dims)
 
-    distance = np.linalg.norm(obs[:num_dims]) #,6
-    jerkiness = np.linalg.norm(obs[num_dims*2:num_dims*3]) # 12,18
+    distance = np.linalg.norm(obs[:num_dims])  # ,6
+    jerkiness = np.linalg.norm(obs[num_dims*2:num_dims*3])  # 12,18
 
-    cut_completion =  np.linalg.norm(obs[num_dims*3:num_dims*3+1])
+    cut_completion = np.linalg.norm(obs[num_dims*3:num_dims*3+1])
 
     max_force_torque = np.array([self.controller.max_force_torque[i] for i in self.target_dims])
 
@@ -25,7 +26,7 @@ def slicing(self, obs, done):
 
     r_distance = -l1l2(self, distance)
     r_force = -1/(1 + np.exp(-norm_force_torque/2+3))  # s-shaped penalization, no penalization for lower values, max penalization for high values
-    r_jerkiness = -1 * jerkiness # penalize jerkiness
+    r_jerkiness = -1 * jerkiness  # penalize jerkiness
 
     r_collision = self.cost_collision if self.action_result == FORCE_TORQUE_EXCEEDED else 0.0
     # reward discounted by the percentage of steps left for the episode (encourage faster termination)
@@ -36,18 +37,19 @@ def slicing(self, obs, done):
     r_step = self.cost_step
 
     # encourage complete cut of the material
-    r_cut_completion = -1/(1+np.exp((-10)*(cut_completion-0.5))) *self.cost_cut_completion # use of a sigmoid, low reward for low cut, high reward for complete cut
+    r_cut_completion = -1/(1+np.exp((-10)*(cut_completion-0.5))) * self.cost_cut_completion  # use of a sigmoid, low reward for low cut, high reward for complete cut
 
-    reward = self.w_dist*r_distance + self.w_force*r_force + self.w_jerkiness*r_jerkiness + r_collision + r_done + r_step + self.w_cut_completion*r_cut_completion 
+    reward = self.w_dist*r_distance + self.w_force*r_force + self.w_jerkiness*r_jerkiness + r_collision + r_done + r_step + self.w_cut_completion*r_cut_completion
     # print('r', round(reward, 4), round(r_distance, 4), round(r_force, 4), round(r_jerkiness, 4), r_done, jerkiness)
     return reward, [r_distance, r_force, r_jerkiness, r_collision, r_done, r_step, r_cut_completion]
+
 
 def peg_in_hole(self, obs, done):
     num_dims = 6 if self.target_dims is None else len(self.target_dims)
 
-    distance = np.linalg.norm(obs[:num_dims]) #,6
-    jerkiness = np.linalg.norm(obs[num_dims*2:num_dims*3]) # 12,18
-    compliance = np.linalg.norm(np.interp(obs[num_dims*4:num_dims*5], [-1., 1.], [0., 1.])) / np.linalg.norm(np.ones(6)) # last action[24:30]
+    distance = np.linalg.norm(obs[:num_dims])  # ,6
+    jerkiness = np.linalg.norm(obs[num_dims*2:num_dims*3])  # 12,18
+    compliance = np.linalg.norm(np.interp(obs[num_dims*4:num_dims*5], [-1., 1.], [0., 1.])) / np.linalg.norm(np.ones(6))  # last action[24:30]
 
     max_force_torque = np.array([self.controller.max_force_torque[i] for i in self.target_dims])
 
@@ -58,8 +60,8 @@ def peg_in_hole(self, obs, done):
 
     r_distance = -l1l2(self, distance)
     r_force = -1/(1 + np.exp(-norm_force_torque/2+3))  # s-shaped penalization, no penalization for lower values, max penalization for high values
-    r_jerkiness = -1 * jerkiness # penalize jerkiness
-    r_compliance = compliance # encourage high compliance
+    r_jerkiness = -1 * jerkiness  # penalize jerkiness
+    r_compliance = compliance  # encourage high compliance
 
     r_collision = self.cost_collision if self.action_result == FORCE_TORQUE_EXCEEDED else 0.0
     # reward discounted by the percentage of steps left for the episode (encourage faster termination)
@@ -73,6 +75,7 @@ def peg_in_hole(self, obs, done):
     reward = self.w_dist*r_distance + self.w_force*r_force + self.w_jerkiness*r_jerkiness + self.w_compliance*r_compliance + r_collision + r_done + r_step
     # print('r', round(reward, 4), round(r_distance, 4), round(r_force, 4), round(r_jerkiness, 4), r_done, jerkiness)
     return reward, [r_distance, r_force, r_jerkiness, r_compliance, r_collision, r_done, r_step]
+
 
 def dense_distance(self, obs, done):
     reward = 0

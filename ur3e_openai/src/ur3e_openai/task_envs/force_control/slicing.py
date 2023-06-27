@@ -67,6 +67,10 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
               self.progressive_cl, self.reward_based_on_cl, " <<<<<<")
 
         self.successes_threshold = rospy.get_param(prefix + "/successes_threshold", 0)
+        
+        self.cost_cut_completion = rospy.get_param(prefix + "/cost_cut_completion", 0)
+        self.w_cut_completion = rospy.get_param(prefix + "/w_cut_completion", 0)
+
 
     def _set_init_pose(self):
         self.success_counter = 0
@@ -92,6 +96,9 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         self.ur3e_arm.zero_ft_sensor()
         self.controller.reset()
         self.controller.start()
+
+        if self.real_robot:
+            rospy.loginfo(" === Start Policy Execution === ")
 
     def update_scene(self):
         if self.real_robot:
@@ -156,10 +163,10 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
             self.controller.stop()
             self.logger.green("goal reached: %s" % np.round(pose_error[:3], 4))
             
-            if self.real_robot:
-                xc = transformations.transform_pose(self.ur3e_arm.end_effector(), [0, 0, 0.013, 0, 0, 0], rotated_frame=True)
-                reset_time = 5.0
-                self.ur3e_arm.set_target_pose(pose=xc, t=reset_time, wait=True)
+            # if self.real_robot:
+            #     xc = transformations.transform_pose(self.ur3e_arm.end_effector(), [0, 0, 0.013, 0, 0, 0], rotated_frame=True)
+            #     reset_time = 5.0
+            #     self.ur3e_arm.set_target_pose(pose=xc, t=reset_time, wait=True)
 
         done = self.goal_reached or collision or fail_on_reward or self.out_of_workspace
 

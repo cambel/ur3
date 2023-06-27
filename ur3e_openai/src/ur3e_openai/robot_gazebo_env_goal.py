@@ -3,7 +3,6 @@ import gym
 from gym.utils import seeding
 from .gazebo_connection import GazeboConnection
 from .controllers_connection import ControllersConnection
-from ur3e_openai.msg import RLExperimentInfo
 
 
 class RobotGazeboEnv(gym.GoalEnv):
@@ -21,9 +20,6 @@ class RobotGazeboEnv(gym.GoalEnv):
 
         # Set up ROS related variables
         self.episode_num = 0
-        self.reward_pub = rospy.Publisher('/openai/reward',
-                                          RLExperimentInfo,
-                                          queue_size=1)
 
     # Env methods
     def seed(self, seed=None):
@@ -55,7 +51,6 @@ class RobotGazeboEnv(gym.GoalEnv):
         done = self._is_done(obs)
         info = {}
         reward = self._compute_reward(obs, done)
-        self._publish_reward_topic(reward, self.episode_num)
 
         return obs, reward, done, info
 
@@ -83,19 +78,6 @@ class RobotGazeboEnv(gym.GoalEnv):
         :return:
         """
         self.episode_num += 1
-
-    def _publish_reward_topic(self, reward, episode_number=1):
-        """
-        This function publishes the given reward in the reward topic for
-        easy access from ROS infrastructure.
-        :param reward:
-        :param episode_number:
-        :return:
-        """
-        reward_msg = RLExperimentInfo()
-        reward_msg.episode_number = episode_number
-        reward_msg.episode_reward = reward
-        self.reward_pub.publish(reward_msg)
 
     # Extension methods
     # ----------------------------

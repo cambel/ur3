@@ -37,7 +37,6 @@ from ur_control import conversions, transformations, spalg
 from ur_control.constants import FORCE_TORQUE_EXCEEDED, IK_NOT_FOUND
 import numpy as np
 import rospy
-from std_msgs.msg import Float32
 import datetime
 import tf
 
