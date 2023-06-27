@@ -52,3 +52,5 @@ srv_gen
 */*/src/**/*
 
 *.pyc
+
+results/

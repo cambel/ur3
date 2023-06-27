@@ -37,6 +37,7 @@ from ur_control import conversions, transformations, spalg
 from ur_control.constants import FORCE_TORQUE_EXCEEDED, IK_NOT_FOUND
 import numpy as np
 import rospy
+from std_msgs.msg import Float32
 import datetime
 import tf
 
@@ -127,7 +128,8 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         self.target_duration = rospy.get_param(prefix + "/target_duration", 0)
         self.last_action_as_obs = rospy.get_param(prefix + "/last_action_as_obs", False)
         self.jerkiness_as_obs = rospy.get_param(prefix + "/jerkiness_as_obs", False)
-        
+        self.completion_as_obs = rospy.get_param(prefix + "/completion_as_obs", False)
+
         self.target_dims = rospy.get_param(prefix + "/target_dims", [0, 1, 2, 3, 4, 5])
         
         max_distance = rospy.get_param(prefix + "/max_distance", [0.05, 0.05, 0.05, 0.785398, 0.785398, 0.785398])
@@ -240,6 +242,8 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         ])
 
         return obs.copy()
+
+
 
     def get_end_effector_relative_position_and_velocity(self):
         """
@@ -485,7 +489,7 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
 
         done = (position_reached and orientation_reached) \
             or self.action_result == FORCE_TORQUE_EXCEEDED
-
+            
         if done:
             self.controller.stop()
         return done  # Stop on collision

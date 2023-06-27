@@ -99,9 +99,9 @@ class FTsensor(object):
         self.data_queue = collections.deque(maxlen=self.data_window)
 
         # Subscribe to incoming topic
-        rospy.Subscriber(self.in_topic, WrenchStamped, self.cb_raw)
-        if self.in_topic2 != None : rospy.Subscriber(self.in_topic2, WrenchStamped, self.cb_adder)
         self.added_wrench = np.zeros(6)
+        if self.in_topic2 != None : rospy.Subscriber(self.in_topic2, WrenchStamped, self.cb_adder)
+        rospy.Subscriber(self.in_topic, WrenchStamped, self.cb_raw)
 
         # Check that the incoming topic is publishing data
         self._active = None
@@ -151,6 +151,13 @@ class FTsensor(object):
                     data = data - self.wrench_offset
                 else:
                     data = current_wrench - self.wrench_offset
+                if np.any(np.isnan(data)) :
+                    rospy.logerr("NaN values in the output of the filter. Ignoring.")
+                    self.added_wrench = np.zeros(6)
+                    self.wrench_offset = np.zeros(6)
+                    self.data_queue = collections.deque(maxlen=self.data_window)
+                    rospy.signal_shutdown()
+                    return
                 filtered_msg = WrenchStamped()
                 filtered_msg.wrench = conversions.to_wrench(data)
                 filtered_msg.header.frame_id = msg.header.frame_id

@@ -10,9 +10,9 @@ from ur_control import transformations
 from ur_control.constants import FORCE_TORQUE_EXCEEDED
 from o2ac_msgs.srv import resetDisect
 from std_srvs.srv import Trigger
-
 import threading
 import timeit
+from std_msgs.msg import Float32
 
 def get_cl_range(range, curriculum_level):
     return [range[0], range[0] + (range[1] - range[0]) * curriculum_level]
@@ -46,9 +46,17 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
 
         self.successes_threshold = rospy.get_param(prefix + "/successes_threshold", 0)
 
-    def _set_init_pose(self):
-        self.start = timeit.default_timer()
-        
+        self.new_sim = rospy.get_param(prefix + "/new_sim", True)
+        self.viz = rospy.get_param(prefix + "/viz", True)
+
+        # Cut completion
+        self.cut_completion = 0.
+        self.cut_sub = rospy.Subscriber("/dissect_cut_progression", Float32, self.callback_cut_completion)
+
+        self.goal_reached = False
+
+    def _set_init_pose(self):       
+        self.goal_reached = False 
         self.success_counter = 0
 
         # Update target pose if needed
@@ -70,28 +78,38 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         self.controller.reset()
         self.controller.start()
 
+    def callback_cut_completion(self, msg):
+        """
+        Callback function to retrieve the completion rate of the cut from Disect.
+        The cut completion is expressed as decimal from 0 to 1, 1 meaning all the spring stiffnesses of the model reached 0.
+        """
+        self.cut_completion = msg.data
+
+
     def update_scene(self):
+        self.start = timeit.default_timer()
         # Handling the desync message
-        self.desync_service()
+        print(self.desync_service())
         # Handling the reset message
-        reset_mode = "random"
-        config_file_path = "abc"
-        viz = False
-        self.reset_service(reset_mode, config_file_path, viz)
+        print(self.reset_service(self.new_sim, self.viz))
 
     def _is_done(self, observations):
         pose_error = np.abs(observations[:len(self.target_dims)]*self.max_distance)
 
         collision = self.action_result == FORCE_TORQUE_EXCEEDED
-        self.goal_reached = np.all(pose_error < self.goal_threshold)
+        cut_completed = ((self.cut_completion) <= 0.05)
+        goal_reached = np.all(pose_error < self.goal_threshold) and cut_completed
         fail_on_reward = self.termination_on_negative_reward
         out_of_workspace = np.any(pose_error > self.workspace_limit)
+
+        print("Completion : " + str(self.cut_completion) + "| " + str(cut_completed))
+        print("Goal reached : " + str(np.all(pose_error < self.goal_threshold)))
 
         if out_of_workspace:
             self.logger.error("Out of workspace, failed: %s" % np.round(pose_error, 4))
 
         # If the end effector remains on the target pose for several steps. Then terminate the episode
-        if self.goal_reached:
+        if goal_reached:
             self.success_counter += 1
         else:
             self.success_counter = 0
@@ -109,12 +127,13 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
             if self.cumulated_episode_reward <= self.termination_reward_threshold:
                 rospy.loginfo("Fail on reward: %s" % (pose_error))
 
-        elif self.goal_reached and self.success_counter > self.successes_threshold:
+        elif goal_reached and self.success_counter > self.successes_threshold:
+            self.goal_reached = True
             self.controller.stop()
             self.logger.green("goal reached: %s" % np.round(pose_error[:3], 4))
             print("time after pause", timeit.default_timer()-self.start)
-            if not self.done_once:
-                self.success_end = True
+            # if not self.done_once: #Never defined anywhere ?
+            #     self.success_end = True
             if self.real_robot:
                 xc = transformations.transform_pose(self.ur3e_arm.end_effector(), [0, 0, 0.013, 0, 0, 0], rotated_frame=True)
                 reset_time = 5.0
@@ -124,6 +143,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
 
         if done:
             self.controller.stop()
+            print("Time episode: " + str(timeit.default_timer()-self.start))
 
         return done
 

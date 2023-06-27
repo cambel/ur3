@@ -67,7 +67,7 @@ ur3e_gym: #namespace
     target_pose_uncertain: False
     uncertainty_std: [0.001, 0.0]
     random_target_pose: False
-    target_pose: [0.11, 0.50, 0.1565, -0.00812894,  0.70963372, -0.00882711,  0.70446859]
+    target_pose: [0.11, 0.50, 0.1215, -0.00812894,  0.70963372, -0.00882711,  0.70446859]
     
     # Reward parameters
     target_dims: [2]
@@ -84,11 +84,16 @@ ur3e_gym: #namespace
         l1: 0.1
         l2: 2.0
         alpha: 1.0e-10
+        cut_completion: 1000
     w_dist: 1.0
     w_force: 1.0
     w_jerkiness: 0.5
+    w_cut_completion: 1
     successes_threshold: 20
         
+    viz: False
+    new_sim: True
+
 # Controller parameters
 ur3e_force_control:
     max_force_torque: [50, 50.0, 50.0, 5, 5, 5]
