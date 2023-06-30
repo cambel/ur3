@@ -492,8 +492,8 @@ def quaternions_orientation_error(Qd, Qc):
         ee *= np.sign(ne)  # disambiguate the sign of the quaternion
         return ee
     else:
-        assert isinstance(Qd, (list, np.ndarray))
-        assert isinstance(Qc, (list, np.ndarray))
+        assert isinstance(Qd, (list, np.ndarray)) , "type: " + str(type(Qd) )
+        assert isinstance(Qc, (list, np.ndarray)) , "type: " + str(type(Qd) )
         q1 = tr.vector_to_pyquaternion(Qd)
         q2 = tr.vector_to_pyquaternion(Qc)
         return quaternions_orientation_error(q1, q2)

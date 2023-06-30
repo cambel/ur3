@@ -1,0 +1,27 @@
+<launch>
+    <!-- Numerically integrate twists into a pose -->
+    <node name="vive_to_pose" pkg="ur_control" type="vive_teleoperation.py"
+        output="screen">
+        
+        <!-- Controller info -->
+        <param name="controller_name" value="left_controller" />
+        <param name="haptic_feedback_topic" value="/vive/set_feedback" />
+        <param name="vive_base_frame" value="world" />
+        
+        <!-- Robot info -->
+        <param name="pose_topic" value="/b_bot/cartesian_compliance_controller/target_frame" />
+        <param name="wrench_topic" value="/b_bot/wrench/filtered" />
+        <param name="robot_namespace" value="b_bot" />
+        <param name="robot_frame_id" value="b_bot_base_link" />
+        
+        <!-- Play area in [translation (m), rotation(deg)] -->
+        <rosparam param="play_area">[0.1, 0.1, 0.1, 10, 10, 10]</rosparam>
+        
+        <!-- Scale controllers sensitivity -->
+        <rosparam param="scale_velocities">[0.5, 0.5, 0.5, 0.5, 0.5, 0.5]</rosparam>
+        
+        <!-- Soft contact force/torque limiter -->
+        <rosparam param="max_contact_force_torque">[100., 100., 100., 5., 5., 5.]</rosparam>
+        
+    </node>
+</launch>

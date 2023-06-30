@@ -108,6 +108,13 @@ class CompliantController(Arm):
 
         self.auto_switch_controllers = True  # Safety switching back to safe controllers
 
+        self.current_target_pose = np.zeros(7)
+        self.current_wrench_pose = np.zeros(6)
+
+        # Monitor external goals
+        self.cartesian_target_pose_sub = rospy.Subscriber('%s/%s/target_frame' % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), PoseStamped, self.target_pose_cb)
+        self.cartesian_target_wrench_sub = rospy.Subscriber('%s/%s/target_wrench' % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), WrenchStamped, self.target_wrench_cb)
+
         self.cartesian_target_pose_pub = rospy.Publisher('%s/%s/target_frame' % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), PoseStamped, queue_size=10.0)
         self.cartesian_target_wrench_pub = rospy.Publisher('%s/%s/target_wrench' % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), WrenchStamped, queue_size=10.0)
 
@@ -135,6 +142,12 @@ class CompliantController(Arm):
         self.min_scale_error = 1.5
 
         rospy.on_shutdown(self.activate_joint_trajectory_controller)
+
+    def target_pose_cb(self, data):
+        self.current_target_pose = conversions.from_pose_to_list(data.pose)
+
+    def target_wrench_cb(self, data):
+        self.current_target_wrench = conversions.from_wrench(data.wrench)
 
     def activate_cartesian_controller(self):
         return self.controller_manager.switch_controllers(controllers_on=[CARTESIAN_COMPLIANCE_CONTROLLER],

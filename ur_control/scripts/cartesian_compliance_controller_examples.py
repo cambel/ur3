@@ -46,6 +46,7 @@ signal.signal(signal.SIGINT, signal_handler)
 
 def move_joints():
     q = [1.3506, -1.6493, 1.9597, -1.8814, -1.5652, 1.3323]
+    q = [1.3524, -1.5555, 1.7697, -1.7785, -1.5644, 1.3493]
     arm.set_joint_positions(q, t=5, wait=True)
 
 
@@ -170,6 +171,26 @@ def test():
         arm.move_relative(transformation=[0, 0, 0.03, 0, 0, 0], relative_to_tcp=False, duration=0.25, wait=True)
         arm.move_relative(transformation=[0, 0.01, 0, 0, 0, 0], relative_to_tcp=False, duration=0.25, wait=True)
 
+def enable_compliance_control():
+    q = [1.3524, -1.5555, 1.7697, -1.7785, -1.5644, 1.3493]
+    arm.set_joint_positions(q, t=1, wait=True)
+
+    arm.zero_ft_sensor()
+    
+    # arm.set_control_mode(mode="parallel")
+    arm.set_control_mode(mode="spring-mass-damper")
+    # arm.set_position_control_mode(True)
+    # arm.update_selection_matrix(np.array([0.1]*6))
+
+    arm.activate_cartesian_controller()
+    arm.set_cartesian_target_pose(arm.end_effector(tip_link="b_bot_gripper_tip_link"))
+
+    for _ in range(30):
+        print("current target pose", arm.current_target_pose[:3])
+        print("error", arm.current_target_pose[:3] - arm.end_effector(tip_link="b_bot_gripper_tip_link")[:3])
+        rospy.sleep(1)
+
+    arm.activate_joint_trajectory_controller()
 
 def main():
     """ Main function to be run. """
@@ -188,6 +209,8 @@ def main():
                         help='Push down while oscillating on X-axis')
     parser.add_argument('-t', '--test', action='store_true',
                         help='Test')
+    parser.add_argument('-teleop', '--teleoperation', action='store_true',
+                        help='Enable cartesian controllers for teleoperation')
     parser.add_argument('--namespace', type=str,
                         help='Namespace of arm', default=None)
     args = parser.parse_args()
@@ -222,6 +245,8 @@ def main():
         move_joints()
     if args.test:
         test()
+    if args.teleoperation:
+        enable_compliance_control()
     # if args.hand_frame_control:
     #     move_hand_frame_control()
 
