@@ -33,7 +33,7 @@ from geometry_msgs.msg import WrenchStamped
 from ur_control import utils, spalg, conversions, transformations
 from ur_control.constants import JOINT_ORDER, JOINT_TRAJECTORY_CONTROLLER, FT_SUBSCRIBER, IKFAST, TRAC_IK, \
     DONE, SPEED_LIMIT_EXCEEDED, IK_NOT_FOUND, get_arm_joint_names, \
-    BASE_LINK, EE_LINK, KDL
+    BASE_LINK, EE_LINK, KDL, GENERIC_GRIPPER, ROBOTIQ_GRIPPER
 
 from std_srvs.srv import Empty, SetBool, Trigger
 
@@ -43,7 +43,7 @@ except ImportError:
     print("Import ur_ikfast not available, IKFAST would not be supported without it")
 
 from ur_control.controllers_connection import ControllersConnection
-from ur_control.controllers import JointTrajectoryController, GripperController
+from ur_control.controllers import JointTrajectoryController, GripperController, RobotiqGripper
 from ur_pykdl import ur_kinematics
 from trac_ik_python.trac_ik import IK as TRACK_IK_SOLVER
 
@@ -130,8 +130,12 @@ class Arm(object):
             publisher_name=traj_publisher, namespace=self.ns, joint_names=self.joint_names, timeout=1.0)
 
         self.gripper = None
-        if gripper:
+        if gripper == GENERIC_GRIPPER:
             self.gripper = GripperController(namespace=self.ns, prefix=self.joint_names_prefix, timeout=2.0)
+        elif gripper == ROBOTIQ_GRIPPER:
+            self.gripper = RobotiqGripper(namespace=self.ns, timeout=2.0)
+        else:
+            raise ValueError("Invalid gripper type %s" % gripper)
 
     def _init_ik_solver(self, base_link, ee_link):
         # Instantiate KDL kinematics solver to compute forward kinematics

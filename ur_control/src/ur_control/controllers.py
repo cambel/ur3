@@ -20,11 +20,17 @@ try:
 except ImportError:
     print("Grasping pluging can't be loaded")
 
+try:
+    import robotiq_msgs.msg
+except ImportError:
+    pass
+
+
 class GripperController(object):
     def __init__(self, namespace='', prefix=None, timeout=5.0, attach_link='robot::wrist_3_link'):
         self.ns = utils.solve_namespace(namespace)
         self.prefix = prefix if prefix is not None else ''
-        node_name = "gripper_controller"
+        node_name = "gripper_action_controller"
         self.gripper_type = str(rospy.get_param(self.ns + node_name + "/gripper_type"))
         self.valid_joint_names = []
         if rospy.has_param(self.ns + node_name + "/joint"):
@@ -161,9 +167,7 @@ class GripperController(object):
         res = self.attach_srv.call(req)
         return res.ok
 
-    def open(self, opening_width=None, wait=True):
-        if opening_width:
-            return self.command(opening_width, percentage=False, wait=wait)
+    def open(self, wait=True):
         return self.command(1.0, percentage=True, wait=wait)
 
     def release(self, link_name):
@@ -221,6 +225,61 @@ class GripperController(object):
             self._joint_names = list(name)
 
 
+class RobotiqGripper():
+    def __init__(self, namespace="", timeout=2):
+        self.ns = namespace
+
+        self.opening_width = 0.0
+
+        self.sub_gripper_status_ = rospy.Subscriber(self.ns + "/gripper_status", robotiq_msgs.msg.CModelCommandFeedback, self._gripper_status_callback)
+        self.gripper = actionlib.SimpleActionClient(self.ns + '/gripper_action_controller', robotiq_msgs.msg.CModelCommandAction)
+        success = self.gripper.wait_for_server(rospy.Duration(timeout))
+        if success:
+            rospy.loginfo("=== Connected to ROBOTIQ gripper ===")
+        else:
+            rospy.logerr("Unable to connect to ROBOTIQ gripper")
+
+    def _gripper_status_callback(self, msg):
+        self.opening_width = msg.position  # [m]
+
+    def get_position(self):
+        return self.opening_width
+
+    def close(self, force=40.0, velocity=1.0, wait=True):
+        return self.send_command("close", force=force, velocity=velocity, wait=wait)
+
+    def open(self, velocity=1.0, wait=True, opening_width=None):
+        command = opening_width if opening_width else "open"
+        return self.send_command(command, wait=wait, velocity=velocity)
+
+    def send_command(self, command, force=40.0, velocity=1.0, wait=True):
+        """
+        command: "open", "close" or opening width
+        force: Gripper force in N. From 40 to 100
+        velocity: Gripper speed. From 0.013 to 0.1
+        attached_last_object: bool, Attach/detach last attached object if set to True
+
+        Use a slow closing speed when using a low gripper force, or the force might be unexpectedly high.
+        """
+        goal = robotiq_msgs.msg.CModelCommandGoal()
+        goal.velocity = velocity
+        goal.force = force
+        if command == "close":
+            goal.position = 0.0
+        elif command == "open":
+            goal.position = 0.140
+        else:
+            goal.position = command     # This sets the opening width directly
+
+        self.gripper.send_goal(goal)
+        rospy.logdebug("Sending command " + str(command) + " to gripper: " + self.ns)
+        if wait:
+            self.gripper.wait_for_result(rospy.Duration(5.0))  # Default wait time: 5 s
+            result = self.gripper.get_result()
+            return True if result else False
+        else:
+            return True
+
 class JointControllerBase(object):
     """
     Base class for the Joint Position Controllers. It subscribes to the C{joint_states} topic by default.
@@ -253,7 +312,7 @@ class JointControllerBase(object):
                 retry = True
                 continue
             elif (rospy.get_time() - start_time) > timeout and retry:
-                rospy.logerr('Timed out waiting for %sjoint_states topic'% self.ns)
+                rospy.logerr('Timed out waiting for joint_states topic')
                 return
             rospy.sleep(0.01)
             if rospy.is_shutdown():
@@ -334,7 +393,7 @@ class JointPositionController(JointControllerBase):
     it will move at its maximum speed/acceleration and will even move the base of the robot, so, B{use with caution}.
     """
 
-    def __init__(self, namespace='', timeout=1.0, joint_names=None):
+    def __init__(self, namespace='', timeout=5.0, joint_names=None):
         """
         C{JointPositionController} constructor. It creates the required publishers for controlling 
         the UR robot. Given that it inherits from C{JointControllerBase} it subscribes 
@@ -424,7 +483,7 @@ class JointTrajectoryController(JointControllerBase):
         the acceleration level.
     """
 
-    def __init__(self, publisher_name='arm_controller', namespace='', timeout=1.0, joint_names=None):
+    def __init__(self, publisher_name='arm_controller', namespace='', timeout=5.0, joint_names=None):
         """
         JointTrajectoryController constructor. It creates the C{SimpleActionClient}.
         @type namespace: string
@@ -536,7 +595,7 @@ class JointTrajectoryController(JointControllerBase):
         """
         self._goal.trajectory.points = copy.deepcopy(trajectory.points)
 
-    def start(self, delay=0.1, wait=False):
+    def start(self, delay=0.1, wait=False, timeout=None):
         """
         Starts the trajectory. It sends the C{FollowJointTrajectoryGoal} to the action server.
         @type  delay: float
@@ -545,8 +604,9 @@ class JointTrajectoryController(JointControllerBase):
         num_points = len(self._goal.trajectory.points)
         rospy.logdebug('Executing Joint Trajectory with {0} points'.format(num_points))
         self._goal.trajectory.header.stamp = rospy.Time.now() + rospy.Duration(delay)
+        _timeout = rospy.Duration(timeout) if timeout else rospy.Duration()
         if wait:
-            self._client.send_goal_and_wait(self._goal)
+            self._client.send_goal_and_wait(self._goal, execute_timeout=_timeout, preempt_timeout=_timeout)
         else:
             self._client.send_goal(self._goal)
 
@@ -574,7 +634,7 @@ class FTsensor(object):
         self.raw_msg = None
         self.rate = 500
         self.wrench_rate = 500
-        self.wrench_filter = filters.ButterLowPass(2.5, self.rate, 3)
+        self.wrench_filter = filters.ButterLowPass(2.5, self.rate, 2)
         self.wrench_window = int(100)
         assert(self.wrench_window >= 5)
         self.wrench_queue = collections.deque(maxlen=self.wrench_window)
