@@ -64,7 +64,7 @@ def move_cartesian():
     ee = arm.end_effector()
 
     p1 = ee.copy()
-    p1[2] -= 0.03
+    p1[2] -= 0.01
 
     p2 = p1.copy()
     p2[2] += 0.005
@@ -86,7 +86,7 @@ def move_force():
     """ Linear push. Move until the target force is felt and stop. """
     arm.zero_ft_sensor()
 
-    selection_matrix = [1, 0, 1, 1, 1, 1]
+    selection_matrix = [1, 1, 0, 1, 1, 1]
     arm.update_selection_matrix(selection_matrix)
 
     pd_gains = [0.03, 0.03, 0.03, 1.0, 1.0, 1.0]
@@ -94,7 +94,7 @@ def move_force():
 
     ee = arm.end_effector()
 
-    target_force = [0, 5, 0, 0, 0, 0]  # express in the end_effector_link
+    target_force = [0, 5, 5, 0, 0, 0]  # express in the end_effector_link
     # transform = arm.end_effector(tip_link="b_bot_tool0")
     # tf = spalg.convert_wrench(target_force, transform)
     # print(transform)
@@ -142,15 +142,16 @@ def admittance_control():
 def free_drive():
     arm.zero_ft_sensor()
 
-    selection_matrix = [0, 0, 0, 0, 0, 0]
+    selection_matrix = [0., 0., 0.0, 1., 1., 1.]
     arm.update_selection_matrix(selection_matrix)
 
-    pd_gains = [0.05, 0.05, 0.05, 1.0, 1.0, 1.0]
+    pd_gains = [0.03, 0.03, 0.03, 1.0, 1.0, 1.0]
     arm.update_pd_gains(pd_gains)
 
     ee = arm.end_effector()
 
     target_force = np.zeros(6)
+    target_force[2] = -1
 
     res = arm.execute_compliance_control(ee, target_wrench=target_force,
                                          max_force_torque=[50., 50., 50., 5., 5., 5.], duration=15,

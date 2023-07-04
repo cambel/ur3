@@ -43,6 +43,7 @@ class Converter:
         self.play_area[3:] = np.deg2rad(self.play_area[3:])
         # Limit contact interaction
         self.max_force_torque = rospy.get_param('~max_contact_force_torque', default=[50., 50., 50., 5., 5., 5.])
+        self.min_force_torque = rospy.get_param('~min_contact_force_torque', default=[3., 3., 3., 0.2, 0.2, 0.5])
 
         self.scale_velocities = rospy.get_param('~scale_velocities', [1., 1., 1., 1., 1., 1.])
         self.scale_velocities = np.clip(self.scale_velocities, 0.0, 1.0)
@@ -70,7 +71,6 @@ class Converter:
         self.haptic_feedback_rate = rospy.Rate(40)
         self.haptic_feedback_pub = rospy.Publisher(haptic_feedback_topic, ViveControllerFeedback, queue_size=3)
         self.wrench_sub = rospy.Subscriber(wrench_topic, WrenchStamped, self.wrench_cb, queue_size=1)
-
 
     def get_transformation(self, source, target):
         try:
@@ -130,11 +130,16 @@ class Converter:
         rotation = spalg.quaternions_orientation_error(next_orientation, self.center_orientation)
 
         # DEBUG prints
-        # rospy.loginfo_throttle(1, "translation %s dt %s" % (translation, dt))
+        # rospy.loginfo_throttle(1, "translation %s dt %s" % (np.round(translation, 3), dt))
         # rospy.loginfo_throttle(1, "rotation %s dt %s" % (rotation, dt))
 
         if np.any(np.abs(translation) > self.play_area[:3]) or np.any(np.abs(rotation) > self.play_area[3:]):
-            return
+            self.target_position = [next_pose[i] if np.abs(translation)[i] < self.play_area[i] else self.target_position[i] for i in range(3)]
+
+            # re-compute rotation with limits enforced
+            angular_vel_ = [angular_vel[i] if np.abs(rotation)[i] < self.play_area[i+3] else 0.0 for i in range(3)]
+            rospy.loginfo_throttle(0.5, "limited angular vel %s" % (np.round(angular_vel_, 3)))
+            self.target_orientation = transformations.integrateUnitQuaternionDMM(self.target_orientation, np.array(angular_vel_), dt)
         else:
             self.target_position = next_pose
             self.target_orientation = next_orientation  # the last one is after dt passed
@@ -165,10 +170,10 @@ class Converter:
         wrench = conversions.from_wrench(data.wrench)
         normalized_wrench = wrench / self.max_force_torque
         intensity = np.linalg.norm(normalized_wrench)
-        
-        rospy.loginfo_throttle(0.5, round(intensity, 2))
 
-        if intensity > 0.1:
+        # rospy.loginfo_throttle(0.1, "%s %s" % (np.round(normalized_wrench,1), round(intensity, 2)))
+
+        if np.any(wrench > self.min_force_torque):
             haptic_msg = ViveControllerFeedback()
             haptic_msg.controller_name = self.controller_name
             haptic_msg.duration_microsecs = np.interp(intensity, [0.0, 2.45], [0.0, 3999.0])
