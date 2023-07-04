@@ -112,8 +112,8 @@ class CompliantController(Arm):
         self.current_wrench_pose = np.zeros(6)
 
         # Monitor external goals
-        self.cartesian_target_pose_sub = rospy.Subscriber('%s/%s/target_frame' % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), PoseStamped, self.target_pose_cb)
-        self.cartesian_target_wrench_sub = rospy.Subscriber('%s/%s/target_wrench' % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), WrenchStamped, self.target_wrench_cb)
+        rospy.Subscriber('%s/%s/target_frame' % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), PoseStamped, self.target_pose_cb)
+        rospy.Subscriber('%s/%s/target_wrench' % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), WrenchStamped, self.target_wrench_cb)
 
         self.cartesian_target_pose_pub = rospy.Publisher('%s/%s/target_frame' % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), PoseStamped, queue_size=10.0)
         self.cartesian_target_wrench_pub = rospy.Publisher('%s/%s/target_wrench' % (self.ns, CARTESIAN_COMPLIANCE_CONTROLLER), WrenchStamped, queue_size=10.0)
