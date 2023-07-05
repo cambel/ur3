@@ -12,7 +12,7 @@ For ROS Melodic see the `melodic-devel` branch.
 
 ### [With docker](https://github.com/cambel/ur3/wiki/Install-with-Docker)
 
-### [Compile from source](https://github.com/cambel/ur3/wiki/Compile-from-source-(This-repo))
+### [Compile from source](https://github.com/cambel/ur3/wiki/Compile-from-source)
 
 ## Examples
 
