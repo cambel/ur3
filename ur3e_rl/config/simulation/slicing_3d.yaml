@@ -1,96 +1,159 @@
-ur3e_gym: #namespace
-    # General Agent parameters
-    env_id: "UR3eSlicingEnv-v1"
-    controller_type: "cartesian_compliance"
-    namespace: "b_bot"
-    ee_link: knife_center
-
-    reset_robot: True
-    real_robot: False
-    test_mode: False
-
-    # RL parameters
-    batch_size: 1024
-    lr: 1.0e-2
-    auto_alpha: True
-    update_interval: 2
-
-    relative_to_ee: False
-    robot_control_dt: 0.002
-    agent_control_dt: 0.02
-    reset_time: 0.5
-    # actions parameters 
-    n_actions: 6
-    action_type: "slicing-3d"
-    
-    steps_per_episode: 500
-    
-    actor_class: "default"
-    ft_hist: False
-    wrench_hist_size: 1
-    last_action_as_obs: True
-    normalize_velocity: True
-
-    rand_seed: 123456
-
-    # Domain Randomization Parameters
-    object_name: "target_block_tmp"
-    object_friction: 1
-    object_stiffness: 600
-    max_stiffness_range: [500, 1200]
-    max_damping_range: [0, 1]
-    max_kp_range: [1.0e+5, 5.0e+5]
-    max_kd_range: [1, 2]
-    max_friction_range: [0, 2]
-
-    ## Target object configuration
-    randomize_object_properties: True
-    normal_randomization: True
-    basic_randomization: False
-    # object_initial_pose: [-0.12, 0.0, 0.88, 1.5707, -1.5707, 3.1415] # cucumber
-    object_initial_pose: [-0.12, 0.03, 0.875, 0, 0, 1.5707] # button
-    object_workspace: [[-0.05, 0.05], [-0.05, 0.05], [0.08, 0.02], [-20, 20], [-20, 20], [-60, 60]]
-
-    # initial conditions
-    random_initial_pose: False
-    # for each dimension define upper and lower bound from initial pose
-    max_distance: [0.1, 0.1, 0.1, 0.785398, 0.785398, 1.5707]
-    
-    workspace_limit: [0.05, 0.1, 0.523599]
-    workspace: [[0,0], [0, 0], [0.0, 0.02], [0, -0], [0, -0], [0, -0]]
-
-    init_q: [1.3524, -1.5555, 1.7697, -1.7785, -1.5644, 1.3493] # cut to button
-
-    reset_motion: [0.0, 0, 0.035, 0, 0, 0]    
-
-    target_duration: 6
-    target_pose_uncertain: False
-    uncertainty_std: [0.001, 0.0]
-    random_target_pose: False
-    target_pose: [0.11, 0.50, 0.1565, -0.00812894,  0.70963372, -0.00882711,  0.70446859]
-    
-    # Reward parameters
-    target_dims: [0,2,4]
-    goal_threshold: [1.0, 0.002, 0.08]
-    
-    reward_type: 'slicing'
-    termination_on_negative_reward: False
-    termination_reward_threshold: -300 # new -500
-
-    cost:
-        collision: -500.0
-        done: 500
-        step: -1.0
-        l1: 0.1
-        l2: 2.0
-        alpha: 1.0e-10
-    w_dist: 1.0
-    w_force: 1.0
-    w_jerkiness: 1.0
-    successes_threshold: 20
-        
-# Controller parameters
 ur3e_force_control:
-    max_twist: [1.0, 3.1415]
-    max_force_torque: [50, 50.0, 50.0, 5, 5, 5]
-    desired_force_torque: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+  desired_force_torque:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  max_force_torque:
+  - 50
+  - 50.0
+  - 50.0
+  - 5
+  - 5
+  - 5
+  max_twist:
+  - 1.0
+  - 3.1415
+ur3e_gym:
+  action_type: slicing-3d
+  actor_class: default
+  agent_control_dt: 0.02
+  auto_alpha: true
+  basic_randomization: false
+  batch_size: 1024
+  controller_type: cartesian_compliance
+  cost:
+    alpha: 1.0e-10
+    collision: -100
+    done: 400
+    l1: 0.1
+    l2: 2.0
+    step: 0
+  ee_link: knife_center
+  env_id: UR3eSlicingEnv-v1
+  ft_hist: false
+  goal_threshold:
+  - 1.0
+  - 0.002
+  - 0.08
+  init_q:
+  - 1.3524
+  - -1.5555
+  - 1.7697
+  - -1.7785
+  - -1.5644
+  - 1.3493
+  last_action_as_obs: true
+  lr: 0.01
+  max_damping_range:
+  - 0
+  - 1
+  max_distance:
+  - 0.1
+  - 0.1
+  - 0.1
+  - 0.785398
+  - 0.785398
+  - 1.5707
+  max_friction_range:
+  - 0
+  - 2
+  max_kd_range:
+  - 1
+  - 2
+  max_kp_range:
+  - 100000.0
+  - 500000.0
+  max_stiffness_range:
+  - 500
+  - 1200
+  n_actions: 6
+  namespace: b_bot
+  normal_randomization: true
+  normalize_velocity: true
+  object_friction: 1
+  object_initial_pose:
+  - -0.12
+  - 0.03
+  - 0.875
+  - 0
+  - 0
+  - 1.5707
+  object_name: target_block_tmp
+  object_stiffness: 600
+  object_workspace:
+  - - -0.05
+    - 0.05
+  - - -0.05
+    - 0.05
+  - - 0.08
+    - 0.02
+  - - -20
+    - 20
+  - - -20
+    - 20
+  - - -60
+    - 60
+  rand_seed: 123456
+  random_initial_pose: false
+  random_target_pose: false
+  randomize_object_properties: true
+  real_robot: false
+  relative_to_ee: false
+  reset_motion:
+  - 0.0
+  - 0
+  - 0.035
+  - 0
+  - 0
+  - 0
+  reset_robot: true
+  reset_time: 0.5
+  reward_type: slicing
+  robot_control_dt: 0.002
+  steps_per_episode: 500
+  successes_threshold: 20
+  target_dims:
+  - 0
+  - 2
+  - 4
+  target_duration: 6
+  target_pose:
+  - 0.11
+  - 0.5
+  - 0.1565
+  - -0.00812894
+  - 0.70963372
+  - -0.00882711
+  - 0.70446859
+  target_pose_uncertain: false
+  termination_on_negative_reward: false
+  termination_reward_threshold: -300
+  test_mode: false
+  uncertainty_std:
+  - 0.001
+  - 0.0
+  update_interval: 2
+  w_dist: 0.44194028945896824
+  w_force: 9.061526375382238
+  w_jerkiness: 3.900998754754944
+  workspace:
+  - - 0
+    - 0
+  - - 0
+    - 0
+  - - 0.0
+    - 0.02
+  - - 0
+    - 0
+  - - 0
+    - 0
+  - - 0
+    - 0
+  workspace_limit:
+  - 0.05
+  - 0.1
+  - 0.523599
+  wrench_hist_size: 1
