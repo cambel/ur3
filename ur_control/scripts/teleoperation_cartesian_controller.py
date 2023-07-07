@@ -35,6 +35,8 @@ from sensor_msgs.msg import Joy
 from ur_control import constants
 from ur_control.fzi_cartesian_compliance_controller import CompliantController
 
+from vive_tracking_ros.teleoperation import TeleoperationBase
+
 
 def signal_handler(sig, frame):
     print('You pressed Ctrl+C!')
@@ -44,23 +46,23 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 
-class Teleoperation:
+class Teleoperation(TeleoperationBase):
+    """ Implementation of Teleoperation with Vive controllers using the FZI Cartesian Compliance Controllers """
 
     def __init__(self) -> None:
-        rospy.init_node("teleoperation")
+        super(Teleoperation, self).__init__()
+
         self.initial_configuration = rospy.get_param("~initial_configuration")
 
-        self.robot_ns = rospy.get_param('~robot_namespace', default="")
-        self.end_effector = rospy.get_param(self.robot_ns + '/cartesian_compliance_controller/end_effector_link', default="tool0")
         self.control_frequency = rospy.get_param('~control_frequency', default=100)
-        self.incoming_command_timeout = rospy.get_param('~incoming_command_timeout', default=0.1)
-
-        self.controller_stiffness = rospy.get_param('~controller_stiffness', [1000., 1000., 1000., 50., 50., 50.])
-
         self.rate = rospy.Rate(self.control_frequency)
+
+        self.incoming_command_timeout = rospy.get_param('~incoming_command_timeout', default=0.1)
+        self.controller_stiffness = rospy.get_param('~controller_stiffness', [1000., 1000., 1000., 50., 50., 50.])
 
         joint_names_prefix = self.robot_ns + "_" if self.robot_ns else ""
         no_prefix_end_effector = self.end_effector.replace(self.robot_ns+"_", "")
+
         self.robot_arm = CompliantController(namespace=self.robot_ns,
                                              joint_names_prefix=joint_names_prefix,
                                              ee_link=no_prefix_end_effector,
@@ -68,11 +70,7 @@ class Teleoperation:
                                              gripper=constants.ROBOTIQ_GRIPPER
                                              )
 
-        self.stop_teleoperation = True
-
-        self.controller_name = rospy.get_param('~controller_name', default="right_controller")
-        joy_topic = '/vive/' + self.controller_name + '/joy'
-        rospy.Subscriber(joy_topic, Joy, self.joy_cb, queue_size=1)
+        self.reset_robot_pose_request = True
 
         self.last_msg_mutex = threading.Lock()
 
@@ -81,76 +79,78 @@ class Teleoperation:
         rospy.Subscriber('%s/%s/target_frame' % (self.robot_ns, constants.CARTESIAN_COMPLIANCE_CONTROLLER), PoseStamped, self.target_pose_cb)
         rospy.Subscriber('%s/%s/target_wrench' % (self.robot_ns, constants.CARTESIAN_COMPLIANCE_CONTROLLER), WrenchStamped, self.target_wrench_cb)
 
+    # Overwriting
     def joy_cb(self, data):
+        super(Teleoperation, self).joy_cb(data)
+
         menu_button = data.buttons[0]
         touchpad_button = data.buttons[1]
         grip_button = data.buttons[3]
 
-        # if touchpad_button:
-        #     print("hi?")
-        #     self.stop_teleoperation = True
-        #     self.robot_arm.activate_joint_trajectory_controller()
-        #     self.reset_robot_pose()
-        #     rospy.sleep(5)
-        #     self.stop_teleoperation = False
+        if touchpad_button:
+            rospy.loginfo("=== Resetting robot pose ===")
+            self.reset_robot_pose_request = True
+            rospy.sleep(1.0)
         if grip_button:
             gripper_state = 'open' if self.robot_arm.gripper.get_position() > 0.08 else 'close'
             if gripper_state == 'open':
+                rospy.loginfo("=== Closing Gripper ===")
                 self.robot_arm.gripper.close(wait=False)
             else:
+                rospy.loginfo("=== Opening Gripper ===")
                 self.robot_arm.gripper.open(wait=False)
             rospy.sleep(1.0)
         if menu_button:
             rospy.loginfo("=== Zeroing FT sensor ===")
             self.robot_arm.zero_ft_sensor()
-            rospy.sleep(0.5)
+            rospy.sleep(1.0)
 
-    def target_pose_cb(self, data):
+    def target_pose_cb(self, _):
         with self.last_msg_mutex:
             self.last_msg_time = rospy.get_time()
 
-    def target_wrench_cb(self, data):
+    def target_wrench_cb(self, _):
         with self.last_msg_mutex:
             self.last_msg_time = rospy.get_time()
 
     def reset_robot_pose(self):
+        self.robot_arm.activate_joint_trajectory_controller()
         self.robot_arm.set_joint_positions(self.initial_configuration, t=5, wait=True)
         self.robot_arm.zero_ft_sensor()
+        self.center_target_pose()
 
     def run(self):
         rospy.loginfo("=== Moving to initial configuration ===")
 
-        self.reset_robot_pose()
-
         self.robot_arm.set_control_mode(mode="spring-mass-damper")
         self.robot_arm.update_stiffness(self.controller_stiffness)
         self.robot_arm.set_solver_parameters(error_scale=0.6, iterations=1)
-        
-        cartesian_controller_activated = False
-        self.stop_teleoperation = False
+
+        compliance_controller_activated = False
 
         rospy.loginfo("=== Ready for teleoperation ===")
         while not rospy.is_shutdown():
-            if self.stop_teleoperation:
-                cartesian_controller_activated = False
-                self.rate.sleep()
-                continue
+            if self.reset_robot_pose_request:
+                self.enable_tracking = False
+                self.reset_robot_pose()
+                self.reset_robot_pose_request = False
+                compliance_controller_activated = False
 
-            enable_controller = False
+            enable_compliance = False
             with self.last_msg_mutex:
                 # Stop if there is no more incoming commands in more that some time
-                if rospy.get_time() - self.last_msg_time > self.incoming_command_timeout:
-                    enable_controller = False
+                if (rospy.get_time() - self.last_msg_time) > self.incoming_command_timeout:
+                    enable_compliance = False
                 else:
-                    enable_controller = True
+                    enable_compliance = True
 
-            if enable_controller and not cartesian_controller_activated:
+            if enable_compliance and not compliance_controller_activated:
                 self.robot_arm.activate_cartesian_controller()
-                cartesian_controller_activated = True
+                compliance_controller_activated = True
 
-            if not enable_controller and cartesian_controller_activated:
+            if not enable_compliance and compliance_controller_activated:
                 self.robot_arm.activate_joint_trajectory_controller()
-                cartesian_controller_activated = False
+                compliance_controller_activated = False
 
             self.rate.sleep()
 

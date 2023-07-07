@@ -1,12 +1,14 @@
 <launch>
     <include file="$(find vive_tracking_ros)/launch/track_controller.launch" />
 
+    <arg name="controller_name" default="right_controller" />
+
     <!-- Numerically integrate twists into a pose -->
     <node name="vive_teleoperation" pkg="ur_control"
-        type="vive_converter.py" output="screen">
+        type="teleoperation_cartesian_controller.py" output="screen">
 
         <!-- Controller info -->
-        <param name="controller_name" value="left_controller" />
+        <param name="controller_name" value="$(arg controller_name)" />
         <param name="haptic_feedback_topic" value="/vive/set_feedback" />
         <param name="vive_base_frame" value="world" />
 
@@ -24,19 +26,11 @@
 
         <!-- Soft contact force/torque limiter -->
         <rosparam param="max_contact_force_torque">[30., 30., 30., 3., 3., 3.]</rosparam>
-    </node>
-
-    <!-- Enable/disable cartersian compliance controller to teleoperate robot -->
-    <node name="vive_to_pose" pkg="ur_control"
-        type="teleoperation_cartesian_controller.py" output="screen">
-
-        <!-- Robot info -->
-        <param name="robot_namespace" value="b_bot" />
         <!-- Initial joint configuration in radians -->
         <rosparam param="initial_configuration">[1.3524, -1.5555, 1.7697, -1.7785, -1.5644, 1.3493]</rosparam>
         <!-- Controller info -->
         <param name="incoming_command_timeout" value="0.1" type="double" />
         <param name="control_frequency" value="100" type="int" />
-        <param name="controller_name" value="left_controller" />
     </node>
+
 </launch>

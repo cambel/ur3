@@ -1,42 +1,36 @@
 <launch>
-    <include file="$(find vive_tracking_ros)/launch/track_controller.launch"/>
+    <include file="$(find vive_tracking_ros)/launch/track_controller.launch" />
+
+    <arg name="controller_name" default="right_controller" />
 
     <!-- Numerically integrate twists into a pose -->
-    <node name="vive_to_pose" pkg="ur_control" type="vive_teleoperation.py"
-        output="screen">
-        
-        <!-- Controller info -->
-        <param name="controller_name" value="left_controller" />
-        <param name="haptic_feedback_topic" value="/vive/set_feedback" />
-        <param name="vive_base_frame" value="world" />
-        
-        <!-- Robot info -->
-        <param name="pose_topic" value="/b_bot/cartesian_compliance_controller/target_frame" />
-        <param name="wrench_topic" value="/b_bot/wrench/filtered" />
-        <param name="robot_namespace" value="b_bot" />
-        <param name="robot_frame_id" value="b_bot_base_link" />
-        
-        <!-- Play area in [translation (m), rotation(deg)] -->
-        <rosparam param="play_area">[0.1, 0.1, 0.1, 10, 10, 10]</rosparam>
-        
-        <!-- Scale controllers sensitivity -->
-        <rosparam param="scale_velocities">[0.5, 0.5, 0.5, 0.5, 0.5, 0.5]</rosparam>
-        
-        <!-- Soft contact force/torque limiter -->
-        <rosparam param="max_contact_force_torque">[100., 100., 100., 5., 5., 5.]</rosparam>
-        
-    </node>
-
-    <!-- Enable/disable cartersian compliance controller to teleoperate robot -->
-    <node name="vive_to_pose" pkg="ur_control"
+    <node name="vive_teleoperation" pkg="ur_control"
         type="teleoperation_cartesian_controller.py" output="screen">
 
+        <!-- Controller info -->
+        <param name="controller_name" value="$(arg controller_name)" />
+        <param name="haptic_feedback_topic" value="/vive/set_feedback" />
+        <param name="vive_base_frame" value="world" />
+
         <!-- Robot info -->
+        <param name="pose_topic" value="/b_bot/cartesian_compliance_controller/target_frame" />
+        <param name="wrench_topic" value="/b_bot/wrench" />
         <param name="robot_namespace" value="b_bot" />
+        <param name="robot_frame_id" value="b_bot_base_link" />
+
+        <!-- Play area in [translation (m), rotation(deg)] -->
+        <rosparam param="play_area">[0.2, 0.2, 0.2, 10, 10, 30]</rosparam>
+
+        <!-- Scale controllers sensitivity -->
+        <rosparam param="scale_velocities">[1.0, 1.0, 1.0, 1.0, 1.0, 1.0]</rosparam>
+
+        <!-- Soft contact force/torque limiter -->
+        <rosparam param="max_contact_force_torque">[30., 30., 30., 3., 3., 3.]</rosparam>
         <!-- Initial joint configuration in radians -->
         <rosparam param="initial_configuration">[1.3524, -1.5555, 1.7697, -1.7785, -1.5644, 1.3493]</rosparam>
         <!-- Controller info -->
         <param name="incoming_command_timeout" value="0.1" type="double" />
         <param name="control_frequency" value="100" type="int" />
     </node>
+
 </launch>
