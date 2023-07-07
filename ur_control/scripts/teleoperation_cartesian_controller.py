@@ -35,7 +35,7 @@ from sensor_msgs.msg import Joy
 from ur_control import constants
 from ur_control.fzi_cartesian_compliance_controller import CompliantController
 
-from vive_tracking_ros.teleoperation import TeleoperationBase
+from vive_tracking_ros.teleoperation_base import TeleoperationBase
 
 
 def signal_handler(sig, frame):
@@ -58,7 +58,7 @@ class Teleoperation(TeleoperationBase):
         self.rate = rospy.Rate(self.control_frequency)
 
         self.incoming_command_timeout = rospy.get_param('~incoming_command_timeout', default=0.1)
-        self.controller_stiffness = rospy.get_param('~controller_stiffness', [1000., 1000., 1000., 50., 50., 50.])
+        self.controller_stiffness = rospy.get_param('~controller_stiffness', [2000., 2000., 2000., 200., 50., 50.])
 
         joint_names_prefix = self.robot_ns + "_" if self.robot_ns else ""
         no_prefix_end_effector = self.end_effector.replace(self.robot_ns+"_", "")
@@ -70,7 +70,7 @@ class Teleoperation(TeleoperationBase):
                                              gripper=constants.ROBOTIQ_GRIPPER
                                              )
 
-        self.reset_robot_pose_request = True
+        self.reset_robot_pose_request = False
 
         self.last_msg_mutex = threading.Lock()
 
@@ -124,14 +124,17 @@ class Teleoperation(TeleoperationBase):
 
         self.robot_arm.set_control_mode(mode="spring-mass-damper")
         self.robot_arm.update_stiffness(self.controller_stiffness)
+        self.robot_arm.update_pd_gains(p_gains=[0.05, 0.05, 0.05, 1.0, 1.0, 1.0])
         self.robot_arm.set_solver_parameters(error_scale=0.6, iterations=1)
 
         compliance_controller_activated = False
 
+        self.reset_robot_pose()
+
         rospy.loginfo("=== Ready for teleoperation ===")
         while not rospy.is_shutdown():
             if self.reset_robot_pose_request:
-                self.enable_tracking = False
+                self.set_tracking(enable=False)
                 self.reset_robot_pose()
                 self.reset_robot_pose_request = False
                 compliance_controller_activated = False

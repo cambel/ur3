@@ -17,6 +17,7 @@
         <param name="wrench_topic" value="/b_bot/wrench" />
         <param name="robot_namespace" value="b_bot" />
         <param name="robot_frame_id" value="b_bot_base_link" />
+        <param name="wrench_topic" value="b_bot_knife_center" />
 
         <!-- Play area in [translation (m), rotation(deg)] -->
         <rosparam param="play_area">[0.2, 0.2, 0.2, 10, 10, 30]</rosparam>
