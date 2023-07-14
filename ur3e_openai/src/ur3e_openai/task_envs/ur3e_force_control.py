@@ -264,10 +264,11 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         if x > self.mu1 : self.w_dist = max(offset_end1, self.w_dist) 
         elif x < self.mu1 : self.w_dist = max(offset_start1, self.w_dist) 
         if x > self.mu2 : self.w_force = max(offset_end2, self.w_force) 
-        elif x < self.mu2 : self.w_dist = max(offset_start2, self.w_force) 
-        if x > self.mu3 : self.w_force = max(offset_end3, self.w_jerk)
-        elif x < self.mu3 : self.w_dist = max(offset_start3, self.w_jerk)  
+        elif x < self.mu2 : self.w_force = max(offset_start2, self.w_force) 
+        if x > self.mu3 : self.w_w_jerk = max(offset_end3, self.w_jerk)
+        elif x < self.mu3 : self.w_jerk = max(offset_start3, self.w_jerk)  
 
+        print([self.w_dist, self.w_force, self.w_jerk])
         return np.array([self.w_dist, self.w_force, self.w_jerk])
 
     def get_end_effector_relative_position_and_velocity(self):
