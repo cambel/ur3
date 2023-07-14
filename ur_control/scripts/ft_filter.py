@@ -43,8 +43,8 @@ from ur_control.controllers import JointControllerBase
 class FTsensor(object):
 
     def __init__(self, in_topic, in_topic2 = None, namespace="", out_topic=None,
-                 sampling_frequency=500, cutoff=5,
-                 order=2, data_window=100, timeout=3.0,
+                 sampling_frequency=500, cutoff=50,
+                 order=2, data_window=200, timeout=3.0,
                  republish=False, gravity_compensation=False):
 
         self.ns = namespace
