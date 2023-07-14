@@ -24,6 +24,7 @@ ur3e_gym: #namespace
     action_type: "slicing-1d-2act"
     
     steps_per_episode: 500
+    max_step: 50000
     
     actor_class: "default"
     ft_hist: False

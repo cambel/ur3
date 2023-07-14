@@ -54,3 +54,5 @@ srv_gen
 *.pyc
 
 results/
+core.*
+.vscode/

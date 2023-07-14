@@ -10,14 +10,14 @@ ur3e_gym: #namespace
     test_mode: False
 
     # RL parameters
-    batch_size: 1024
-    lr: 1.0e-2
-    auto_alpha: True
-    update_interval: 2
+    batch_size: 1024   # 256, 512, 1024, 2048, 4096
+    lr: 1.0e-2 # 1.0e-3, 1.0e-4
+    auto_alpha: True # True, False
+    update_interval: 2 # 0, 1, 2, 5
 
     relative_to_ee: False
     robot_control_dt: 0.002
-    agent_control_dt: 0.02
+    agent_control_dt: 0.02 # 0.05, 0.01
     reset_time: 0.5
     # actions parameters 
     n_actions: 6
@@ -25,9 +25,9 @@ ur3e_gym: #namespace
     
     steps_per_episode: 500
     
-    actor_class: "default"
-    ft_hist: False
-    wrench_hist_size: 1
+    actor_class: "default" # "wave"
+    ft_hist: False         # True
+    wrench_hist_size: 1    # 3, 6, 12
     last_action_as_obs: True
     normalize_velocity: True
     completion_as_obs: True
@@ -84,6 +84,6 @@ ur3e_gym: #namespace
         
 # Controller parameters
 ur3e_force_control:
-    max_twist: [1.0, 3.1415]
+    max_twist: [1.0, 3.1415] # Maybe later more/less control
     max_force_torque: [50, 50.0, 50.0, 5, 5, 5]
     desired_force_torque: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]

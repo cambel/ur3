@@ -38,9 +38,9 @@ def slicing(self, obs, done):
 
     # encourage complete cut of the material
     r_cut_completion = -1/(1+np.exp((-10)*(cut_completion-0.5))) * self.cost_cut_completion  # use of a sigmoid, low reward for low cut, high reward for complete cut
-
     reward = self.w_dist*r_distance + self.w_force*r_force + self.w_jerkiness*r_jerkiness + r_collision + r_done + r_step + self.w_cut_completion*r_cut_completion
     # print('r', round(reward, 4), round(r_distance, 4), round(r_force, 4), round(r_jerkiness, 4), r_done, jerkiness)
+    print(self.w_dist)
     return reward, [r_distance, r_force, r_jerkiness, r_collision, r_done, r_step, r_cut_completion]
 
 

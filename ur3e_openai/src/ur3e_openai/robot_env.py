@@ -36,6 +36,7 @@ class RobotGazeboEnv(gym.Env):
         self.episode_hist = np.array([0,1]*10)
         self.success_end = False # whether the episode ends because of success
         self.step_count = 0
+        self.total_steps = 0
         self.cumulated_episode_reward = 0
         self.pause = False
         self._log_message = None
@@ -70,12 +71,23 @@ class RobotGazeboEnv(gym.Env):
         self._set_action(action)
         # self.robot_connection.pause()
         obs = self._get_obs()
+        # incrementing the counters
+        num_dims = 6 if self.target_dims is None else len(self.target_dims)
+        self.step_count += 1
+        self.total_steps += 1
+        self.cumulated_dist += np.linalg.norm(obs[:num_dims])
+        max_force_torque = np.array([self.controller.max_force_torque[i] for i in self.target_dims])
+        wrench_size = self.wrench_hist_size*num_dims
+        force = np.reshape(obs[-wrench_size:], (-1, num_dims)) * max_force_torque
+        force = np.average(force, axis=0)
+        self.cumulated_force += np.linalg.norm(force[:3])
+        self.cumulated_jerk += np.linalg.norm(obs[num_dims*2:num_dims*3]) 
+        # state variables
         done = self._is_done(obs)
-        info = self._get_info()
+        info = self._get_info(obs)
         reward = self._compute_reward(obs, done)
         self.cumulated_episode_reward += reward
 
-        self.step_count += 1
 
         return obs, reward, done, info
 
@@ -84,6 +96,9 @@ class RobotGazeboEnv(gym.Env):
         self._update_episode()
         self._init_env_variables()
         self.step_count = 0
+        self.cumulated_dist = 0
+        self.cumulated_force = 0
+        self.cumulated_jerk = 0
         self._reset_sim()
         obs = self._get_obs()
         rospy.logdebug("END Reseting RobotGazeboEnvironment")
@@ -164,7 +179,7 @@ class RobotGazeboEnv(gym.Env):
         """
         raise NotImplementedError()
 
-    def _get_info(self):
+    def _get_info(self, obs):
         """Returns additional information (optional)
         """
         return {}

@@ -27,7 +27,7 @@ if __name__ == '__main__':
     parser.add_argument('-e', '--env_id', type=int, help='environment ID', default=None)
     parser.set_defaults(batch_size=256)
     parser.set_defaults(n_warmup=1000)  # still don't know what it this for
-    parser.set_defaults(max_steps=100000)  # 10000 for training 200 for evaluation
+    parser.set_defaults(max_steps=50000)  # 10000 for training 200 for evaluation
     parser.set_defaults(save_model_interval=5000)
     parser.set_defaults(test_interval=1e10)  # 1e4 for training 200 for evaluation
     parser.set_defaults(test_episodes=1)
@@ -69,6 +69,24 @@ if __name__ == '__main__':
     elif args.env_id == 3:
         args.dir_suffix = "disect_slicing_3d"
         param_file = "simulation/slicing_3d_disect.yaml"
+    elif args.env_id == 4:
+        args.dir_suffix = "slicing_3d"
+        param_file = "simulation/slicing_3d_dyn1.yaml"
+    elif args.env_id == 5:
+        args.dir_suffix = "slicing_3d"
+        param_file = "simulation/slicing_3d_dyn2.yaml"
+    elif args.env_id == 6:
+        args.dir_suffix = "slicing_3d"
+        param_file = "simulation/slicing_3d_dyn3.yaml"
+    elif args.env_id == 7:
+        args.dir_suffix = "slicing_3d"
+        param_file = "simulation/slicing_3d_dyn4.yaml"
+    elif args.env_id == 8:
+        args.dir_suffix = "slicing_3d"
+        param_file = "simulation/slicing_3d_dyn5.yaml"
+    elif args.env_id == 9:
+        args.dir_suffix = "slicing_3d"
+        param_file = "simulation/slicing_3d_dyn6.yaml"
     else:
         raise Exception("invalid env_id")
 
@@ -84,6 +102,7 @@ if __name__ == '__main__':
     env = load_environment(
             rospy.get_param('ur3e_gym/env_id'),
             max_episode_steps=args.episode_max_steps)
+    env.max_steps = args.max_steps
     actor_class = rospy.get_param("ur3e_gym/actor_class", "default")
     seed = rospy.get_param("ur3e_gym/rand_seed", 0)
     batch_size = rospy.get_param("ur3e_gym/batch_size", args.batch_size)

@@ -132,10 +132,10 @@ class Arm(object):
         self.gripper = None
         if gripper == GENERIC_GRIPPER:
             self.gripper = GripperController(namespace=self.ns, prefix=self.joint_names_prefix, timeout=2.0)
-        elif gripper == ROBOTIQ_GRIPPER:
-            self.gripper = RobotiqGripper(namespace=self.ns, timeout=2.0)
-        else:
-            raise ValueError("Invalid gripper type %s" % gripper)
+        # elif gripper == ROBOTIQ_GRIPPER:
+        #     self.gripper = RobotiqGripper(namespace=self.ns, timeout=2.0)
+        # else:
+        #     raise ValueError("Invalid gripper type %s" % gripper)
 
     def _init_ik_solver(self, base_link, ee_link):
         # Instantiate KDL kinematics solver to compute forward kinematics

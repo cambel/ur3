@@ -18,22 +18,22 @@ ur3e_force_control:
   - 3.1415
 ur3e_gym:
   action_type: slicing-3d
-  actor_class: wave
+  actor_class: default
   agent_control_dt: 0.02
   auto_alpha: true
   basic_randomization: false
-  batch_size: 256
+  batch_size: 1024
   controller_type: cartesian_compliance
   cost:
     alpha: 1.0e-10
-    collision: -250
-    done: 100
+    collision: -10
+    done: 10
     l1: 0.1
     l2: 2.0
     step: -1
   ee_link: knife_center
   env_id: UR3eSlicingEnv-v1
-  ft_hist: true
+  ft_hist: false
   goal_threshold:
   - 1.0
   - 0.002
@@ -46,7 +46,7 @@ ur3e_gym:
   - -1.5644
   - 1.3493
   last_action_as_obs: true
-  lr: 0.001
+  lr: 0.01
   max_damping_range:
   - 0
   - 1
@@ -114,7 +114,7 @@ ur3e_gym:
   reward_type: slicing
   robot_control_dt: 0.002
   steps_per_episode: 500
-  successes_threshold: 20
+  successes_threshold: 10
   target_dims:
   - 0
   - 2
@@ -135,10 +135,13 @@ ur3e_gym:
   uncertainty_std:
   - 0.001
   - 0.0
-  update_interval: 5
+  update_interval: 2
   w_dist: 1.0
   w_force: 0.1
   w_jerkiness: 0.1
+  mu1: 0.0
+  mu2: 0.5
+  mu3: 1.0
   workspace:
   - - 0
     - 0
@@ -156,4 +159,4 @@ ur3e_gym:
   - 0.05
   - 0.1
   - 0.523599
-  wrench_hist_size: 3
+  wrench_hist_size: 1

@@ -69,7 +69,18 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         self.successes_threshold = rospy.get_param(prefix + "/successes_threshold", 0)
         
         self.cost_cut_completion = rospy.get_param(prefix + "/cost_cut_completion", 0)
-        self.w_cut_completion = rospy.get_param(prefix + "/w_cut_completion", 0)
+        self.w_cut_completion = rospy.get_param(prefix + "/w_cut_completion", 0)     
+        self.total_steps = 0
+
+        self.mu1 = rospy.get_param(prefix + "/mu1", 0)     
+        self.mu2 = rospy.get_param(prefix + "/mu2", 0.5)     
+        self.mu3 = rospy.get_param(prefix + "/mu3", 1)
+
+        self.spawn_interval = 5 # 10
+        self.cumulated_dist = 0
+        self.cumulated_force = 0
+        self.cumulated_jerk = 0 
+        self.episode_count = 0
 
 
     def _set_init_pose(self):
@@ -103,7 +114,12 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
     def update_scene(self):
         if self.real_robot:
             return
-
+        
+        if self.episode_count % self.spawn_interval != 0:
+            self.episode_count += 1
+            print("No respawn")
+            return 
+        
         self.stage = 0
         block_pose = self.object_initial_pose
         # Domain randomization:
@@ -127,6 +143,11 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
             self.spawner.update_model_state(self.box_model)
 
         self.current_board_pose = transformations.pose_euler_to_quat(block_pose)
+        self.episode_count += 1
+
+        # print("step count " + str(self.total_steps))
+        # print("reset " + str(self.w_dist))
+        # print("max_steps = " + str(self.max_steps))
 
     def _is_done(self, observations):
         pose_error = np.abs(observations[:len(self.target_dims)]*self.max_distance)
@@ -175,9 +196,13 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
 
         return done
 
-    def _get_info(self):
+    def _get_info(self, obs):
+
         return {"success": self.goal_reached,
-                "collision": self.action_result == FORCE_TORQUE_EXCEEDED}
+                "collision": self.action_result == FORCE_TORQUE_EXCEEDED,
+                "dist" : self.cumulated_dist,
+                "force": self.cumulated_force,
+                "jerk": self.cumulated_jerk}
 
     def _set_action(self, action):
         self.last_actions = action.copy()
