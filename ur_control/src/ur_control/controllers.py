@@ -20,6 +20,12 @@ try:
 except ImportError:
     print("Grasping pluging can't be loaded")
 
+try:
+    import robotiq_msgs.msg
+except ImportError:
+    pass
+
+
 class GripperController(object):
     def __init__(self, namespace='', prefix=None, timeout=5.0, attach_link='robot::wrist_3_link'):
         self.ns = utils.solve_namespace(namespace)
@@ -218,6 +224,61 @@ class GripperController(object):
             self._current_jnt_efforts = np.array(effort)
             self._joint_names = list(name)
 
+
+class RobotiqGripper():
+    def __init__(self, namespace="", timeout=2):
+        self.ns = namespace
+
+        self.opening_width = 0.0
+
+        self.sub_gripper_status_ = rospy.Subscriber(self.ns + "/gripper_status", robotiq_msgs.msg.CModelCommandFeedback, self._gripper_status_callback)
+        self.gripper = actionlib.SimpleActionClient(self.ns + '/gripper_action_controller', robotiq_msgs.msg.CModelCommandAction)
+        success = self.gripper.wait_for_server(rospy.Duration(timeout))
+        if success:
+            rospy.loginfo("=== Connected to ROBOTIQ gripper ===")
+        else:
+            rospy.logerr("Unable to connect to ROBOTIQ gripper")
+
+    def _gripper_status_callback(self, msg):
+        self.opening_width = msg.position  # [m]
+
+    def get_position(self):
+        return self.opening_width
+
+    def close(self, force=40.0, velocity=1.0, wait=True):
+        return self.send_command("close", force=force, velocity=velocity, wait=wait)
+
+    def open(self, velocity=1.0, wait=True, opening_width=None):
+        command = opening_width if opening_width else "open"
+        return self.send_command(command, wait=wait, velocity=velocity)
+
+    def send_command(self, command, force=40.0, velocity=1.0, wait=True):
+        """
+        command: "open", "close" or opening width
+        force: Gripper force in N. From 40 to 100
+        velocity: Gripper speed. From 0.013 to 0.1
+        attached_last_object: bool, Attach/detach last attached object if set to True
+
+        Use a slow closing speed when using a low gripper force, or the force might be unexpectedly high.
+        """
+        goal = robotiq_msgs.msg.CModelCommandGoal()
+        goal.velocity = velocity
+        goal.force = force
+        if command == "close":
+            goal.position = 0.0
+        elif command == "open":
+            goal.position = 0.140
+        else:
+            goal.position = command     # This sets the opening width directly
+
+        self.gripper.send_goal(goal)
+        rospy.logdebug("Sending command " + str(command) + " to gripper: " + self.ns)
+        if wait:
+            self.gripper.wait_for_result(rospy.Duration(5.0))  # Default wait time: 5 s
+            result = self.gripper.get_result()
+            return True if result else False
+        else:
+            return True
 
 class JointControllerBase(object):
     """

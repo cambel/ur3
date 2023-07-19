@@ -35,14 +35,14 @@ from geometry_msgs.msg import (Wrench)
 from ur_control import utils, spalg, conversions, transformations
 from ur_control.constants import JOINT_ORDER, JOINT_PUBLISHER_ROBOT, FT_SUBSCRIBER, IKFAST, TRAC_IK, \
     DONE, SPEED_LIMIT_EXCEEDED, IK_NOT_FOUND, get_arm_joint_names, \
-    BASE_LINK, EE_LINK, FT_LINK
+    BASE_LINK, EE_LINK, FT_LINK, GENERIC_GRIPPER, ROBOTIQ_GRIPPER
 
 try:
     from ur_ikfast import ur_kinematics as ur_ikfast
 except ImportError:
     print("Import ur_ikfast not available, IKFAST would not be supported without it")
 
-from ur_control.controllers import JointTrajectoryController, FTsensor, GripperController
+from ur_control.controllers import JointTrajectoryController, FTsensor, GripperController, RobotiqGripper
 from ur_pykdl import ur_kinematics
 from trac_ik_python.trac_ik import IK
 
@@ -58,7 +58,7 @@ class Arm(object):
                  robot_urdf_package=None,
                  ik_solver=TRAC_IK,
                  namespace='',
-                 gripper=False,
+                 gripper=None,
                  joint_names_prefix=None,
                  ft_topic=None,
                  base_link=None,
@@ -69,7 +69,7 @@ class Arm(object):
                                                   that is applied before doing any operation in task-space
             robot_urdf string: name of the robot urdf file to be used
             namespace string: nodes namespace prefix
-            gripper bool: enable gripper control
+            gripper constant: `simple` or `85` enable gripper control
         """
 
         cprint.ok("ft_sensor: {}, ee_link: {}, \n robot_urdf: {}".format(ft_sensor, ee_link, robot_urdf))
@@ -127,8 +127,14 @@ class Arm(object):
             publisher_name=traj_publisher, namespace=self.ns, joint_names=self.joint_names, timeout=10.0)
 
         self.gripper = None
-        if gripper:
+        if not gripper:
+            return
+        elif gripper == GENERIC_GRIPPER:
             self.gripper = GripperController(namespace=self.ns, prefix=self.joint_names_prefix, timeout=2.0)
+        elif gripper == ROBOTIQ_GRIPPER:
+            self.gripper = RobotiqGripper(namespace=self.ns, timeout=2.0)
+        else:
+            raise ValueError("Invalid gripper type %s" % gripper)
 
     def _init_ik_solver(self, base_link, ee_link):
         self.base_link = base_link

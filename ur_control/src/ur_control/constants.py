@@ -6,6 +6,9 @@ JOINT_SUBSCRIBER = '/arm_controller/state'
 JOINT_STATE_SUBSCRIBER = 'joint_states'
 FT_SUBSCRIBER = 'wrench'
 
+GENERIC_GRIPPER ='simple'
+ROBOTIQ_GRIPPER ='85'
+
 # Set constants for joints
 SHOULDER_PAN_JOINT = 'shoulder_pan_joint'
 SHOULDER_LIFT_JOINT = 'shoulder_lift_joint'
