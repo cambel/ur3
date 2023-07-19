@@ -87,7 +87,11 @@ class RobotGazeboEnv(gym.Env):
         info = self._get_info(obs)
         reward, reward_details = self._compute_reward(obs, done)
         self.cumulated_episode_reward += reward
-        self.cumulated_reward_details += reward_details[:3]
+        self.cumulated_reward_details += reward_details
+        
+        if done:
+            self.logger.info("reward details: %s, total: %s" % (np.round(self.cumulated_reward_details, 2), round(self.cumulated_episode_reward, 2)))
+            
 
 
         return obs, reward, done, info
@@ -100,7 +104,7 @@ class RobotGazeboEnv(gym.Env):
         self.cumulated_dist = 0
         self.cumulated_force = 0
         self.cumulated_jerk = 0
-        self.cumulated_reward_details = np.zeros(3)
+        self.cumulated_reward_details = np.zeros(7)
         self._reset_sim()
         obs = self._get_obs()
         rospy.logdebug("END Reseting RobotGazeboEnvironment")

@@ -62,7 +62,7 @@ if __name__ == '__main__':
 
     common_ros_param_path = load_ros_params(rospackage_name="ur3e_rl",
                                             rel_path_from_package_to_file="config",
-                                            yaml_file_name='simulation/force_control/test/common.yaml')
+                                            yaml_file_name='simulation/common.yaml')
 
     ros_param_path = load_ros_params(rospackage_name="ur3e_rl",
                                      rel_path_from_package_to_file="config",

@@ -80,7 +80,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         self.cumulated_dist = 0
         self.cumulated_force = 0
         self.cumulated_jerk = 0 
-        self.cumulated_reward_details = np.zeros(3)
+        self.cumulated_reward_details = np.zeros(7)
         self.episode_count = 0
 
 

@@ -27,9 +27,9 @@ def force_signal():
     plt.show()
 
 def distance_signal():
-    x = np.linspace(0, 1, 200)
-    z = 1 - np.tanh(10.0 * x)
-    z = l1l2(x)
+    x = np.linspace(0, 1., 200)
+    z = - np.tanh(5.0 * x)
+    # z = -l1l2(x)
 
     plt.plot(x, z)
     plt.xlabel("Normalized Distance to target")
@@ -39,13 +39,12 @@ def distance_signal():
     plt.show()
 
 def l1l2(dist):
-    l1 = 0.1
+    l1 = 1.0
     l2 = 1.0
-    alpha = 0.00001
+    alpha = 1.0e-4
     norm = (1* (dist ** 2) * l2 +
             np.log(alpha + (dist ** 2)) * l1)
     return norm
-
 
 def distance_velocity_reward():
     fig = plt.figure()
@@ -145,8 +144,8 @@ def gaussian_distro():
 #     return h * exp(-pow(x-mid, 2)/(2*variance))
 
 # gaussian_distro()
-random_distributions()
+# random_distributions()
 
 # force_signal()
-# distance_signal()
+distance_signal()
 # curriculum_pro()

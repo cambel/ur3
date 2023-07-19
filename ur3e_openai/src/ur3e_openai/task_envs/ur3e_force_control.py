@@ -78,7 +78,7 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         self.object_current_pose = None
         self.out_of_workspace = False
 
-        obs = self._get_obs()
+        obs = self._get_obs(verbose=True)
 
         self.reward_threshold = 500.0
 
@@ -177,7 +177,6 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
 
         self.max_steps = rospy.get_param(prefix + "/max_steps", 50000)     
 
-
     def _init_controller(self):
         """
             Initialize controller
@@ -200,7 +199,7 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         else:
             raise Exception("Unsupported controller" + self.controller_type)
 
-    def _get_obs(self):
+    def _get_obs(self, verbose=False):
         """
         Here we define what sensor data of our robots observations
         To know which Variables we have access
@@ -214,7 +213,7 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         if self.normalize_velocity:
             ee_velocities /= self.max_velocity
 
-        ee_jerkiness /= 100.0  # normalize, no clipping
+        ee_jerkiness /= 500.0  # normalize, no clipping
 
         target_force = np.zeros(6)
 
@@ -246,6 +245,16 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
             force_torque.ravel(),  # [6] or [6]*24
         ])
 
+        if verbose:
+            rospy.loginfo("===== Observations =====")
+            rospy.loginfo("ee_points %s \n \
+                        ee_velocities %s \n \
+                        jerkiness_obs %s \n \
+                        last_action %s \n \
+                        reward_weights %s \n \
+                        force_torque %s" % (ee_points.shape, ee_velocities.shape, jerkiness_obs.shape, 
+                                            last_action.shape, reward_weights.shape, force_torque.shape))
+
         return obs.copy()
 
     def update_dynamic_reward_weights(self):
@@ -257,9 +266,12 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         sigma2, offset_start2, offset_end2 = 0.25, 0.1, 0.3
         sigma3, offset_start3, offset_end3 = 0.25, 0.1, 0.3
         
-        self.w_dist = self.mu1
-        self.w_force = self.mu2
-        self.w_jerk = self.mu3
+        self.w_dist = 1.
+        self.w_force = 1.
+        self.w_jerk = 1.
+        # self.w_dist = self.mu1
+        # self.w_force = self.mu2
+        # self.w_jerk = self.mu3
         # self.w_dist = np.exp((-(x-self.mu1)**2)/(2*sigma1**2))
         # self.w_force = np.exp((-(x-self.mu2)**2)/(2*sigma2**2))
         # self.w_jerk = np.exp((-(x-self.mu3)**2)/(2*sigma3**2))
@@ -270,7 +282,7 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         # if x > self.mu3 : self.w_w_jerk = max(offset_end3, self.w_jerk)
         # elif x < self.mu3 : self.w_jerk = max(offset_start3, self.w_jerk)  
 
-        print([self.w_dist, self.w_force, self.w_jerk])
+        # print([self.w_dist, self.w_force, self.w_jerk])
         return np.array([self.w_dist, self.w_force, self.w_jerk])
 
     def get_end_effector_relative_position_and_velocity(self):
@@ -473,7 +485,7 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
             reward = r_sparse + r_collision
             reward_details = [r_sparse, r_collision]
         elif self.reward_type == 'slicing':  # position - target force
-            print("force control " + str(self.w_dist))
+            # print("force control " + str(self.w_dist))
             reward, reward_details = cost.slicing(self, observations, done)
         elif self.reward_type == 'peg-in-hole':  # position - target force
             reward, reward_details = cost.peg_in_hole(self, observations, done)
