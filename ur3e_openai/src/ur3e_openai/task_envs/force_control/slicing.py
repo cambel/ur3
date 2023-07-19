@@ -80,6 +80,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         self.cumulated_dist = 0
         self.cumulated_force = 0
         self.cumulated_jerk = 0 
+        self.cumulated_reward_details = np.zeros(3)
         self.episode_count = 0
 
 
@@ -197,12 +198,12 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         return done
 
     def _get_info(self, obs):
-
         return {"success": self.goal_reached,
                 "collision": self.action_result == FORCE_TORQUE_EXCEEDED,
                 "dist" : self.cumulated_dist,
                 "force": self.cumulated_force,
-                "jerk": self.cumulated_jerk}
+                "jerk": self.cumulated_jerk,
+                "cumulated_reward_details": self.cumulated_reward_details}
 
     def _set_action(self, action):
         self.last_actions = action.copy()
