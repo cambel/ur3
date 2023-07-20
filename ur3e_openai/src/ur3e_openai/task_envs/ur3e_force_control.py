@@ -174,6 +174,8 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
 
         self.termination_on_negative_reward = rospy.get_param(prefix + "/termination_on_negative_reward", False)
         self.termination_reward_threshold = rospy.get_param(prefix + "/termination_reward_threshold", -100)
+        
+        self.use_dynamic_rewards = rospy.get_param(prefix + "/use_dynamic_rewards", False)
 
         self.max_steps = rospy.get_param(prefix + "/max_steps", 50000)     
 
@@ -234,7 +236,9 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
                             target_force) / self.controller.max_force_torque
             force_torque = np.array([force_torque[i] for i in self.target_dims])
 
-        reward_weights = self.update_dynamic_reward_weights() # TODO
+        reward_weights = np.array([])
+        if self.use_dynamic_rewards:
+            reward_weights = self.update_dynamic_reward_weights()
 
         obs = np.concatenate([
             ee_points.ravel(),  # [6]
@@ -266,21 +270,18 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         sigma2, offset_start2, offset_end2 = 0.25, 0.1, 0.3
         sigma3, offset_start3, offset_end3 = 0.25, 0.1, 0.3
         
-        self.w_dist = 1.
-        self.w_force = 1.
-        self.w_jerk = 1.
         # self.w_dist = self.mu1
         # self.w_force = self.mu2
         # self.w_jerk = self.mu3
-        # self.w_dist = np.exp((-(x-self.mu1)**2)/(2*sigma1**2))
-        # self.w_force = np.exp((-(x-self.mu2)**2)/(2*sigma2**2))
-        # self.w_jerk = np.exp((-(x-self.mu3)**2)/(2*sigma3**2))
-        # if x > self.mu1 : self.w_dist = max(offset_end1, self.w_dist) 
-        # elif x < self.mu1 : self.w_dist = max(offset_start1, self.w_dist) 
-        # if x > self.mu2 : self.w_force = max(offset_end2, self.w_force) 
-        # elif x < self.mu2 : self.w_force = max(offset_start2, self.w_force) 
-        # if x > self.mu3 : self.w_w_jerk = max(offset_end3, self.w_jerk)
-        # elif x < self.mu3 : self.w_jerk = max(offset_start3, self.w_jerk)  
+        self.w_dist = np.exp((-(x-self.mu1)**2)/(2*sigma1**2))
+        self.w_force = np.exp((-(x-self.mu2)**2)/(2*sigma2**2))
+        self.w_jerk = np.exp((-(x-self.mu3)**2)/(2*sigma3**2))
+        if x > self.mu1 : self.w_dist = max(offset_end1, self.w_dist) 
+        elif x < self.mu1 : self.w_dist = max(offset_start1, self.w_dist) 
+        if x > self.mu2 : self.w_force = max(offset_end2, self.w_force) 
+        elif x < self.mu2 : self.w_force = max(offset_start2, self.w_force) 
+        if x > self.mu3 : self.w_w_jerk = max(offset_end3, self.w_jerk)
+        elif x < self.mu3 : self.w_jerk = max(offset_start3, self.w_jerk)  
 
         # print([self.w_dist, self.w_force, self.w_jerk])
         return np.array([self.w_dist, self.w_force, self.w_jerk])
@@ -485,8 +486,9 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
             reward = r_sparse + r_collision
             reward_details = [r_sparse, r_collision]
         elif self.reward_type == 'slicing':  # position - target force
-            # print("force control " + str(self.w_dist))
             reward, reward_details = cost.slicing(self, observations, done)
+        elif self.reward_type == 'slicing_with_vel':  # position - target force
+            reward, reward_details = cost.slicing_with_vel(self, observations, done)
         elif self.reward_type == 'peg-in-hole':  # position - target force
             reward, reward_details = cost.peg_in_hole(self, observations, done)
         elif self.reward_type == 'dense-pft':  # position - target force

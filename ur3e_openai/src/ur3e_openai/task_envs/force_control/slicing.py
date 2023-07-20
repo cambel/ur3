@@ -80,6 +80,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         self.cumulated_dist = 0
         self.cumulated_force = 0
         self.cumulated_jerk = 0 
+        self.cumulated_vel = 0 
         self.cumulated_reward_details = np.zeros(7)
         self.episode_count = 0
 
@@ -203,6 +204,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
                 "dist" : self.cumulated_dist,
                 "force": self.cumulated_force,
                 "jerk": self.cumulated_jerk,
+                "vel": self.cumulated_vel,
                 "cumulated_reward_details": self.cumulated_reward_details}
 
     def _set_action(self, action):

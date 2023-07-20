@@ -38,6 +38,19 @@ def distance_signal():
 
     plt.show()
 
+def velocity_signal():
+    max_val = np.linalg.norm(np.ones(3))
+    x = np.linspace(0, max_val, 200)
+    z = (x - max_val) / max_val 
+    # z = -l1l2(x)
+
+    plt.plot(x, z)
+    plt.xlabel("Normalized Distance to target")
+    plt.ylabel("Reward")
+    plt.grid(                                                                                                                                                                                                               )
+
+    plt.show()
+
 def l1l2(dist):
     l1 = 1.0
     l2 = 1.0
@@ -147,5 +160,6 @@ def gaussian_distro():
 # random_distributions()
 
 # force_signal()
-distance_signal()
+# distance_signal()
+velocity_signal()
 # curriculum_pro()

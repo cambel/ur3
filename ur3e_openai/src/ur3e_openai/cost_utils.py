@@ -9,6 +9,54 @@ def sparse(self, done):
     return 0
 
 
+def slicing_with_vel(self, obs, done):
+    num_dims = 6 if self.target_dims is None else len(self.target_dims)
+
+    distance = np.abs(obs[1]) # np.linalg.norm(obs[:num_dims])  # ,6
+    velocity = np.abs(obs[num_dims+1]) # np.linalg.norm(obs[:num_dims])  # ,6
+    jerkiness = np.linalg.norm(obs[num_dims*2:num_dims*3])  # 12,18
+
+    cut_completion = np.linalg.norm(obs[num_dims*3:num_dims*3+1])
+
+    max_force_torque = np.array([self.controller.max_force_torque[i] for i in self.target_dims])
+
+    wrench_size = self.wrench_hist_size*num_dims
+    force = np.reshape(obs[-wrench_size:], (-1, num_dims)) * max_force_torque
+    force = np.average(force, axis=0)
+    norm_force_torque = np.linalg.norm(force[:3])
+
+    r_distance = - np.tanh(5.0 * distance)
+    r_velocity = np.clip(velocity, 0.0, 1.0) - 1.0 
+    r_force = -1/(1 + np.exp(-norm_force_torque/2+3))  # s-shaped penalization, no penalization for lower values, max penalization for high values
+    r_jerkiness = -1 * jerkiness  # penalize jerkiness
+    r_jerkiness = np.clip(r_jerkiness, -1., 0.)
+
+    r_collision = self.cost_collision if self.action_result == FORCE_TORQUE_EXCEEDED else 0.0
+    # reward discounted by the percentage of steps left for the episode (encourage faster termination)
+    # r_done = self.cost_done + (1-self.step_count/self.steps_per_episode) if done and self.action_result != FORCE_TORQUE_EXCEEDED else 0.0
+    r_done = self.cost_done if self.goal_reached and self.action_result != FORCE_TORQUE_EXCEEDED else 0.0
+
+    # encourage faster termination
+    r_step = self.cost_step
+
+    weights = [self.w_dist, self.w_force, self.w_jerkiness, self.w_velocity]
+    w_norm1 = np.linalg.norm(weights, ord=1)
+
+    # reward components
+    reward = w_norm1[0]*r_distance + w_norm1[1]*r_force + w_norm1[2]*r_jerkiness + w_norm1[3]*r_velocity
+    
+    # episode termination reward/penalization
+    reward += r_collision + r_done + r_step 
+    
+    print('r', round(reward, 2), round(r_distance, 2), round(r_force, 2), round(r_jerkiness, 2), round(r_velocity, 2))
+
+    self.cumulated_dist += distance
+    self.cumulated_vel += velocity
+    self.cumulated_force += norm_force_torque
+    self.cumulated_jerk += jerkiness
+
+    return reward, [r_distance, r_force, r_jerkiness, r_velocity, r_step, r_collision, r_done]
+
 def slicing(self, obs, done):
     num_dims = 6 if self.target_dims is None else len(self.target_dims)
 
@@ -39,9 +87,22 @@ def slicing(self, obs, done):
 
     # encourage complete cut of the material
     r_cut_completion = -1/(1+np.exp((-10)*(cut_completion-0.5))) * self.cost_cut_completion  # use of a sigmoid, low reward for low cut, high reward for complete cut
-    reward = self.w_dist*r_distance + self.w_force*r_force + self.w_jerkiness*r_jerkiness + r_collision + r_done + r_step + self.w_cut_completion*r_cut_completion
-    # print('r', round(reward, 4), round(r_distance, 4), round(r_force, 4), round(r_jerkiness, 4), r_done, jerkiness)
-    return reward, [r_distance, r_force, r_jerkiness, r_collision, r_done, r_step, r_cut_completion]
+
+    weights = [self.w_dist, self.w_force, self.w_jerkiness]
+    w_norm1 = np.linalg.norm(weights, ord=1)
+
+    # reward components
+    reward = w_norm1[0]*r_distance + w_norm1[1]*r_force + w_norm1[2]*r_jerkiness
+    
+    # episode termination reward/penalization
+    reward += r_collision + r_done + r_step 
+
+    self.cumulated_dist += distance
+    self.cumulated_force += norm_force_torque
+    self.cumulated_jerk += jerkiness
+
+    # print('r', round(reward, 2), round(r_distance, 2), round(r_force, 2), round(r_jerkiness, 2))
+    return reward, [r_distance, r_force, r_jerkiness, 0.0, r_step, r_collision, r_done]
 
 
 def peg_in_hole(self, obs, done):
