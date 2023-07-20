@@ -97,6 +97,6 @@ ur3e_gym: #namespace
         
 # Controller parameters
 ur3e_force_control:
-    max_twist: [0.1, 1.5707]
+    max_twist: [1.0, 3.1415]
     max_force_torque: [50, 50.0, 50.0, 10., 10., 10.]
     desired_force_torque: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
