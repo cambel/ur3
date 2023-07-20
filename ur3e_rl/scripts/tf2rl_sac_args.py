@@ -29,8 +29,8 @@ if __name__ == '__main__':
     parser.add_argument('-e', '--env_id', type=int, help='environment ID', default=None)
     parser.add_argument('-c', '--config-file', type=str, help='Path to config YAML file', default=None)
     parser.set_defaults(batch_size=256)
-    parser.set_defaults(n_warmup=1e3)  # still don't know what it this for
-    parser.set_defaults(max_steps=30000)  # 10000 for training 200 for evaluation
+    parser.set_defaults(n_warmup=5e3)  # still don't know what it this for
+    parser.set_defaults(max_steps=50000)  # 10000 for training 200 for evaluation
     parser.set_defaults(save_model_interval=5000)
     parser.set_defaults(test_interval=1e10)  # 1e4 for training 200 for evaluation
     parser.set_defaults(test_episodes=1)
@@ -74,19 +74,28 @@ if __name__ == '__main__':
         rospy.get_param('ur3e_gym/env_id'),
         max_episode_steps=args.episode_max_steps)
     actor_class = rospy.get_param("ur3e_gym/actor_class", "default")
+    seed = rospy.get_param("ur3e_gym/rand_seed", 0)
+    batch_size = rospy.get_param("ur3e_gym/batch_size", args.batch_size)
+    lr = rospy.get_param("ur3e_gym/lr", args.lr)
+    auto_alpha = rospy.get_param("ur3e_gym/auto_alpha", args.auto_alpha)
+    update_interval = rospy.get_param("ur3e_gym/update_interval", args.update_interval)
+
+    env.action_space.seed(seed)
+    env.observation_space.seed(seed)
+    env.seed(seed)
 
     policy = SAC(
         state_shape=env.observation_space.shape,
         action_dim=env.action_space.high.size,
         max_action=env.action_space.high[0],
         actor_class=actor_class,
-        batch_size=args.batch_size,
+        batch_size=batch_size,
         n_warmup=args.n_warmup,
-        auto_alpha=args.auto_alpha,
-        lr=args.lr,
-        update_interval=args.update_interval,
+        auto_alpha=auto_alpha,
+        lr=lr,
+        update_interval=update_interval,
     )
-    trainer = Trainer(policy, env, args, test_env=None)
+    trainer = Trainer(policy, env, args, test_env=None, seed=seed)
     outdir = trainer._output_dir
     rospy.set_param('ur3e_gym/output_dir', outdir)
     log_ros_params(outdir)

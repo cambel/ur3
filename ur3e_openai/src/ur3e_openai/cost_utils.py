@@ -88,14 +88,14 @@ def slicing(self, obs, done):
     # encourage complete cut of the material
     r_cut_completion = -1/(1+np.exp((-10)*(cut_completion-0.5))) * self.cost_cut_completion  # use of a sigmoid, low reward for low cut, high reward for complete cut
 
-    weights = [self.w_dist, self.w_force, self.w_jerkiness]
-    w_norm1 = np.linalg.norm(weights, ord=1)
+    weights = [self.w_dist, self.w_force, self.w_jerkiness, 1.0]
+    w_norm1 = weights / np.linalg.norm(weights, ord=1)
 
     # reward components
-    reward = w_norm1[0]*r_distance + w_norm1[1]*r_force + w_norm1[2]*r_jerkiness
+    reward = w_norm1[0]*r_distance + w_norm1[1]*r_force + w_norm1[2]*r_jerkiness + w_norm1[3]*r_step 
     
     # episode termination reward/penalization
-    reward += r_collision + r_done + r_step 
+    reward += r_collision + r_done 
 
     self.cumulated_dist += distance
     self.cumulated_force += norm_force_torque
