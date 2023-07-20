@@ -40,7 +40,7 @@ def slicing_with_vel(self, obs, done):
     r_step = self.cost_step
 
     weights = [self.w_dist, self.w_force, self.w_jerkiness, self.w_velocity]
-    w_norm1 = np.linalg.norm(weights, ord=1)
+    w_norm1 = weights / np.linalg.norm(weights, ord=1)
 
     # reward components
     reward = w_norm1[0]*r_distance + w_norm1[1]*r_force + w_norm1[2]*r_jerkiness + w_norm1[3]*r_velocity
@@ -48,7 +48,7 @@ def slicing_with_vel(self, obs, done):
     # episode termination reward/penalization
     reward += r_collision + r_done + r_step 
     
-    print('r', round(reward, 2), round(r_distance, 2), round(r_force, 2), round(r_jerkiness, 2), round(r_velocity, 2))
+    # print('r', round(reward, 2), round(r_distance, 2), round(r_force, 2), round(r_jerkiness, 2), round(r_velocity, 2))
 
     self.cumulated_dist += distance
     self.cumulated_vel += velocity
