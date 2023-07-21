@@ -99,7 +99,11 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         if rospy.get_param("ur3e_gym/update_initial_conditions", True):
             def reset_pose():
                 # Go to initial pose
-                initial_pose = transformations.transform_pose(self.current_target_pose, self.reset_motion, rotated_frame=False)
+                reset_motion = self.reset_motion
+                reset_motion[1] += self.np_random.uniform(low=np.deg2rad(-0.02), high=np.deg2rad(0.02))
+                reset_motion[2] += self.np_random.uniform(low=np.deg2rad(-0.01), high=np.deg2rad(0.01))
+                reset_motion[4] = self.np_random.uniform(low=np.deg2rad(-10), high=np.deg2rad(10))
+                initial_pose = transformations.transform_pose(self.current_target_pose, reset_motion, rotated_frame=False)
                 self.ur3e_arm.set_target_pose(pose=initial_pose, wait=True, t=self.reset_time)
 
             t1 = threading.Thread(target=reset_pose)

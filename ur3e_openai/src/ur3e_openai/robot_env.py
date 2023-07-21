@@ -71,7 +71,7 @@ class RobotGazeboEnv(gym.Env):
         # self.robot_connection.unpause()
         self._set_action(action)
         # self.robot_connection.pause()
-        obs = self._get_obs(verbose=True)
+        obs = self._get_obs()
         # incrementing the counters
         self.step_count += 1
         self.total_steps += 1
