@@ -266,9 +266,9 @@ class UR3eForceControlEnv(ur3e_env.UR3eEnv):
         update the weights of the rewards following consecutive gaussian curves
         """
         x = self.total_steps / self.max_steps
-        sigma1, offset_start1, offset_end1 = 0.25, 0.1, 0.3
-        sigma2, offset_start2, offset_end2 = 0.25, 0.1, 0.3
-        sigma3, offset_start3, offset_end3 = 0.25, 0.1, 0.3
+        sigma1, offset_start1, offset_end1 = 0.25, 0.1, 1.0 # 0.25, 0.1, 1.0 # To maintain the highest peak
+        sigma2, offset_start2, offset_end2 = 0.25, 0.1, 1.0  # 0.25, 0.1, 1.0 # To maintain the highest peak
+        sigma3, offset_start3, offset_end3 = 0.25, 0.1, 1.0  # 0.25, 0.1, 1.0 # To maintain the highest peak
         
         # self.w_dist = self.mu1
         # self.w_force = self.mu2

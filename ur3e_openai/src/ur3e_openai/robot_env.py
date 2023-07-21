@@ -1,3 +1,4 @@
+from tabnanny import verbose
 import numpy as np
 import rospy
 import gym
@@ -70,7 +71,7 @@ class RobotGazeboEnv(gym.Env):
         # self.robot_connection.unpause()
         self._set_action(action)
         # self.robot_connection.pause()
-        obs = self._get_obs()
+        obs = self._get_obs(verbose=True)
         # incrementing the counters
         self.step_count += 1
         self.total_steps += 1

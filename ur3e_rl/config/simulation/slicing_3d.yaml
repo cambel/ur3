@@ -31,6 +31,7 @@ ur3e_gym: #namespace
     last_action_as_obs: True
     normalize_velocity: True
     jerkiness_as_obs: True
+    use_dynamic_rewards: False
 
     mu1: 0.0
     mu2: 0.5
@@ -85,7 +86,7 @@ ur3e_gym: #namespace
     cost:
         collision: -100.0
         done: 100
-        step: 0.0
+        step: -1.0
         l1: 0.1
         l2: 2.0
         alpha: 1.0e-10

@@ -13,6 +13,7 @@ from ur_gazebo.basic_models import get_button_model
 from ur_gazebo.model import Model
 
 import threading
+import tensorflow as tf
 
 
 def get_cl_range(range, curriculum_level):
@@ -83,7 +84,9 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         self.cumulated_vel = 0 
         self.cumulated_reward_details = np.zeros(7)
         self.episode_count = 0
-
+        self.oow_counter = 0
+        self.collision_counter = 0
+        self.goal_reached_counter = 0
 
     def _set_init_pose(self):
         self.success_counter = 0
@@ -160,6 +163,8 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         self.out_of_workspace = np.any(pose_error > self.workspace_limit)
 
         if self.out_of_workspace:
+            self.oow_counter += 1
+            tf.summary.scalar(name="Common/out_of_workspace_counter", data=self.oow_counter)
             self.logger.error("Out of workspace, failed: %s" % np.round(pose_error, 4))
 
         # If the end effector remains on the target pose for several steps. Then terminate the episode
@@ -172,6 +177,8 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
             self.logger.error("Max steps x episode reached, failed: %s" % np.round(pose_error, 4))
 
         if collision:
+            self.collision_counter += 1
+            tf.summary.scalar(name="Common/collision_counter", data=self.collision_counter)
             self.logger.error("Collision!")
 
         elif fail_on_reward:
@@ -183,6 +190,8 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
 
         elif position_goal_reached and self.success_counter > self.successes_threshold:
             self.goal_reached = True
+            self.goal_reached_counter += 1
+            tf.summary.scalar(name="Common/goal_reached_counter", data=self.goal_reached_counter)
             self.controller.stop()
             self.logger.green("goal reached: %s" % np.round(pose_error[:3], 4))
             
