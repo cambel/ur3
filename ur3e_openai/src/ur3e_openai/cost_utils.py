@@ -94,9 +94,10 @@ def slicing(self, obs, done):
 
     weights = [self.w_dist, self.w_force, self.w_jerkiness, 1.0]
     w_norm1 = weights / np.linalg.norm(weights, ord=1)
-    tf.summary.scalar(name="Common/w_dist_n", data=w_norm1[0])
-    tf.summary.scalar(name="Common/w_force_n", data=w_norm1[1])
-    tf.summary.scalar(name="Common/w_jerk_n", data=w_norm1[2])  
+    if self.total_steps % 500 : 
+        tf.summary.scalar(name="Common/w_dist_n", data=w_norm1[0])
+        tf.summary.scalar(name="Common/w_force_n", data=w_norm1[1])
+        tf.summary.scalar(name="Common/w_jerk_n", data=w_norm1[2])  
 
     # reward components
     reward = w_norm1[0]*r_distance + w_norm1[1]*r_force + w_norm1[2]*r_jerkiness + w_norm1[3]*r_step 

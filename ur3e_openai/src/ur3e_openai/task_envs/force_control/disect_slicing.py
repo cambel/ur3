@@ -13,6 +13,7 @@ from std_srvs.srv import Trigger
 import threading
 import timeit
 from std_msgs.msg import Float32
+import tensorflow as tf
 
 def get_cl_range(range, curriculum_level):
     return [range[0], range[0] + (range[1] - range[0]) * curriculum_level]
@@ -54,6 +55,21 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         self.cut_sub = rospy.Subscriber("/dissect_cut_progression", Float32, self.callback_cut_completion)
 
         self.goal_reached = False
+
+        self.mu1 = rospy.get_param(prefix + "/mu1", 0)     
+        self.mu2 = rospy.get_param(prefix + "/mu2", 0.5)     
+        self.mu3 = rospy.get_param(prefix + "/mu3", 1)
+
+        self.spawn_interval = 5 # 10
+        self.cumulated_dist = 0
+        self.cumulated_force = 0
+        self.cumulated_jerk = 0 
+        self.cumulated_vel = 0 
+        self.cumulated_reward_details = np.zeros(7)
+        self.episode_count = 0
+        self.oow_counter = 0
+        self.collision_counter = 0
+        self.goal_reached_counter = 0
 
     def _set_init_pose(self):       
         self.goal_reached = False 
@@ -97,19 +113,17 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         pose_error = np.abs(observations[:len(self.target_dims)]*self.max_distance)
 
         collision = self.action_result == FORCE_TORQUE_EXCEEDED
-        cut_completed = ((self.cut_completion) <= 0.05)
-        goal_reached = np.all(pose_error < self.goal_threshold) and cut_completed
+        position_goal_reached = np.all(pose_error < self.goal_threshold)
         fail_on_reward = self.termination_on_negative_reward
-        out_of_workspace = np.any(pose_error > self.workspace_limit)
+        self.out_of_workspace = np.any(pose_error > self.workspace_limit)
 
-        print("Completion : " + str(self.cut_completion) + "| " + str(cut_completed))
-        print("Goal reached : " + str(np.all(pose_error < self.goal_threshold)))
-
-        if out_of_workspace:
+        if self.out_of_workspace:
+            self.oow_counter += 1
+            tf.summary.scalar(name="Common/out_of_workspace_counter", data=self.oow_counter)
             self.logger.error("Out of workspace, failed: %s" % np.round(pose_error, 4))
 
         # If the end effector remains on the target pose for several steps. Then terminate the episode
-        if goal_reached:
+        if position_goal_reached:
             self.success_counter += 1
         else:
             self.success_counter = 0
@@ -118,6 +132,8 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
             self.logger.error("Max steps x episode reached, failed: %s" % np.round(pose_error, 4))
 
         if collision:
+            self.collision_counter += 1
+            tf.summary.scalar(name="Common/collision_counter", data=self.collision_counter)
             self.logger.error("Collision!")
 
         elif fail_on_reward:
@@ -127,29 +143,34 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
             if self.cumulated_episode_reward <= self.termination_reward_threshold:
                 rospy.loginfo("Fail on reward: %s" % (pose_error))
 
-        elif goal_reached and self.success_counter > self.successes_threshold:
+        elif position_goal_reached and self.success_counter > self.successes_threshold:
             self.goal_reached = True
+            self.goal_reached_counter += 1
+            tf.summary.scalar(name="Common/goal_reached_counter", data=self.goal_reached_counter)
             self.controller.stop()
             self.logger.green("goal reached: %s" % np.round(pose_error[:3], 4))
-            print("time after pause", timeit.default_timer()-self.start)
             
-            if self.real_robot:
-                xc = transformations.transform_pose(self.ur3e_arm.end_effector(), [0, 0, 0.013, 0, 0, 0], rotated_frame=True)
-                reset_time = 5.0
-                self.ur3e_arm.set_target_pose(pose=xc, t=reset_time, wait=True)
+            # if self.real_robot:
+            #     xc = transformations.transform_pose(self.ur3e_arm.end_effector(), [0, 0, 0.013, 0, 0, 0], rotated_frame=True)
+            #     reset_time = 5.0
+            #     self.ur3e_arm.set_target_pose(pose=xc, t=reset_time, wait=True)
 
-        done = self.goal_reached or collision or fail_on_reward or out_of_workspace
+        done = self.goal_reached or collision or fail_on_reward or self.out_of_workspace
 
         if done:
             self.controller.stop()
-            print("Time episode: " + str(timeit.default_timer()-self.start))
 
         return done
 
-    def _get_info(self):
+    def _get_info(self, obs):
         return {"success": self.goal_reached,
-                "collision": self.action_result == FORCE_TORQUE_EXCEEDED}
-
+                "collision": self.action_result == FORCE_TORQUE_EXCEEDED,
+                "dist" : self.cumulated_dist,
+                "force": self.cumulated_force,
+                "jerk": self.cumulated_jerk,
+                "vel": self.cumulated_vel,
+                "cumulated_reward_details": self.cumulated_reward_details}
+    
     def _set_action(self, action):
         self.last_actions = action
         self.action_result = self.controller.act(action, self.current_target_pose, self.action_type)
