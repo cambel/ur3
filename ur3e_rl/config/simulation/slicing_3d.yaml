@@ -13,7 +13,7 @@ ur3e_gym: #namespace
     batch_size: 1024
     lr: 1.0e-2
     auto_alpha: True
-    update_interval: 2
+    update_interval: 1
 
     relative_to_ee: False
     robot_control_dt: 0.002
@@ -25,9 +25,9 @@ ur3e_gym: #namespace
     
     steps_per_episode: 500
     
-    actor_class: "default"
-    ft_hist: False
-    wrench_hist_size: 1
+    actor_class: "wave"
+    ft_hist: True
+    wrench_hist_size: 3
     last_action_as_obs: True
     normalize_velocity: True
     jerkiness_as_obs: True

@@ -13,7 +13,7 @@ ur3e_gym: #namespace
     batch_size: 1024
     lr: 1.0e-2
     auto_alpha: True
-    update_interval: 2
+    update_interval: 1
 
     relative_to_ee: False
     robot_control_dt: 0.002
@@ -25,12 +25,17 @@ ur3e_gym: #namespace
     
     steps_per_episode: 500
     
-    actor_class: "default"
-    ft_hist: False
-    wrench_hist_size: 1
+    actor_class: "wave"
+    ft_hist: True
+    wrench_hist_size: 6
     last_action_as_obs: True
     normalize_velocity: True
     jerkiness_as_obs: True
+
+    use_dynamic_rewards: True
+    mu1: 0.0
+    mu2: 0.5
+    mu3: 1.0
 
     rand_seed: 123456
 
@@ -55,7 +60,7 @@ ur3e_gym: #namespace
     # initial conditions
     random_initial_pose: False
     # for each dimension define upper and lower bound from initial pose
-    max_distance: [0.1, 0.06, 0.1, 0.785398, 0.785398, 1.5707]
+    max_distance: [0.1, 0.1, 0.06, 0.785398, 0.785398, 1.5707]
     
     workspace_limit: [0.05, 0.1, 0.523599]
     workspace: [[0,0], [0, 0], [0.0, 0.02], [0, -0], [0, -0], [0, -0]]
@@ -74,24 +79,25 @@ ur3e_gym: #namespace
     target_dims: [0,2,4]
     goal_threshold: [1.0, 0.002, 0.08]
     
-    reward_type: 'slicing'
+    reward_type: 'slicing_with_vel'
     termination_on_negative_reward: False
     termination_reward_threshold: -300 # new -500
 
     cost:
-        collision: -500.0
-        done: 500
-        step: -1.0
+        collision: -100.0
+        done: 100
+        step: 0.0
         l1: 0.1
         l2: 2.0
         alpha: 1.0e-10
     w_dist: 1.0
     w_force: 1.0
     w_jerkiness: 1.0
+    w_velocity: 1.0
     successes_threshold: 20
         
 # Controller parameters
 ur3e_force_control:
     max_twist: [1.0, 3.1415]
-    max_force_torque: [50, 50.0, 50.0, 5, 5, 5]
+    max_force_torque: [50, 50.0, 50.0, 10., 10., 10.]
     desired_force_torque: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
