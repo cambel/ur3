@@ -80,7 +80,11 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
 
         def reset_pose():
             # Go to initial pose
-            initial_pose = transformations.transform_pose(self.current_target_pose, self.reset_motion, rotated_frame=False)
+            reset_motion = self.reset_motion
+            reset_motion[1] += self.np_random.uniform(low=np.deg2rad(-0.02), high=np.deg2rad(0.02))
+            reset_motion[2] += self.np_random.uniform(low=np.deg2rad(-0.01), high=np.deg2rad(0.01))
+            reset_motion[4] = self.np_random.uniform(low=np.deg2rad(-10), high=np.deg2rad(10))
+            initial_pose = transformations.transform_pose(self.current_target_pose, reset_motion, rotated_frame=False)
             self.ur3e_arm.set_target_pose(pose=initial_pose, wait=True, t=self.reset_time)
 
         t1 = threading.Thread(target=reset_pose)
@@ -125,8 +129,8 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         # If the end effector remains on the target pose for several steps. Then terminate the episode
         if position_goal_reached:
             self.success_counter += 1
-        else:
-            self.success_counter = 0
+        # else:
+        #     self.success_counter = 0
 
         if self.step_count == self.steps_per_episode-1:
             self.logger.error("Max steps x episode reached, failed: %s" % np.round(pose_error, 4))
