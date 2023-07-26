@@ -174,8 +174,8 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         # If the end effector remains on the target pose for several steps. Then terminate the episode
         if position_goal_reached:
             self.success_counter += 1
-        else:
-            self.success_counter = 0
+        # else:
+        #     self.success_counter = 0
 
         if self.step_count == self.steps_per_episode-1:
             self.logger.error("Max steps x episode reached, failed: %s" % np.round(pose_error, 4))
