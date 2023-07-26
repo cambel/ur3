@@ -31,7 +31,7 @@ ur3e_gym: #namespace
     last_action_as_obs: True
     normalize_velocity: True
     jerkiness_as_obs: True
-    use_dynamic_rewards: False
+    use_dynamic_rewards: True
 
     mu1: 0.0
     mu2: 0.5

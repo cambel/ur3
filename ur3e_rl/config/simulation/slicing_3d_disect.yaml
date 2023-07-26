@@ -77,9 +77,9 @@ ur3e_gym: #namespace
     
     # Reward parameters
     target_dims: [0,2,4]
-    goal_threshold: [0.04, 0.002, 0.08]
+    goal_threshold: [0.04, 0.002, 0.04]
     
-    reward_type: 'slicing_with_vel'
+    reward_type: 'slicing'
     termination_on_negative_reward: False
     termination_reward_threshold: -300 # new -500
 

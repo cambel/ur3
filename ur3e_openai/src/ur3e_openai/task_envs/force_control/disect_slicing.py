@@ -53,6 +53,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         # Cut completion
         self.cut_completion = 0.
         self.cut_sub = rospy.Subscriber("/dissect_cut_progression", Float32, self.callback_cut_completion)
+        self.cost_cut_completion = rospy.get_param(prefix + "/cost_cut_completion", 0)
 
         self.goal_reached = False
 
