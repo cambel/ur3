@@ -249,15 +249,18 @@ class Arm(object):
         ]
         return np.array(ft)
 
-    def get_ee_wrench_hist(self, hist_size=24):
+    def get_ee_wrench_hist(self, hist_size=24, hand_frame_control=False):
         if self.current_ft_value is None:
             raise Exception("FT Sensor not initialized")
 
-        q_hist = self.joint_traj_controller.get_joint_positions_hist()[:hist_size]
         ft_hist = np.array(self.wrench_queue)[:hist_size]
 
-        poses_hist = [self.end_effector(q) for q in q_hist]
-        wrench_hist = [spalg.convert_wrench(wft, p).tolist() for p, wft in zip(poses_hist, ft_hist)]
+        if hand_frame_control:
+            q_hist = self.joint_traj_controller.get_joint_positions_hist()[:hist_size]
+            poses_hist = [self.end_effector(q, tip_link=self.ee_link) for q in q_hist]
+            wrench_hist = [spalg.convert_wrench(wft, p).tolist() for p, wft in zip(poses_hist, ft_hist)]
+        else:
+            wrench_hist = ft_hist
 
         return np.array(wrench_hist)
 
@@ -270,9 +273,8 @@ class Arm(object):
         if not hand_frame_control:
             return wrench_force
         else:
-            # Transform force to end effector frame
-            # Fix, the forces need to be converted by the transform between the wrist_3_link and the end effector link
-            transform = self.end_effector(tip_link=self.joint_names_prefix + "tool0")
+            # Transform force/torque from sensor to end effector frame
+            transform = self.end_effector(tip_link=self.ee_link)
             ee_wrench_force = spalg.convert_wrench(wrench_force, transform)
 
             return ee_wrench_force
