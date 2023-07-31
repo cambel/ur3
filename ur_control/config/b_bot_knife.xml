@@ -35,7 +35,7 @@
                                         <relative_minimum>-5</relative_minimum>
                                         <type>2</type>
                                     </scale>
-                                    <topic>/b_bot/wrench/tcp</topic>
+                                    <topic>/test/wrench</topic>
                                     <type>geometry_msgs/WrenchStamped</type>
                                 </x_axis>
                                 <y_axis>
@@ -48,7 +48,7 @@
                                         <relative_minimum>-1000</relative_minimum>
                                         <type>1</type>
                                     </scale>
-                                    <topic>/b_bot/wrench/tcp</topic>
+                                    <topic>/test/wrench</topic>
                                     <type>geometry_msgs/WrenchStamped</type>
                                 </y_axis>
                             </axes>
@@ -86,7 +86,7 @@
                                         <relative_minimum>-5</relative_minimum>
                                         <type>2</type>
                                     </scale>
-                                    <topic>/b_bot/wrench/tcp</topic>
+                                    <topic>/test/wrench</topic>
                                     <type>geometry_msgs/WrenchStamped</type>
                                 </x_axis>
                                 <y_axis>
@@ -99,7 +99,7 @@
                                         <relative_minimum>-1000</relative_minimum>
                                         <type>1</type>
                                     </scale>
-                                    <topic>/b_bot/wrench/tcp</topic>
+                                    <topic>/test/wrench</topic>
                                     <type>geometry_msgs/WrenchStamped</type>
                                 </y_axis>
                             </axes>
@@ -137,7 +137,7 @@
                                         <relative_minimum>-5</relative_minimum>
                                         <type>2</type>
                                     </scale>
-                                    <topic>/b_bot/wrench/tcp</topic>
+                                    <topic>/test/wrench</topic>
                                     <type>geometry_msgs/WrenchStamped</type>
                                 </x_axis>
                                 <y_axis>
@@ -150,7 +150,7 @@
                                         <relative_minimum>-1000</relative_minimum>
                                         <type>1</type>
                                     </scale>
-                                    <topic>/b_bot/wrench/tcp</topic>
+                                    <topic>/test/wrench</topic>
                                     <type>geometry_msgs/WrenchStamped</type>
                                 </y_axis>
                             </axes>

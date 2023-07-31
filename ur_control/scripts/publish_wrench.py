@@ -35,20 +35,16 @@ from geometry_msgs.msg import WrenchStamped
 
 class FTsensor(object):
 
-    def __init__(self, in_topic, out_topic=None,
-                 timeout=3.0):
+    def __init__(self):
         robot_name = "b_bot"
         tcp_link = "knife_center"
-        self.arm = arm.Arm(ft_sensor=True, namespace=robot_name,
+        self.arm = arm.Arm(ft_topic="wrench", namespace=robot_name,
                            joint_names_prefix=robot_name+'_', robot_urdf=robot_name,
                            robot_urdf_package='o2ac_scene_description',
                            ee_link=tcp_link)
 
-        self.in_topic = utils.solve_namespace(in_topic)
-        if out_topic:
-            self.out_topic = utils.solve_namespace(out_topic)
-        else:
-            self.out_topic = self.in_topic + 'wrench'
+        self.in_topic = '/b_bot/wrench/filtered'
+        self.out_topic = 'test/wrench'
 
         rospy.loginfo("Publishing filtered FT to %s" % self.out_topic)
 
@@ -64,19 +60,15 @@ class FTsensor(object):
         if rospy.is_shutdown():
             return
         msg_out = WrenchStamped()
-        msg_out.wrench = conversions.to_wrench(self.arm.get_ee_wrench())
+        msg_out.wrench = conversions.to_wrench(self.arm.get_ee_wrench(hand_frame_control=True))
         self.pub.publish(msg_out)
 
 def main():
     """ Main function to be run. """
-    parser = argparse.ArgumentParser(description='Filter FT signal')
-    parser.add_argument('-t', '--ft_topic', type=str, help='FT sensor data topic', required=True)
-
-    args, unknown = parser.parse_known_args()
 
     rospy.init_node('ft_filter')
 
-    ft_sensor = FTsensor(in_topic=args.ft_topic)
+    FTsensor()
 
     rospy.spin()
 
