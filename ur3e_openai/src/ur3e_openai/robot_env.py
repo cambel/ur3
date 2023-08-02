@@ -82,8 +82,8 @@ class RobotGazeboEnv(gym.Env):
         self.cumulated_episode_reward += reward
         self.cumulated_reward_details += reward_details
         
-        if done:
-            self.logger.info("reward details: %s, total: %s" % (np.round(self.cumulated_reward_details, 2), round(self.cumulated_episode_reward, 2)))
+        # if done:
+        #     self.logger.info("reward details: %s, total: %s" % (np.round(self.cumulated_reward_details, 2), round(self.cumulated_episode_reward, 2)))
 
         return obs, reward, done, info
 

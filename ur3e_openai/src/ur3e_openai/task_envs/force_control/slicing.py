@@ -183,7 +183,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         if collision:
             self.collision_counter += 1
             tf.summary.scalar(name="Common/collision_counter", data=self.collision_counter)
-            self.logger.error("Collision!")
+            self.logger.error("Collision! pose: %s" % (pose_error))
 
         elif fail_on_reward:
             if self.reward_based_on_cl:
