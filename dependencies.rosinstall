@@ -10,3 +10,19 @@
     local-name: robotiq_urcap_control
     uri: https://github.com/cambel/ros_robotiq_urcap_control.git
     version: master
+- git:  
+    local-name: Universal_Robots_ROS_Driver
+    uri: https://github.com/UniversalRobots/Universal_Robots_ROS_Driver.git
+    version: master
+- git:  
+    local-name: trac_ik
+    uri: https://bitbucket.org/traclabs/trac_ik.git
+    version: master
+- git:  
+    local-name: universal_robot
+    uri: https://github.com/fmauch/universal_robot.git
+    version: calibration_devel
+- git:
+    local-name: ur_msgs
+    uri:  https://github.com/ros-industrial/ur_msgs.git
+    version: melodic-devel
