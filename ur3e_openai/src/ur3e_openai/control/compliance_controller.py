@@ -99,6 +99,8 @@ class ComplianceController(controller.Controller):
             self.added_motion_command[4] -= ay_cmd # rotation in ay
 
             target_pose = transformations.transform_pose(target_pose, self.added_motion_command, rotated_frame=False)
+            attractor_strength = 0.75
+            target_pose[:3] = self.ur3e_arm.end_effector()[:3] + ((target_pose[:3] - self.ur3e_arm.end_effector()[:3]) * attractor_strength)
         
         else:
             raise ValueError("Invalid action_type %s" % action_type)
