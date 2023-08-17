@@ -179,6 +179,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
 
         if self.step_count == self.steps_per_episode-1:
             self.logger.error("Max steps x episode reached, failed: %s" % np.round(pose_error, 4))
+            self.controller.stop()
 
         if collision:
             self.collision_counter += 1
