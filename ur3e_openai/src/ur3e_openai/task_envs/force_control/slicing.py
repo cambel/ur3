@@ -28,8 +28,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         self.__load_env_params()
 
         if not self.real_robot:
-            string_model = get_button_model(spring_stiffness=self.object_stiffness, damping=self.object_damping, friction=self.object_friction,
-                                            base_mass=1., button_mass=0.1, color=[1, 0, 0, 0], kp=self.object_kp, kd=self.object_kd, max_vel=100.0)
+            string_model = get_button_model(base_mass=1., erp=self.object_erp, cfm=self.object_cfm)
             self.box_model = Model("block", self.object_initial_pose, file_type="string",
                                    string_model=string_model, model_id="target_block", reference_frame="o2ac_ground")
 
@@ -39,20 +38,15 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         # Gazebo spawner parameters
         self.randomize_object_properties = rospy.get_param(prefix + "/randomize_object_properties", False)
         self.object_initial_pose = rospy.get_param(prefix + "/object_initial_pose", [])
-        self.object_stiffness = rospy.get_param(prefix + "/object_stiffness", 400)
-        self.object_damping = rospy.get_param(prefix + "/object_damping", 0.0)
-        self.object_kp = rospy.get_param(prefix + "/object_kp", 1e8)
-        self.object_kd = rospy.get_param(prefix + "/object_kd", 1)
-        self.object_friction = rospy.get_param(prefix + "/object_friction", 1.0)
+        self.object_erp = rospy.get_param(prefix + "/object_erp", 0.5)
+        self.object_cfm = rospy.get_param(prefix + "/object_cfm", 0.5)
+        self.max_erp_range = rospy.get_param(prefix + "/max_erp_range", [0.15, 2.0])
+        self.max_cfm_range = rospy.get_param(prefix + "/max_cfm_range", [0.1, 3.0])
+        self.object_properties = rospy.get_param(prefix + "/object_properties", [[0.0, 1.0], [0.1, 3.0], [0.1, 3.0], [0.1, 3.0]])
+        self.calibrated_object_properties = rospy.get_param(prefix + "/calibrated_object_properties", False)
 
         self.uncertainty_error = rospy.get_param(prefix + "/uncertainty_error", False)
         self.uncertainty_error_max_range = rospy.get_param(prefix + "/uncertainty_error_max_range", [0, 0, 0, 0, 0, 0])
-
-        self.max_stiffness_range = rospy.get_param(prefix + "/max_stiffness_range", [5e5, 1e6])
-        self.max_damping_range = rospy.get_param(prefix + "/max_damping_range", [0, 2])
-        self.max_kp_range = rospy.get_param(prefix + "/max_kp_range", [4e5, 1e6])
-        self.max_kd_range = rospy.get_param(prefix + "/max_kd_range", [1, 2])
-        self.max_friction_range = rospy.get_param(prefix + "/max_friction_range", [0, 1])
 
         self.update_target = rospy.get_param(prefix + "/update_target", False)
 
@@ -68,20 +62,20 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
               self.progressive_cl, self.reward_based_on_cl, " <<<<<<")
 
         self.successes_threshold = rospy.get_param(prefix + "/successes_threshold", 0)
-        
+
         self.cost_cut_completion = rospy.get_param(prefix + "/cost_cut_completion", 0)
-        self.w_cut_completion = rospy.get_param(prefix + "/w_cut_completion", 0)     
+        self.w_cut_completion = rospy.get_param(prefix + "/w_cut_completion", 0)
         self.total_steps = 0
 
-        self.mu1 = rospy.get_param(prefix + "/mu1", 0)     
-        self.mu2 = rospy.get_param(prefix + "/mu2", 0.5)     
+        self.mu1 = rospy.get_param(prefix + "/mu1", 0)
+        self.mu2 = rospy.get_param(prefix + "/mu2", 0.5)
         self.mu3 = rospy.get_param(prefix + "/mu3", 1)
 
-        self.spawn_interval = 5 # 10
+        self.spawn_interval = 1  # 10
         self.cumulated_dist = 0
         self.cumulated_force = 0
-        self.cumulated_jerk = 0 
-        self.cumulated_vel = 0 
+        self.cumulated_jerk = 0
+        self.cumulated_vel = 0
         self.cumulated_reward_details = np.zeros(7)
         self.episode_count = 0
         self.oow_counter = 0
@@ -123,28 +117,33 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
     def update_scene(self):
         if self.real_robot:
             return
-        
+
         if self.episode_count % self.spawn_interval != 0:
             self.episode_count += 1
             print("No respawn")
-            return 
-        
+            return
+
         self.stage = 0
         block_pose = self.object_initial_pose
         # Domain randomization:
         if self.randomize_object_properties:
             randomize_value = self.np_random.uniform(low=0.0, high=1.0, size=4)
 
-            stiffness = np.interp(randomize_value[0], [0., 1.], self.max_stiffness_range)
-            damping = np.interp(randomize_value[1], [0., 1.], self.max_damping_range)
-            friction = np.interp(randomize_value[1], [0., 1.], self.max_friction_range)
-            kp = np.interp(randomize_value[2], [0., 1.], self.max_kp_range)
-            kd = np.interp(randomize_value[3], [0., 1.], self.max_kd_range)
+            erp = np.interp(randomize_value[0], [0., 1.], self.max_erp_range)
+            cfm = np.interp(randomize_value[1], [0., 1.], self.max_cfm_range)
+            stiffness = erp + (self.max_cfm_range[1]-cfm)
             color = list(get_board_color(stiffness=stiffness,
-                         stiff_lower=self.max_stiffness_range[0], stiff_upper=self.max_stiffness_range[1]))
+                                         stiff_lower=self.max_erp_range[0], stiff_upper=self.max_erp_range[1]+self.max_cfm_range[1]))
             color[3] = 0.1
-            string_model = get_button_model(spring_stiffness=stiffness, damping=damping, friction=friction,
-                                            base_mass=1., button_mass=0.1, color=color, kp=kp, kd=kd, max_vel=100.0)
+            string_model = get_button_model(erp=erp, cfm=cfm, base_mass=10., color=color)
+            self.box_model = Model("block", block_pose, file_type="string", string_model=string_model, model_id="target_block")
+            self.spawner.reset_model(self.box_model)
+        elif self.calibrated_object_properties:
+            idx = self.np_random.choice(np.arange(len(self.object_properties)))
+            erp, cfm = self.object_properties[idx]
+            erp += self.np_random.uniform(low=-0.3, high=0.3)
+            colors = [[0.5,0.5,0.5,0.1],[0,1.,0,0.1],[205/255.,133/255.,63/255.,0.1],[1.,0,0,0.1]]
+            string_model = get_button_model(erp=erp, cfm=cfm, base_mass=10., color=colors[idx])
             self.box_model = Model("block", block_pose, file_type="string", string_model=string_model, model_id="target_block")
             self.spawner.reset_model(self.box_model)
         else:
@@ -199,7 +198,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
             tf.summary.scalar(name="Common/goal_reached_counter", data=self.goal_reached_counter)
             self.controller.stop()
             self.logger.green("goal reached: %s" % np.round(pose_error[:3], 4))
-            
+
             # if self.real_robot:
             #     xc = transformations.transform_pose(self.ur3e_arm.end_effector(), [0, 0, 0.013, 0, 0, 0], rotated_frame=True)
             #     reset_time = 5.0
@@ -215,7 +214,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
     def _get_info(self, obs):
         return {"success": self.goal_reached,
                 "collision": self.action_result == FORCE_TORQUE_EXCEEDED,
-                "dist" : self.cumulated_dist,
+                "dist": self.cumulated_dist,
                 "force": self.cumulated_force,
                 "jerk": self.cumulated_jerk,
                 "vel": self.cumulated_vel,
