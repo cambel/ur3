@@ -309,13 +309,14 @@ def rectangular_prism_inertia(l, w, h, m):
     #                     [1./4.*h*w, 1./4.*h*l, 1./3.*(l2+w2)]])
 
 
-def get_button_model(spring_stiffness=-500., damping=0., friction=0., base_mass=2., button_mass=0.1, color=[1, 0, 0, 0],
-                     kp=1e5, kd=1, max_vel=100.0):
+def get_button_model(base_mass=2., button_mass=0.1, color=[1, 0, 0, 0], kp=1e5, kd=1, max_vel=100.0, height=0.03, erp=0.2, cfm=0.5):
     """ Create a String SDF model of a simple button
-    Spring_stiffness must be negative.
+
+    erp: double, higher makes the button excert higher restoring force
+    cfm: double, higher makes the button be more bouncy, less restoring force.
     """
     btn_length, btn_width = 0.06, 0.03
-    btn_height = 0.03
+    btn_height = height
     base_length, base_width = btn_length + 0.01, btn_width + 0.01
     base_height = btn_height + 0.01
     base_inertia = rectangular_prism_inertia(base_length, base_width, base_height, base_mass)
@@ -324,19 +325,25 @@ def get_button_model(spring_stiffness=-500., damping=0., friction=0., base_mass=
     range_of_motion = btn_height/2.0
     lower_limit = (btn_height-0.01)/2.0
     upper_limit = btn_height/2.0
-    return BUTTON.format(base_mass=base_mass, button_mass=button_mass,
-                         kp=kp, kd=kd, max_vel=max_vel,
-                         spring_stiffness=abs(spring_stiffness)*-1,  # always negative values
-                         damping=damping, friction=friction,
-                         base_ixx=base_inertia[0, 0], base_ixy=base_inertia[0, 1], base_ixz=base_inertia[0,
-                                                                                                         2], base_iyy=base_inertia[1, 1], base_iyz=base_inertia[1, 2], base_izz=base_inertia[2, 2],
-                         button_ixx=button_inertia[0, 0], button_ixy=button_inertia[0, 1], button_ixz=button_inertia[0,
-                                                                                                                     2], button_iyy=button_inertia[1, 1], button_iyz=button_inertia[1, 2], button_izz=button_inertia[2, 2],
-                         r=color[0], g=color[1], b=color[2], transparency=color[3],
-                         range_of_motion=range_of_motion,
-                         btn_length=btn_length, btn_width=btn_width, btn_height=btn_height,
-                         base_length=base_length, base_width=base_width, base_height=base_height,
-                         lower_limit=lower_limit, upper_limit=upper_limit)
+    return BUTTON.format(
+        base_mass=base_mass, button_mass=button_mass, kp=kp, kd=kd, max_vel=max_vel, base_ixx=base_inertia[0, 0],
+        base_ixy=base_inertia[0, 1],
+        base_ixz=base_inertia[0, 2],
+        base_iyy=base_inertia[1, 1],
+        base_iyz=base_inertia[1, 2],
+        base_izz=base_inertia[2, 2],
+        button_ixx=button_inertia[0, 0],
+        button_ixy=button_inertia[0, 1],
+        button_ixz=button_inertia[0, 2],
+        button_iyy=button_inertia[1, 1],
+        button_iyz=button_inertia[1, 2],
+        button_izz=button_inertia[2, 2],
+        r=color[0],
+        g=color[1],
+        b=color[2],
+        transparency=color[3],
+        range_of_motion=range_of_motion, btn_length=btn_length, btn_width=btn_width, btn_height=btn_height, base_length=base_length, base_width=base_width, base_height=base_height,
+        lower_limit=lower_limit, upper_limit=upper_limit, erp=erp, cfm=cfm)
 
 
 BUTTON = """
@@ -400,17 +407,19 @@ BUTTON = """
       <pose>0 0 0 0 0 0</pose>
       <axis>
         <limit>
-          <lower>-{lower_limit}</lower>
-          <upper>{upper_limit}</upper>
+          <lower>-0.0</lower>
+          <upper>0.0</upper>
         </limit>
-        <xyz>0.0 0.0 1.0</xyz>
-        <dynamics>
-          <spring_stiffness>{spring_stiffness}</spring_stiffness>
-          <spring_reference>-{range_of_motion}</spring_reference>
-          <damping>{damping}</damping>
-          <friction>{friction}</friction>
-        </dynamics>
+        <xyz>0.0 1.0 0.0</xyz>
       </axis>
+      <physics>
+        <ode>
+          <cfm_damping>false</cfm_damping>
+          <implicit_spring_damper>false</implicit_spring_damper>
+          <erp>{erp}</erp>
+          <cfm>{cfm}</cfm>
+        </ode>
+      </physics>
     </joint>
     <link name="top_link">
       <pose>0 0 0 0 0 0</pose>
@@ -426,7 +435,7 @@ BUTTON = """
         <mass>{button_mass}</mass>
       </inertial>
       <visual name="visual">
-        <pose>0 0 {range_of_motion} 0 0 0</pose>
+        <pose>0 0 {btn_height} 0 0 0</pose>
         <geometry>
           <box>
             <size>{btn_length} {btn_width} {btn_height}</size>
@@ -441,7 +450,7 @@ BUTTON = """
         </material>
       </visual>
       <collision name="collision">
-        <pose>0 0 {range_of_motion} 0 0 0</pose>
+        <pose>0 0 {btn_height} 0 0 0</pose>
         <geometry>
           <box>
             <size>{btn_length} {btn_width} {btn_height}</size>
