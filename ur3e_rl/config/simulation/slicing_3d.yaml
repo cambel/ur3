@@ -48,11 +48,17 @@ ur3e_gym: #namespace
     object_properties: [[0.0,1.7], # No resistance
                 [0.6487128967875418, 1.224723019173888], # Cucumber profile
                 [1.9598064940234345, 1.6929123153209162], # Potate profile
-                [0.5545132411475631, 0.429713214268383]] # Tomato profile
-    
+                [0.5545132411475631, 0.429713214268383], # Tomato profile
+                [0.6487128967875418, 1.224723019173888], # Cucumber profile
+                [1.9598064940234345, 1.6929123153209162], # Potate profile
+                [0.5545132411475631, 0.429713214268383], # Tomato profile
+                [0.6487128967875418, 1.224723019173888], # Cucumber profile
+                [1.9598064940234345, 1.6929123153209162], # Potate profile
+                [0.5545132411475631, 0.429713214268383], # Tomato profile
+    ]
     ## Target object configuration
-    randomize_object_properties: False
-    calibrated_object_properties: True
+    randomize_object_properties: True
+    calibrated_object_properties: False
     normal_randomization: True
     basic_randomization: False
     # object_initial_pose: [-0.12, 0.0, 0.88, 1.5707, -1.5707, 3.1415] # cucumber
