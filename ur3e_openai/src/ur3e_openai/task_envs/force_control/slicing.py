@@ -107,7 +107,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
             t1.join()
             t2.join()
 
-        self.ur3e_arm.zero_ft_sensor()
+        # self.ur3e_arm.zero_ft_sensor()
         self.controller.reset()
         self.controller.start()
 
