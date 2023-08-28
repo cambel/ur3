@@ -143,7 +143,7 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
             erp, cfm = self.object_properties[idx]
             erp += self.np_random.uniform(low=-0.3, high=0.3)
             colors = [[0.5,0.5,0.5,0.1],[0,1.,0,0.1],[205/255.,133/255.,63/255.,0.1],[1.,0,0,0.1]]
-            string_model = get_button_model(erp=erp, cfm=cfm, base_mass=10., color=[1.,0,0,0.1])
+            string_model = get_button_model(erp=erp, cfm=cfm, base_mass=2., color=[1.,0,0,0.1])
             self.box_model = Model("block", block_pose, file_type="string", string_model=string_model, model_id="target_block")
             self.spawner.reset_model(self.box_model)
         else:
