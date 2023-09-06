@@ -1,22 +1,31 @@
 
 #!/usr/bin/env python
 
-from copy import copy
+import copy
 import rospy
 import numpy as np
 
 from ur3e_openai.task_envs.ur3e_force_control import UR3eForceControlEnv
-from ur_control import transformations
+from ur_control import spalg, transformations, conversions
 from ur_control.constants import FORCE_TORQUE_EXCEEDED
-from o2ac_msgs.srv import resetDisect
-from std_srvs.srv import Trigger
 import threading
-import timeit
-from std_msgs.msg import Float32
-import tensorflow as tf
+
+from std_srvs.srv import Empty
+from nav_msgs.msg import Odometry
+
+from disect.cutting import load_settings, CuttingSim, Parameter
+
 
 def get_cl_range(range, curriculum_level):
     return [range[0], range[0] + (range[1] - range[0]) * curriculum_level]
+
+
+def constraint_pose(pose):
+    euler_pose = transformations.pose_quaternion_to_euler(pose)
+    # constraint rotation on y and z
+    euler_pose[4] = 0
+    euler_pose[5] = 0
+    return transformations.pose_euler_to_quat(euler_pose)
 
 
 class UR3eSlicingEnv(UR3eForceControlEnv):
@@ -26,9 +35,19 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         UR3eForceControlEnv.__init__(self)
         self.__load_env_params()
 
-        if not self.real_robot:
-            self.reset_service = rospy.ServiceProxy('reset_simulation', resetDisect) 
-            self.desync_service = rospy.ServiceProxy('desync_simulation', Trigger)
+        self.load_disect = rospy.ServiceProxy('/disect/load', Empty)
+        self.reset_disect = rospy.ServiceProxy('/disect/reset', Empty)
+        self.disect_step_sim = rospy.ServiceProxy('/disect/step_simulation', Empty)
+
+        self.load_disect.wait_for_service()
+        self.reset_disect.wait_for_service()
+        self.load_disect()
+
+        # Publish pose to another topic
+        msg = conversions.to_pose_stamped(self.ur3e_arm.base_link, [0, 0, 0, 0, 0, 0, 1])
+        robot_base_to_disect = self.tf_listener.transformPose('cutting_board_disect', msg)
+        self.transform_pose = transformations.pose_to_transform(conversions.from_pose_to_list(robot_base_to_disect.pose))
+        self.pub_odom = rospy.Publisher('/disect/knife/odom', Odometry, queue_size=10)
 
     def __load_env_params(self):
         prefix = "ur3e_gym"
@@ -52,28 +71,23 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
 
         # Cut completion
         self.cut_completion = 0.
-        self.cut_sub = rospy.Subscriber("/dissect_cut_progression", Float32, self.callback_cut_completion)
-        self.cost_cut_completion = rospy.get_param(prefix + "/cost_cut_completion", 0)
 
         self.goal_reached = False
 
-        self.mu1 = rospy.get_param(prefix + "/mu1", 0)     
-        self.mu2 = rospy.get_param(prefix + "/mu2", 0.5)     
+        self.mu1 = rospy.get_param(prefix + "/mu1", 0)
+        self.mu2 = rospy.get_param(prefix + "/mu2", 0.5)
         self.mu3 = rospy.get_param(prefix + "/mu3", 1)
 
-        self.spawn_interval = 5 # 10
+        self.spawn_interval = 5  # 10
         self.cumulated_dist = 0
         self.cumulated_force = 0
-        self.cumulated_jerk = 0 
-        self.cumulated_vel = 0 
+        self.cumulated_jerk = 0
+        self.cumulated_vel = 0
         self.cumulated_reward_details = np.zeros(7)
         self.episode_count = 0
-        self.oow_counter = 0
-        self.collision_counter = 0
-        self.goal_reached_counter = 0
 
-    def _set_init_pose(self):       
-        self.goal_reached = False 
+    def _set_init_pose(self):
+        self.goal_reached = False
         self.success_counter = 0
 
         # Update target pose if needed
@@ -82,9 +96,9 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         def reset_pose():
             # Go to initial pose
             reset_motion = self.reset_motion
-            reset_motion[1] += self.np_random.uniform(low=np.deg2rad(-0.02), high=np.deg2rad(0.02))
-            reset_motion[2] += self.np_random.uniform(low=np.deg2rad(-0.01), high=np.deg2rad(0.01))
-            reset_motion[4] = self.np_random.uniform(low=np.deg2rad(-10), high=np.deg2rad(10))
+            # reset_motion[1] += self.np_random.uniform(low=np.deg2rad(-0.02), high=np.deg2rad(0.02))
+            # reset_motion[2] += self.np_random.uniform(low=np.deg2rad(-0.01), high=np.deg2rad(0.01))
+            # reset_motion[4] = self.np_random.uniform(low=np.deg2rad(-10), high=np.deg2rad(10))
             initial_pose = transformations.transform_pose(self.current_target_pose, reset_motion, rotated_frame=False)
             self.ur3e_arm.set_target_pose(pose=initial_pose, wait=True, t=self.reset_time)
 
@@ -94,25 +108,16 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         t2.start()
         t1.join()
         t2.join()
-       
+
+        self.reset_disect()
+
+        disect_knife_pose, disect_knife_twist = self.compute_disect_knife_pose()
+        self.publish_odom(disect_knife_pose, disect_knife_twist, update_pose=True)
+        self.disect_step_sim()
+
         self.ur3e_arm.zero_ft_sensor()
         self.controller.reset()
         self.controller.start()
-
-    def callback_cut_completion(self, msg):
-        """
-        Callback function to retrieve the completion rate of the cut from Disect.
-        The cut completion is expressed as decimal from 0 to 1, 1 meaning all the spring stiffnesses of the model reached 0.
-        """
-        self.cut_completion = msg.data
-
-
-    def update_scene(self):
-        self.start = timeit.default_timer()
-        # Handling the desync message
-        print(self.desync_service())
-        # Handling the reset message
-        print(self.reset_service(self.new_sim, self.viz))
 
     def _is_done(self, observations):
         pose_error = np.abs(observations[:len(self.target_dims)]*self.max_distance)
@@ -122,11 +127,6 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         fail_on_reward = self.termination_on_negative_reward
         self.out_of_workspace = np.any(pose_error > self.workspace_limit)
 
-        if self.out_of_workspace:
-            self.oow_counter += 1
-            tf.summary.scalar(name="Common/out_of_workspace_counter", data=self.oow_counter)
-            self.logger.error("Out of workspace, failed: %s" % np.round(pose_error, 4))
-
         # If the end effector remains on the target pose for several steps. Then terminate the episode
         if position_goal_reached:
             self.success_counter += 1
@@ -135,11 +135,12 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
 
         if self.step_count == self.steps_per_episode-1:
             self.logger.error("Max steps x episode reached, failed: %s" % np.round(pose_error, 4))
+            self.robot_connection.unpause()
+            self.controller.stop()
+            self.robot_connection.pause()
 
         if collision:
-            self.collision_counter += 1
-            tf.summary.scalar(name="Common/collision_counter", data=self.collision_counter)
-            self.logger.error("Collision!")
+            self.logger.error("Collision! pose: %s" % (pose_error))
 
         elif fail_on_reward:
             if self.reward_based_on_cl:
@@ -150,32 +151,41 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
 
         elif position_goal_reached and self.success_counter > self.successes_threshold:
             self.goal_reached = True
-            self.goal_reached_counter += 1
-            tf.summary.scalar(name="Common/goal_reached_counter", data=self.goal_reached_counter)
-            self.controller.stop()
             self.logger.green("goal reached: %s" % np.round(pose_error[:3], 4))
-            
-            # if self.real_robot:
-            #     xc = transformations.transform_pose(self.ur3e_arm.end_effector(), [0, 0, 0.013, 0, 0, 0], rotated_frame=True)
-            #     reset_time = 5.0
-            #     self.ur3e_arm.set_target_pose(pose=xc, t=reset_time, wait=True)
 
         done = self.goal_reached or collision or fail_on_reward or self.out_of_workspace
 
         if done:
+            self.robot_connection.unpause()
             self.controller.stop()
+            self.robot_connection.pause()
 
         return done
 
     def _get_info(self, obs):
         return {"success": self.goal_reached,
                 "collision": self.action_result == FORCE_TORQUE_EXCEEDED,
-                "dist" : self.cumulated_dist,
+                "dist": self.cumulated_dist,
                 "force": self.cumulated_force,
                 "jerk": self.cumulated_jerk,
                 "vel": self.cumulated_vel,
                 "cumulated_reward_details": self.cumulated_reward_details}
-    
+
     def _set_action(self, action):
         self.last_actions = action
         self.action_result = self.controller.act(action, self.current_target_pose, self.action_type)
+
+    def compute_disect_knife_pose(self):
+        knife_pose = self.ur3e_arm.end_effector(tip_link='b_bot_knife_sim')
+        knife_twist = self.ur3e_arm.end_effector_twist(tip_link='b_bot_knife_sim')
+        disect_knife_pose = transformations.apply_transformation(knife_pose, self.transform_pose)
+        disect_knife_twist = spalg.convert_twist(knife_twist, self.transform_pose)
+        return disect_knife_pose, disect_knife_twist
+
+    def publish_odom(self, pose, twist, update_pose=False):
+        msg = Odometry()
+        msg.header.frame_id = "update_pose" if update_pose else ""
+        msg.pose.pose = conversions.to_pose(pose)
+        msg.twist.twist.linear = conversions.to_vector3(twist[:3])
+        msg.twist.twist.angular = conversions.to_vector3(twist[3:])
+        self.pub_odom.publish(msg)

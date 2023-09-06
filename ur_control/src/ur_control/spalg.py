@@ -271,8 +271,8 @@ def force_frame_transform(bTa):
     @return: The coordinate transformation from M{A} to M{B} for force
     vectors
     """
-    aTb = tr.inverse_matrix(bTa) # is this necessary?
-    return motion_frame_transform(aTb).T # do we need to transpose here?
+    aTb = tr.inverse_matrix(bTa)
+    return motion_frame_transform(aTb).T
 
 
 def inertia_matrix_from_vector(i):
@@ -514,6 +514,13 @@ def convert_wrench(wrench_force, pose):
 
     return wrench
 
+def convert_twist(twist, transform):
+    # # # twist transformation
+    aTb = tr.inverse_matrix(transform)
+    twts = motion_frame_transform(aTb).T
+    transformed_twist = np.dot(twts, twist)
+
+    return transformed_twist
 
 def face_towards(target_position, current_pose, up_vector=[0, 0, 1]):
     """

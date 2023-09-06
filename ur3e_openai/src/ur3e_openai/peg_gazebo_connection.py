@@ -30,6 +30,7 @@ from std_msgs.msg import Float64
 from gazebo_msgs.srv import SetPhysicsProperties, SetPhysicsPropertiesRequest
 from gazebo_msgs.srv import DeleteModel
 from gazebo_msgs.msg import ODEPhysics
+from gazebo_msgs.srv import StepControl, StepControlRequest
 from std_srvs.srv import Empty
 import rospy
 import roslaunch
@@ -74,6 +75,9 @@ class GazeboConnection(ConnectionBase):
         self.controllers_on = controllers_on
         self.controllers = ControllersConnection()
 
+        self.step_simulation_serv = rospy.ServiceProxy('/gazebo/step_control', StepControl)
+        self.step_simulation_serv.wait_for_service(1.0)
+
         self.unpause_serv = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
         self.pause_serv = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
         self.reset_simulation_serv = rospy.ServiceProxy('/gazebo/reset_simulation', Empty)
@@ -87,24 +91,27 @@ class GazeboConnection(ConnectionBase):
         self.reset_world_or_sim = reset_world_or_sim
         self.init_values()
 
-        # We always pause the simulation, important for legged robots learning
-        self.pause()
+        # self.pause()
+        self.step_simulation_serv(StepControlRequest(steps=0))
 
     def pause(self):
         rospy.logdebug("PAUSING START")
         rospy.wait_for_service('/gazebo/pause_physics')
         try:
-            self.pause_serv()
+            self.step_simulation_serv(StepControlRequest(steps=1))
+            # self.pause_serv()
         except rospy.ServiceException:
             print("/gazebo/pause_physics service call failed")
 
         rospy.logdebug("PAUSING FINISH")
 
     def unpause(self):
+
         rospy.logdebug("UNPAUSING START")
         rospy.wait_for_service('/gazebo/unpause_physics')
         try:
-            self.unpause_serv()
+            self.step_simulation_serv(StepControlRequest(steps=0))
+            # self.unpause_serv()
         except rospy.ServiceException:
             print("/gazebo/unpause_physics service call failed")
 

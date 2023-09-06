@@ -5,9 +5,10 @@ ur3e_gym: #namespace
     namespace: "b_bot"
     ee_link: knife_center
 
-    reset_robot: True
+    use_gazebo_sim: True
     real_robot: False
     test_mode: False
+    use_step_control: True
 
     # RL parameters
     batch_size: 1024
@@ -67,13 +68,13 @@ ur3e_gym: #namespace
 
     init_q: [1.3524, -1.5555, 1.7697, -1.7785, -1.5644, 1.3493] # cut to button
 
-    reset_motion: [0.0, 0, 0.035, 0, 0, 0]    
+    reset_motion: [0.0, 0, 0.055, 0, 0, 0]    
 
     target_duration: 6
     target_pose_uncertain: False
     uncertainty_std: [0.001, 0.0]
     random_target_pose: False
-    target_pose: [0.11, 0.50, 0.1215, -0.00812894,  0.70963372, -0.00882711,  0.70446859]
+    target_pose: [0.138, 0.505, 0.126, 0.0, 0.7071068, 0.0, 0.7071068]
     
     # Reward parameters
     target_dims: [0,2,4]
@@ -98,6 +99,6 @@ ur3e_gym: #namespace
         
 # Controller parameters
 ur3e_force_control:
-    max_twist: [1.0, 3.1415]
+    max_twist: [1.0, 0.0]
     max_force_torque: [50, 50.0, 50.0, 10., 10., 10.]
     desired_force_torque: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]

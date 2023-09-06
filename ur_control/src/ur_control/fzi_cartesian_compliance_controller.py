@@ -25,15 +25,20 @@
 import threading
 import types
 import rospy
+import tf
 import numpy as np
 
 from ur_control.arm import Arm
-from ur_control import conversions
+from ur_control import conversions, spalg, transformations
 from ur_control.constants import JOINT_TRAJECTORY_CONTROLLER, CARTESIAN_COMPLIANCE_CONTROLLER, STOP_ON_TARGET_FORCE, FORCE_TORQUE_EXCEEDED, DONE, TERMINATION_CRITERIA
 
 from geometry_msgs.msg import WrenchStamped, PoseStamped
+from nav_msgs.msg import Odometry
+from std_srvs.srv import Empty
 
 import dynamic_reconfigure.client
+
+from gazebo_msgs.srv import StepControl, StepControlRequest
 
 
 def convert_selection_matrix_to_parameters(selection_matrix):
@@ -102,9 +107,22 @@ class CompliantController(Arm):
         """ Compliant controller using FZI Cartesian Compliance controllers """
         Arm.__init__(self, **kwargs)
 
-        self.is_gazebo_sim = False
-        if rospy.has_param("use_gazebo_sim"):
-            self.is_gazebo_sim = True
+        self.is_gazebo_sim = rospy.get_param("use_gazebo_sim", False)
+        self.use_step_control = rospy.get_param("/ur3e_gym/use_step_control", False)
+        if self.is_gazebo_sim and self.use_step_control:
+            self.step_simulation_serv = rospy.ServiceProxy('/gazebo/step_control', StepControl)
+            self.step_simulation_serv.wait_for_service(1.0)
+            self.disect_step_sim = rospy.ServiceProxy('/disect/step_simulation', Empty)
+            
+            # Publish pose to another topic
+            msg = conversions.to_pose_stamped(self.base_link, [0, 0, 0, 0, 0, 0, 1])
+            tf_listener = tf.TransformListener()
+            rospy.sleep(1)
+            robot_base_to_disect = tf_listener.transformPose('cutting_board_disect', msg)
+            self.transform_pose = transformations.pose_to_transform(conversions.from_pose_to_list(robot_base_to_disect.pose))
+            self.pub_odom = rospy.Publisher('/disect/knife/odom', Odometry, queue_size=10)
+
+        self.rate = rospy.Rate(500)
 
         self.auto_switch_controllers = True  # Safety switching back to safe controllers
 
@@ -285,8 +303,6 @@ class CompliantController(Arm):
         if scale_up_error and max_scale_error:
             self.sliding_error(trajectory[trajectory_index], max_scale_error)
 
-        rate = rospy.Rate(500)
-
         while not rospy.is_shutdown() and (rospy.get_time() - initial_time) < duration:
 
             current_wrench = self.get_ee_wrench(hand_frame_control=True)
@@ -324,9 +340,20 @@ class CompliantController(Arm):
             if func:
                 func(self.end_effector())
 
-            rate.sleep()
+            if self.use_step_control:
+                # Advance gazebo sim
+                self.step_simulation_serv(StepControlRequest(steps=2))  # Forward 2 milliseconds
+                
+                # Publish knife state to disect
+                disect_knife_pose, disect_knife_twist = self.compute_disect_knife_pose()
+                self.publish_odom(disect_knife_pose, disect_knife_twist, update_pose=False)
+                # input("Enter to proceed")
+                # Advance disect sim
+                self.disect_step_sim()
+            else:
+                self.rate.sleep()
 
-        if auto_stop:
+        if auto_stop and not self.use_step_control:
             # Stop moving
             # set position control only, then fix the pose to the current one
             self.set_position_control_mode()
@@ -334,6 +361,21 @@ class CompliantController(Arm):
             self.wait_for_robot_to_stop(wait_time=5)
 
         return result
+
+    def compute_disect_knife_pose(self):
+        knife_pose = self.end_effector(tip_link='b_bot_knife_sim')
+        knife_twist = self.end_effector_twist(tip_link='b_bot_knife_sim')
+        disect_knife_pose = transformations.apply_transformation(knife_pose, self.transform_pose)
+        disect_knife_twist = spalg.convert_twist(knife_twist, self.transform_pose)
+        return disect_knife_pose, disect_knife_twist
+
+    def publish_odom(self, pose, twist, update_pose=False):
+        msg = Odometry()
+        msg.header.frame_id = "update_pose" if update_pose else ""
+        msg.pose.pose = conversions.to_pose(pose)
+        msg.twist.twist.linear = conversions.to_vector3(twist[:3])
+        msg.twist.twist.angular = conversions.to_vector3(twist[3:])
+        self.pub_odom.publish(msg)
 
     def sliding_error(self, target_pose, max_scale_error):
         # Scale error_scale as position error decreases until a max scale error

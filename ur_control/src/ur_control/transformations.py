@@ -1765,6 +1765,28 @@ def translate_pose(pose, delta, rotated_frame=False):
 
     return numpy.concatenate([position, orienation])
 
+def transform_twist(twist, transform):
+    quat = quaternion_from_matrix(transform)
+    twist_out = numpy.zeros_like(twist)
+    twist_out[:3] = quaternion_rotate_vector(quat, twist[:3])
+    twist_out[3:] = quaternion_rotate_vector(quat, twist[3:])
+    return twist_out
+
+def apply_transformation(pose, transform_matrix):
+    # mat44 is frame-to-frame transform as a 4x4
+    mat44 = transform_matrix
+
+    # pose44 is the given pose as a 4x4
+    pose44 = pose_to_transform(pose)
+
+    # txpose is the new pose in target_frame as a 4x4
+    txpose = concatenate_matrices(mat44, pose44)
+
+    # xyz and quat are txpose's position and orientation
+    xyz = translation_from_matrix(txpose)
+    quat = quaternion_from_matrix(txpose)
+
+    return numpy.concatenate((xyz, quat))
 
 def transform_pose(pose, transformation, rotated_frame=False):
     """

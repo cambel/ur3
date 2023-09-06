@@ -9,7 +9,8 @@ import numpy as np
 from ur3e_openai.common import load_environment, clear_gym_params, load_ros_params
 np.set_printoptions(suppress=True)
 np.set_printoptions(linewidth=np.inf)
-
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # tensorflow logging disabled
 
 def signal_handler(sig, frame):
     print('You pressed Ctrl+C!')
@@ -80,6 +81,8 @@ if __name__ == '__main__':
         param_file = "simulation/slicing_1d.yaml"
     elif args.env_id == 1:
         param_file = "simulation/slicing_3d.yaml"
+    elif args.env_id == 2:
+        param_file = "simulation/slicing_3d_disect.yaml"
     else:
         raise Exception("invalid env_id")
 

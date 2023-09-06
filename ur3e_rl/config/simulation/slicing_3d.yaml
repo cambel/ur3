@@ -5,9 +5,10 @@ ur3e_gym: #namespace
     namespace: "b_bot"
     ee_link: knife_center
 
-    reset_robot: True
+    use_gazebo_sim: True
     real_robot: False
     test_mode: False
+    use_step_control: True
 
     # RL parameters
     batch_size: 1024

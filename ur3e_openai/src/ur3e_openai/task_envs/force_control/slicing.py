@@ -7,13 +7,12 @@ import numpy as np
 
 from ur3e_openai.robot_envs.utils import get_board_color
 from ur3e_openai.task_envs.ur3e_force_control import UR3eForceControlEnv
-from ur_control import spalg, transformations
+from ur_control import conversions, spalg, transformations
 from ur_control.constants import FORCE_TORQUE_EXCEEDED
 from ur_gazebo.basic_models import get_button_model
 from ur_gazebo.model import Model
 
 import threading
-import tensorflow as tf
 
 
 def get_cl_range(range, curriculum_level):
@@ -34,6 +33,8 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
 
     def __load_env_params(self):
         prefix = "ur3e_gym"
+
+        self.use_step_control = rospy.get_param("/ur3e_gym/use_step_control", False)
 
         # Gazebo spawner parameters
         self.randomize_object_properties = rospy.get_param(prefix + "/randomize_object_properties", False)
@@ -78,9 +79,6 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         self.cumulated_vel = 0
         self.cumulated_reward_details = np.zeros(7)
         self.episode_count = 0
-        self.oow_counter = 0
-        self.collision_counter = 0
-        self.goal_reached_counter = 0
 
     def _set_init_pose(self):
         self.success_counter = 0
@@ -165,24 +163,20 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         fail_on_reward = self.termination_on_negative_reward
         self.out_of_workspace = np.any(pose_error > self.workspace_limit)
 
-        if self.out_of_workspace:
-            self.oow_counter += 1
-            tf.summary.scalar(name="Common/out_of_workspace_counter", data=self.oow_counter)
-            self.logger.error("Out of workspace, failed: %s" % np.round(pose_error, 4))
-
         # If the end effector remains on the target pose for several steps. Then terminate the episode
         if position_goal_reached:
             self.success_counter += 1
         # else:
         #     self.success_counter = 0
 
+
         if self.step_count == self.steps_per_episode-1:
             self.logger.error("Max steps x episode reached, failed: %s" % np.round(pose_error, 4))
+            self.robot_connection.unpause()
             self.controller.stop()
+            self.robot_connection.pause()
 
         if collision:
-            self.collision_counter += 1
-            tf.summary.scalar(name="Common/collision_counter", data=self.collision_counter)
             self.logger.error("Collision! pose: %s" % (pose_error))
 
         elif fail_on_reward:
@@ -194,20 +188,14 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
 
         elif position_goal_reached and self.success_counter > self.successes_threshold:
             self.goal_reached = True
-            self.goal_reached_counter += 1
-            tf.summary.scalar(name="Common/goal_reached_counter", data=self.goal_reached_counter)
-            self.controller.stop()
             self.logger.green("goal reached: %s" % np.round(pose_error[:3], 4))
-
-            # if self.real_robot:
-            #     xc = transformations.transform_pose(self.ur3e_arm.end_effector(), [0, 0, 0.013, 0, 0, 0], rotated_frame=True)
-            #     reset_time = 5.0
-            #     self.ur3e_arm.set_target_pose(pose=xc, t=reset_time, wait=True)
 
         done = self.goal_reached or collision or fail_on_reward or self.out_of_workspace
 
         if done:
+            self.robot_connection.unpause()
             self.controller.stop()
+            self.robot_connection.pause()
 
         return done
 

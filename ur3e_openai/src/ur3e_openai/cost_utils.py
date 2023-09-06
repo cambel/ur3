@@ -89,9 +89,6 @@ def slicing(self, obs, done):
     # encourage faster termination
     r_step = self.cost_step
 
-    # encourage complete cut of the material
-    r_cut_completion = -1/(1+np.exp((-10)*(cut_completion-0.5))) * self.cost_cut_completion  # use of a sigmoid, low reward for low cut, high reward for complete cut
-
     weights = [self.w_dist, self.w_force, self.w_jerkiness, 1.0]
     w_norm1 = weights / np.linalg.norm(weights, ord=1)
     if self.total_steps % 500 : 
