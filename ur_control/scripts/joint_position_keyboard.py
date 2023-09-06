@@ -44,12 +44,8 @@ np.set_printoptions(suppress=True)
 def map_keyboard():
     def print_robot_state():
         print("Joint angles:", np.round(arm.joint_angles(), 4).tolist())
-        print("EE Pose:", np.round(arm.end_effector(tip_link="b_bot_tool0", rot_type="euler"), 5).tolist())
-        
-        gravity = [0, 0, -9.81]
-        cg = transformations.quaternion_rotate_vector(arm.end_effector(tip_link="b_bot_tool0")[3:], gravity)
-        print("Gravity", cg)
-
+        print("EE Pose:", np.round(arm.end_effector(tip_link="b_bot_knife_center"), 5).tolist())
+        print("EE Twist:", np.round(arm.end_effector_twist(), 4))
         if arm.gripper:
             print("Gripper position:", np.round(arm.gripper.get_position(), 4))
 

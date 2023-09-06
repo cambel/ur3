@@ -42,7 +42,7 @@ from ur_control.controllers import JointControllerBase
 
 class FTsensor(object):
 
-    def __init__(self, in_topic, in_topic2 = None, namespace="", out_topic=None,
+    def __init__(self, in_topic, in_topic2=None, namespace="", out_topic=None,
                  sampling_frequency=500, cutoff=50,
                  order=2, data_window=200, timeout=3.0,
                  republish=False, gravity_compensation=False):
@@ -99,9 +99,10 @@ class FTsensor(object):
         self.data_queue = collections.deque(maxlen=self.data_window)
 
         # Subscribe to incoming topic
-        self.added_wrench = np.zeros(6)
-        if self.in_topic2 != None : rospy.Subscriber(self.in_topic2, WrenchStamped, self.cb_adder)
         rospy.Subscriber(self.in_topic, WrenchStamped, self.cb_raw)
+        self.added_wrench = np.zeros(6)
+        if self.in_topic2 != None:
+            rospy.Subscriber(self.in_topic2, WrenchStamped, self.cb_adder)
 
         # Check that the incoming topic is publishing data
         self._active = None
@@ -111,7 +112,6 @@ class FTsensor(object):
 
         rospy.loginfo('FT filter successfully initialized')
         rospy.sleep(1)  # wait some time to fill the filter
-        # rospy.sleep(self.data_window * (1/sampling_frequency))  # wait some time to fill the filter
 
     def apply_gravity_compensation(self, wrench):
         compensated_wrench = wrench.copy()
@@ -121,7 +121,7 @@ class FTsensor(object):
         gravity_component[3:] = self.center_of_mass * gravity_component[:3]  # M = r x F
 
         rospy.loginfo_throttle(1, "gravity compensation %s" % np.round(gravity_component, 3)[:3])
-        
+
         # Add actual gravity compensation
         compensated_wrench -= gravity_component
 
@@ -134,6 +134,9 @@ class FTsensor(object):
         if rospy.is_shutdown():
             return
         self.added_wrench = conversions.from_wrench(msg.wrench)
+        if np.any(np.isnan(self.added_wrench)):
+            rospy.logerr("NaN values in the topic2. Ignoring.")
+            self.added_wrench = np.zeros(6)
 
     def cb_raw(self, msg):
         if rospy.is_shutdown():
@@ -151,13 +154,7 @@ class FTsensor(object):
                     data = data - self.wrench_offset
                 else:
                     data = current_wrench - self.wrench_offset
-                if np.any(np.isnan(data)) :
-                    rospy.logerr("NaN values in the output of the filter. Ignoring.")
-                    self.added_wrench = np.zeros(6)
-                    self.wrench_offset = np.zeros(6)
-                    self.data_queue = collections.deque(maxlen=self.data_window)
-                    rospy.signal_shutdown()
-                    return
+
                 filtered_msg = WrenchStamped()
                 filtered_msg.wrench = conversions.to_wrench(data)
                 filtered_msg.header.frame_id = msg.header.frame_id
