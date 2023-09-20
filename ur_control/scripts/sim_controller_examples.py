@@ -26,6 +26,7 @@
  
 from ur_control import transformations, traj_utils, conversions
 from ur_control.arm import Arm
+from ur_control.constants import GENERIC_GRIPPER
 import argparse
 import random
 import rospy
@@ -208,7 +209,7 @@ def main():
     global arm
     arm = Arm(
         ft_sensor=True,  # get Force/Torque data or not
-        gripper=args.gripper,  # Enable gripper
+        gripper=GENERIC_GRIPPER,  # Enable gripper
         )
 
     real_start_time = timeit.default_timer()

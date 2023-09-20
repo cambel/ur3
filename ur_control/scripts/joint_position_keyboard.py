@@ -33,6 +33,7 @@ import rospy
 
 from ur_control.arm import Arm
 from ur_control import transformations
+from ur_control.constants import GENERIC_GRIPPER
 
 import getch
 
@@ -201,11 +202,11 @@ See help inside the example with the '?' key for key bindings.
     robot_urdf = "ur3e"
     rospackage = None
     tcp_link = None
-    use_gripper = args.gripper
+    gripper = GENERIC_GRIPPER if args.gripper else None
 
     global arm
     arm = Arm(ft_sensor=False,
-              gripper=use_gripper, namespace=ns,
+              gripper=gripper, namespace=ns,
               joint_names_prefix=joints_prefix,
               robot_urdf=robot_urdf, robot_urdf_package=rospackage,
               ee_link=tcp_link)
