@@ -508,11 +508,11 @@
         <material>Gazebo/FlatBlack</material>
     </gazebo>
     <!-- Equivalent to the OpenRAVE manipulator denso_robotiq_hande_gripper -->
-    <link name="ur_gripper_tip_link" />
+    <link name="gripper_tip_link" />
     <joint name="manipulator_dummy_joint" type="fixed">
         <origin rpy="0 0 0" xyz="0 0 0.1441" />
         <parent link="robotiq_coupler" />
-        <child link="ur_gripper_tip_link" />
+        <child link="gripper_tip_link" />
     </joint>
     <joint name="robotiq_hande_base_joint" type="fixed">
         <parent link="robotiq_coupler" />
@@ -1150,11 +1150,11 @@
         <material>Gazebo/FlatBlack</material>
     </gazebo>
     <!-- Equivalent to the OpenRAVE manipulator denso_robotiq_hande_gripper -->
-    <link name="ur_gripper_tip_link" />
+    <link name="gripper_tip_link" />
     <joint name="manipulator_dummy_joint" type="fixed">
         <origin rpy="0 0 0" xyz="0 0 0.1441" />
         <parent link="robotiq_coupler" />
-        <child link="ur_gripper_tip_link" />
+        <child link="gripper_tip_link" />
     </joint>
     <joint name="robotiq_hande_base_joint" type="fixed">
         <parent link="robotiq_coupler" />

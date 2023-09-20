@@ -111,11 +111,11 @@
   </gazebo>
 
   <!-- Equivalent to the OpenRAVE manipulator denso_robotiq_hande_gripper -->
-  <link name="ur_gripper_tip_link" />
+  <link name="gripper_tip_link" />
   <joint name="manipulator_dummy_joint" type="fixed">
     <origin xyz="0 0 0.1441" rpy="0 0 0" />
     <parent link="robotiq_coupler"/>
-    <child link="ur_gripper_tip_link"/>
+    <child link="gripper_tip_link"/>
   </joint>
     
   <!-- Attach the robotiq hand-e gripper -->
