@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<launch>
+
+  <!--Parameter files -->
+  <arg name="ur_robot" default="ur3e"/>
+
+  <!--Common parameters -->
+  <arg name="transmission_hw_interface" default="hardware_interface/PositionJointInterface" doc="The hardware_interface to expose for each joint in the simulated robot (one of: [PositionJointInterface, VelocityJointInterface, EffortJointInterface])"/>
+  <arg name="safety_limits" default="false" doc="If True, enable the safety limits controller"/>
+  <arg name="safety_pos_margin" default="0.15" doc="The lower/upper limits in the safety controller" />
+  <arg name="safety_k_position" default="20" doc="Used to set k position in the safety controller" />
+
+  <param name="robot_description" command="$(find xacro)/xacro '$(find ur3_description)/urdf/ur_gripper_hande.xacro'
+    joint_limit_params:='$(find ur_description)/config/$(arg ur_robot)/joint_limits.yaml'
+    kinematics_params:='$(find ur_description)/config/$(arg ur_robot)/default_kinematics.yaml'
+    physical_params:='$(find ur_description)/config/$(arg ur_robot)/physical_parameters.yaml'
+    visual_params:='$(find ur_description)/config/$(arg ur_robot)/visual_parameters.yaml'
+    transmission_hw_interface:=$(arg transmission_hw_interface)
+    safety_limits:=$(arg safety_limits)
+    safety_pos_margin:=$(arg safety_pos_margin)
+    safety_k_position:=$(arg safety_k_position)"
+    />
+</launch>
