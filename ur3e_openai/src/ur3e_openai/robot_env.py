@@ -40,6 +40,7 @@ class RobotGazeboEnv(gym.Env):
         self.cumulated_episode_reward = 0
         self.pause = False
         self._log_message = None
+        self.use_step_control = False
         rospy.logdebug("END init RobotGazeboEnv")
 
     def pause_callback(self, msg):
@@ -68,7 +69,8 @@ class RobotGazeboEnv(gym.Env):
             self.pause = False
 
         # Resume simulation
-        self.robot_connection.pause()
+        if self.use_step_control:
+            self.robot_connection.pause()
         self._set_action(action)
 
         obs = self._get_obs()

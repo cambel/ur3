@@ -8,7 +8,7 @@ ur3e_gym: #namespace
     use_gazebo_sim: True
     real_robot: False
     test_mode: False
-    use_step_control: True
+    use_step_control: False
 
     # RL parameters
     batch_size: 1024

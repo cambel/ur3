@@ -60,6 +60,7 @@ class FTsensor(object):
             self.out_topic = utils.solve_namespace(self.in_topic + 'filtered')
             self.out_tcp_topic = self.in_topic + "tcp"
         self.in_topic2 = in_topic2
+        self.topic2_time = 0.0
 
         if self.gravity_compensation:
             prefix = "" if not namespace else namespace + "_"
@@ -133,6 +134,7 @@ class FTsensor(object):
     def cb_adder(self, msg):
         if rospy.is_shutdown():
             return
+        self.topic2_time = msg.header.stamp.to_sec()
         self.added_wrench = conversions.from_wrench(msg.wrench)
         if np.any(np.isnan(self.added_wrench)):
             rospy.logerr("NaN values in the topic2. Ignoring.")
@@ -142,7 +144,11 @@ class FTsensor(object):
         if rospy.is_shutdown():
             return
         self._active = True
-        current_wrench = conversions.from_wrench(msg.wrench) + self.added_wrench
+        msg_time = msg.header.stamp.to_sec()
+        if msg_time - self.topic2_time < 0.01: 
+            current_wrench = conversions.from_wrench(msg.wrench) + self.added_wrench
+        else:
+            current_wrench = conversions.from_wrench(msg.wrench)
         self.add_wrench_observation(current_wrench)
         if self.enable_publish:
             if self.enable_filtering:

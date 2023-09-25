@@ -32,7 +32,7 @@ from ur_control.arm import Arm
 from ur_control import conversions, spalg, transformations
 from ur_control.constants import JOINT_TRAJECTORY_CONTROLLER, CARTESIAN_COMPLIANCE_CONTROLLER, STOP_ON_TARGET_FORCE, FORCE_TORQUE_EXCEEDED, DONE, TERMINATION_CRITERIA
 
-from geometry_msgs.msg import WrenchStamped, PoseStamped
+from geometry_msgs.msg import WrenchStamped, PoseStamped, TwistStamped
 from nav_msgs.msg import Odometry
 from std_srvs.srv import Empty
 
@@ -121,6 +121,8 @@ class CompliantController(Arm):
             robot_base_to_disect = tf_listener.transformPose('cutting_board_disect', msg)
             self.transform_pose = transformations.pose_to_transform(conversions.from_pose_to_list(robot_base_to_disect.pose))
             self.pub_odom = rospy.Publisher('/disect/knife/odom', Odometry, queue_size=10)
+
+            self.previous_pose = None
 
         self.rate = rospy.Rate(500)
 
@@ -364,10 +366,22 @@ class CompliantController(Arm):
 
     def compute_disect_knife_pose(self):
         knife_pose = self.end_effector(tip_link='b_bot_knife_sim')
-        knife_twist = self.end_effector_twist(tip_link='b_bot_knife_sim')
         disect_knife_pose = transformations.apply_transformation(knife_pose, self.transform_pose)
-        disect_knife_twist = spalg.convert_twist(knife_twist, self.transform_pose)
-        return disect_knife_pose, disect_knife_twist
+
+        if self.previous_pose is None:
+            self.previous_pose = knife_pose
+
+        knife_twist = np.zeros(6)
+        knife_twist[:3] = (knife_pose[:3] - self.previous_pose[:3]) / 0.002
+
+        if np.any(np.abs(knife_twist) > 1.0):
+            self.previous_pose = knife_pose
+            return disect_knife_pose, np.zeros(6)
+        else:
+            knife_twist[3:] = transformations.angular_velocity_from_quaternions(knife_pose[3:], self.previous_pose[3:], 0.002)
+            self.previous_pose = knife_pose
+            disect_knife_twist = spalg.convert_twist(knife_twist, self.transform_pose)
+            return disect_knife_pose, disect_knife_twist
 
     def publish_odom(self, pose, twist, update_pose=False):
         msg = Odometry()

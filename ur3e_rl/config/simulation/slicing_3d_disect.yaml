@@ -68,7 +68,7 @@ ur3e_gym: #namespace
 
     init_q: [1.3524, -1.5555, 1.7697, -1.7785, -1.5644, 1.3493] # cut to button
 
-    reset_motion: [0.0, 0, 0.055, 0, 0, 0]    
+    reset_motion: [0.0, 0, 0.045, 0, 0, 0]    
 
     target_duration: 6
     target_pose_uncertain: False

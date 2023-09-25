@@ -172,9 +172,11 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
 
         if self.step_count == self.steps_per_episode-1:
             self.logger.error("Max steps x episode reached, failed: %s" % np.round(pose_error, 4))
-            self.robot_connection.unpause()
+            if self.use_step_control:
+                self.robot_connection.unpause()
             self.controller.stop()
-            self.robot_connection.pause()
+            if self.use_step_control:
+                self.robot_connection.pause()
 
         if collision:
             self.logger.error("Collision! pose: %s" % (pose_error))
@@ -193,9 +195,11 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
         done = self.goal_reached or collision or fail_on_reward or self.out_of_workspace
 
         if done:
-            self.robot_connection.unpause()
+            if self.use_step_control:
+                self.robot_connection.unpause()
             self.controller.stop()
-            self.robot_connection.pause()
+            if self.use_step_control:
+                self.robot_connection.pause()
 
         return done
 

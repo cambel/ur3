@@ -515,6 +515,7 @@ def convert_wrench(wrench_force, pose):
     return wrench
 
 def convert_twist(twist, transform):
+    transform[:3,3] = np.zeros(3)
     # # # twist transformation
     aTb = tr.inverse_matrix(transform)
     twts = motion_frame_transform(aTb).T

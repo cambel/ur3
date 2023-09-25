@@ -61,7 +61,7 @@ class DisectSim():
             "sdf_mu": Parameter("sdf_mu", 0.5, 0.45, 1.0),
         }
 
-        self.root_directory = "/root/o2ac-ur/DiSECt2/"
+        self.root_directory = "/root/o2ac-ur/disect/"
 
         self.optimized_params = [
             "log/optuna_potato_param_inference_dt2e-05_20230905-2345",

@@ -177,10 +177,9 @@ class UR3eSlicingEnv(UR3eForceControlEnv):
 
     def compute_disect_knife_pose(self):
         knife_pose = self.ur3e_arm.end_effector(tip_link='b_bot_knife_sim')
-        knife_twist = self.ur3e_arm.end_effector_twist(tip_link='b_bot_knife_sim')
         disect_knife_pose = transformations.apply_transformation(knife_pose, self.transform_pose)
-        disect_knife_twist = spalg.convert_twist(knife_twist, self.transform_pose)
-        return disect_knife_pose, disect_knife_twist
+        disect_knife_pose[1] -= 0.0043
+        return disect_knife_pose, np.zeros(6)
 
     def publish_odom(self, pose, twist, update_pose=False):
         msg = Odometry()
