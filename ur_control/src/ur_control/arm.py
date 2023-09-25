@@ -309,9 +309,11 @@ class Arm(object):
         else:
             raise Exception("Rotation Type not supported", rot_type)
     
-    def end_effector_twist(self, tip_link=None):
-        joint_angles = self.joint_angles()
-        joint_velocities = self.joint_velocities()
+    def end_effector_twist(self, joint_angles=None, joint_velocities=None, tip_link=None):
+        if joint_angles is None:
+            joint_angles = self.joint_angles()
+        if joint_velocities is None:
+            joint_velocities = self.joint_velocities()
         return np.array(self.kdl.forward_velocity_kinematics(joint_angles, joint_velocities, tip_link))
 
     def joint_angle(self, joint):
