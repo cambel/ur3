@@ -11,7 +11,7 @@ controller_list:
   - name: fake_gripper_controller
     type: $(arg execution_type)
     joints:
-      - robotiq_85_left_knuckle_joint
+      - finger_joint
 initial:  # Define initial robot poses.
 #  - group: arm
 #    pose: home

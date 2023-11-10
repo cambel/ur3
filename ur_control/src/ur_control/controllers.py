@@ -31,7 +31,10 @@ class GripperController(object):
         self.ns = utils.solve_namespace(namespace)
         self.prefix = prefix if prefix is not None else ''
         node_name = "gripper_controller"
-        self.gripper_type = str(rospy.get_param(self.ns + node_name + "/gripper_type"))
+        self.gripper_type = rospy.get_param(self.ns + node_name + "/gripper_type", None)
+        if self.gripper_type is None:
+            rospy.logwarn("gripper_type was not define. Using configuration for Robotiq 85")
+            self.gripper_type = "85"
         self.valid_joint_names = []
         if rospy.has_param(self.ns + node_name + "/joint"):
             self.valid_joint_names = [rospy.get_param(self.ns + node_name + "/joint")]
@@ -237,7 +240,7 @@ class RobotiqGripper():
         if success:
             rospy.loginfo("=== Connected to ROBOTIQ gripper ===")
         else:
-            rospy.logerr("Unable to connect to ROBOTIQ gripper")
+            rospy.logerr("Unable to connect to ROBOTIQ gripper: %s" % (self.ns + "/gripper_status"))
 
     def _gripper_status_callback(self, msg):
         self.opening_width = msg.position  # [m]

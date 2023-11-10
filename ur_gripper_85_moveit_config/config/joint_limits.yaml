@@ -17,7 +17,7 @@ joint_limits:
     max_velocity: 100
     has_acceleration_limits: false
     max_acceleration: 0
-  robotiq_85_left_knuckle_joint:
+  finger_joint:
     has_velocity_limits: true
     max_velocity: 0.5
     has_acceleration_limits: false

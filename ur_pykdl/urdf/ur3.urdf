@@ -258,7 +258,7 @@
       <inertia ixx="0.000380" ixy="0.000000" ixz="0.000000" iyy="0.001110" iyz="0.000000" izz="0.001171"/>
     </inertial>
   </link>
-  <joint name="robotiq_85_left_knuckle_joint" type="revolute">
+  <joint name="finger_joint" type="revolute">
     <parent link="robotiq_85_base_link"/>
     <child link="robotiq_85_left_knuckle_link"/>
     <axis xyz="0 0 1"/>
@@ -271,7 +271,7 @@
     <axis xyz="0 0 1"/>
     <origin rpy="0.0 0.0 0.0" xyz="0.05490451627 -0.03060114443 0.0"/>
     <limit effort="1000" lower="-3.14" upper="3.14" velocity="100.0"/>
-    <mimic joint="robotiq_85_left_knuckle_joint"/>
+    <mimic joint="finger_joint"/>
   </joint>
   <link name="robotiq_85_left_knuckle_link">
     <visual>
@@ -357,7 +357,7 @@
     <axis xyz="0 0 1"/>
     <origin rpy="3.14159265359 0.0 0.0" xyz="0.06142 0.0127 0"/>
     <limit effort="0.1" lower="-3.14" upper="3.14" velocity="100.0"/>
-    <mimic joint="robotiq_85_left_knuckle_joint" offset="0"/>
+    <mimic joint="finger_joint" offset="0"/>
   </joint>
   <joint name="robotiq_85_right_inner_knuckle_joint" type="continuous">
     <parent link="robotiq_85_base_link"/>
@@ -365,7 +365,7 @@
     <axis xyz="0 0 1"/>
     <origin rpy="0 0 0" xyz="0.06142 -0.0127 0"/>
     <limit effort="0.1" lower="-3.14" upper="3.14" velocity="100.0"/>
-    <mimic joint="robotiq_85_left_knuckle_joint" offset="0"/>
+    <mimic joint="finger_joint" offset="0"/>
   </joint>
   <link name="robotiq_85_left_inner_knuckle_link">
     <visual>
@@ -407,7 +407,7 @@
     <axis xyz="0 0 1"/>
     <origin rpy="0.0 0.0 0.0" xyz="0.04303959807 -0.03759940821 0.0"/>
     <limit effort="0.1" lower="-3.14" upper="3.14" velocity="100.0"/>
-    <mimic joint="robotiq_85_left_knuckle_joint" multiplier="-1"/>
+    <mimic joint="finger_joint" multiplier="-1"/>
   </joint>
   <joint name="robotiq_85_right_finger_tip_joint" type="continuous">
     <parent link="robotiq_85_right_inner_knuckle_link"/>
@@ -415,7 +415,7 @@
     <axis xyz="0 0 1"/>
     <origin rpy="0.0 0.0 0.0" xyz="0.04303959807 -0.03759940821  0.0"/>
     <limit effort="0.1" lower="-3.14" upper="3.14" velocity="100.0"/>
-    <mimic joint="robotiq_85_left_knuckle_joint" multiplier="-1"/>
+    <mimic joint="finger_joint" multiplier="-1"/>
   </joint>
   <link name="robotiq_85_left_finger_tip_link">
     <visual>
