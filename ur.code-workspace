@@ -1,0 +1,44 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+	],
+	"settings": {
+		"files.insertFinalNewline": true,
+		"files.exclude": {
+			"**/**.pyc": true,
+			"**/build": true,
+			"**/devel": true,
+			"**/logs": true,
+			"**/.catkin_tools": true,
+		},
+		"cSpell.words": [
+			"interp",
+			"mtype",
+			"openai",
+			"pyquaternion",
+			"rospy",
+			"spalg"
+		],
+		"python.analysis.extraPaths": [
+			"./ur_control/src",
+			"./ur3_gazebo/src",
+			"./ur3e_openai/src",
+			"./ur3e_rl/src",
+		],
+		"python.analysis.autoImportCompletions": true,
+		"python.autoComplete.extraPaths": [
+			"/root/ros_ws/devel/lib/python3/dist-packages",
+			"/opt/ros/noetic/lib/python3/dist-packages",
+		],
+		"[python]": {
+			"editor.defaultFormatter": "ms-python.autopep8"
+		},
+		"autopep8.args": [
+			"--max-line-length",
+			"200",
+			"--experimental"
+		],
+	}
+}
