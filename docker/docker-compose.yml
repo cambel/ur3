@@ -3,7 +3,7 @@ version: "2.4"
 ################################################################################
 
 services:
-  ros_ur3:
+  ros_ur:
     hostname: localhost
     runtime: ${DOCKER_RUNTIME}
     privileged: true
@@ -23,7 +23,7 @@ services:
       - DOCKER_RUNTIME=${DOCKER_RUNTIME}
       # Needs to be explicitly define
       - ROS_HOSTNAME=localhost
-    image: ros-ur3:melodic
+    image: ros-ur:noetic
     tty: true
     build:
       context: ../
@@ -32,7 +32,7 @@ services:
         - DOCKERFILE_COMMIT_SHORT_SHA
     volumes:
       # Map ROS workspace folders.
-      - ../:/root/ros_ws/src/ros_ur3
+      - ../:/root/ros_ws/src/ros-ur
       # Grant display access to X Server.
       - /tmp/.X11-unix:/tmp/.X11-unix
       # Grant bus access to FlexBE App.

@@ -36,11 +36,11 @@ RUN apt-get update && apt-get install -y \
 RUN /bin/bash -c "source /opt/ros/$ROS_DISTRO/setup.bash \
                && mkdir -p ~/ros_ws/src \
                && cd ~/ros_ws/src \
-               && git clone https://github.com/cambel/ur3.git ros_ur3 -b noetic-devel"
+               && git clone https://github.com/cambel/ur3.git ros-ur -b noetic-devel"
 
 # Updating ROSDEP and installing dependencies
 RUN cd ~/ros_ws \
-    && rosinstall ~/ros_ws/src /opt/ros/$ROS_DISTRO src/ros_ur3/dependencies.rosinstall \
+    && rosinstall ~/ros_ws/src /opt/ros/$ROS_DISTRO src/ros-ur/dependencies.rosinstall \
     && apt-get update \
     && rosdep fix-permissions \
     && rosdep update \
@@ -64,10 +64,10 @@ RUN /bin/bash -c "source /opt/ros/$ROS_DISTRO/setup.bash \
 # Custom python3 libs
 ################################################
 # ur_ikfast
-RUN /bin/bash -c "cd ~/ \
-               && mkdir pylibs && cd pylibs \
-               && git clone https://github.com/cambel/ur_ikfast.git \
-               && cd ur_ikfast && pip install -e ."
+# RUN /bin/bash -c "cd ~/ \
+#                && mkdir pylibs && cd pylibs \
+#                && git clone https://github.com/cambel/ur_ikfast.git \
+#                && cd ur_ikfast && pip install -e ."
 
 # Download gazebo models only once
 RUN mkdir -p ~/.gazebo
