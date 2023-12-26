@@ -1,13 +1,14 @@
 IKFAST = 'ikfast'
 TRAC_IK = 'trac_ik'
-
-JOINT_PUBLISHER_ROBOT = 'scaled_pos_joint_traj_controller'
+KDL = 'kdl'
+CARTESIAN_COMPLIANCE_CONTROLLER = 'cartesian_compliance_controller'
+JOINT_TRAJECTORY_CONTROLLER = 'scaled_pos_joint_traj_controller'
 JOINT_SUBSCRIBER = '/arm_controller/state'
 JOINT_STATE_SUBSCRIBER = 'joint_states'
 FT_SUBSCRIBER = 'wrench'
 
-GENERIC_GRIPPER ='simple'
-ROBOTIQ_GRIPPER ='85'
+GENERIC_GRIPPER ='generic'
+ROBOTIQ_GRIPPER ='robotiq'
 
 # Set constants for joints
 SHOULDER_PAN_JOINT = 'shoulder_pan_joint'
