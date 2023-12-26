@@ -26,26 +26,22 @@ import collections
 import numpy as np
 
 import rospy
-
 from geometry_msgs.msg import WrenchStamped
+from std_srvs.srv import Empty, SetBool, Trigger
 
 from ur_control import utils, spalg, conversions, transformations
+from ur_control.exceptions import InverseKinematicsException
+from ur_control.controllers_connection import ControllersConnection
+from ur_control.controllers import JointTrajectoryController
+from ur_control.grippers import GripperController, RobotiqGripper
 from ur_control.constants import BASE_LINK, EE_LINK, JOINT_TRAJECTORY_CONTROLLER, FT_SUBSCRIBER,  \
     ExecutionResult, IKSolverType, GripperType, \
     get_arm_joint_names
-
-from std_srvs.srv import Empty, SetBool, Trigger
-from ur_control.exceptions import InverseKinematicsException
-from ur_control.exceptions import InverseKinematicsException
 
 try:
     from ur_ikfast import ur_kinematics as ur_ikfast
 except ImportError:
     print("Import ur_ikfast not available, IKFAST would not be supported without it")
-
-from ur_control.controllers_connection import ControllersConnection
-from ur_control.controllers import JointTrajectoryController
-from ur_control.grippers import GripperController, RobotiqGripper
 from ur_pykdl import ur_kinematics
 from trac_ik_python.trac_ik import IK as TRACK_IK_SOLVER
 
@@ -90,9 +86,6 @@ class Arm(object):
 
         """
 
-        cprint.ok("Initializing ur robot with parameters\n \
-                   gripper: {}, ft_sensor_topic: {}, \nbase_link: {}, ee_link: {}".format(gripper_type, ft_topic, base_link, ee_link))
-
         self.ns = utils.solve_namespace(namespace)
 
         base_link = utils.resolve_parameter(value=base_link, default_value=BASE_LINK)
@@ -111,6 +104,10 @@ class Arm(object):
 
         # self.max_joint_speed = np.deg2rad([100, 100, 100, 200, 200, 200]) # deg/s -> rad/s
         self.max_joint_speed = np.deg2rad([191, 191, 191, 371, 371, 371])
+
+        cprint.ok("Initializing ur robot with parameters")
+        cprint.ok("gripper: {}, ft_sensor_topic: {}, \nbase_link: {}, ee_link: {}"
+                  .format(gripper_type, self.ft_topic, self.base_link, self.ee_link))
 
         self.__init_controllers__(gripper_type, joint_names_prefix)
         self.__init_ik_solver__(self.base_link, self.ee_link)
