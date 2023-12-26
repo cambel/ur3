@@ -23,38 +23,30 @@
 # SOFTWARE.
 #
 # Author: Cristian Beltran
- 
+
+import numpy as np
+import tf
 from ur_control import transformations, traj_utils, conversions
 from ur_control.arm import Arm
-from ur_control.constants import GENERIC_GRIPPER
+from ur_control.constants import GripperType
 import argparse
 import random
 import rospy
 import timeit
 
-# If Docker version of Python3 version is used in melodic, 
-# Install tf for python3 like this: pip install --extra-index-url https://rospypi.github.io/simple/ tf2_ros
-# Then enable the following  lines to re-direct tf to the new library
-import sys
-sys.path[:0] = ['/usr/local/lib/python3.6/dist-packages/']
-import tf
-
-import numpy as np
 np.set_printoptions(suppress=True)
 np.set_printoptions(linewidth=np.inf)
 
 
 def move_joints(wait=True):
     # desired joint configuration 'q'
-    q = [0, 0, 0, 0, 0, 0]
-    q = [3.2317, -1.979, 1.3969, -0.4844, -0.1151, -1.7565]
-    q = [1.5353, -1.211, -1.4186, -0.546, 1.6476, -0.0237]
+    q = [1.8391, -1.5659, 1.4889, -1.6421, -1.6115, 0.2656]
 
     # go to desired joint configuration
     # in t time (seconds)
     # wait is for waiting to finish the motion before executing
     # anything else or ignore and continue with whatever is next
-    arm.set_joint_positions(position=q, wait=wait, t=0.5)
+    arm.set_joint_positions(positions=q, wait=wait, target_time=0.5)
 
 
 def follow_trajectory():
@@ -70,10 +62,10 @@ def follow_trajectory():
         [2.5501, -2.0719, -1.6474, 0.5000, 2.1344, 3.2062],
     ]
     for t in traj:
-        arm.set_joint_positions(position=t, wait=True, t=1.0)
+        arm.set_joint_positions(positions=t, wait=True, target_time=1.0)
 
 
-def move_endeffector(wait=True):
+def move_endeffector():
     # get current position of the end effector
     cpose = arm.end_effector()
     # define the desired translation/rotation
@@ -82,7 +74,7 @@ def move_endeffector(wait=True):
     cpose = transformations.pose_euler_to_quaternion(cpose, deltax, ee_rotation=True)
     # execute desired new pose
     # may fail if IK solution is not found
-    arm.set_target_pose(pose=cpose, wait=True, t=1.0)
+    arm.set_target_pose(pose=cpose, wait=True, target_time=1.0)
 
 
 def move_gripper():
@@ -108,32 +100,32 @@ def grasp_naive():
     # probably won't work
     arm.gripper.open()
     q1 = [1.82224, -1.59475,  1.68247, -1.80611, -1.60922,  0.24936]
-    arm.set_joint_positions(q1, wait=True, t=1.0)
+    arm.set_joint_positions(positions=q1, wait=True, target_time=1.0)
 
     q2 = [1.82225, -1.55525,  1.86741, -2.03039, -1.60938,  0.24935]
-    arm.set_joint_positions(q2, wait=True, t=1.0)
+    arm.set_joint_positions(positions=q2, wait=True, target_time=1.0)
 
     arm.gripper.command(0.036)
     rospy.sleep(0.5)
 
     q1 = [1.82224, -1.59475,  1.68247, -1.80611, -1.60922,  0.24936]
-    arm.set_joint_positions(q1, wait=True, t=1.0)
+    arm.set_joint_positions(positions=q1, wait=True, target_time=1.0)
 
 
 def grasp_plugin():
     arm.gripper.open()
     q1 = [1.82224, -1.59475,  1.68247, -1.80611, -1.60922,  0.24936]
-    arm.set_joint_positions(q1, wait=True, t=1.0)
+    arm.set_joint_positions(positions=q1, wait=True, target_time=1.0)
 
     q2 = [1.82225, -1.55525,  1.86741, -2.03039, -1.60938,  0.24935]
-    arm.set_joint_positions(q2, wait=True, t=1.0)
+    arm.set_joint_positions(positions=q2, wait=True, target_time=1.0)
 
     arm.gripper.command(0.039)
     # attach the object "link" to the robot "model_name"::"link_name"
     arm.gripper.grab(link_name="cube3::link")
 
     q1 = [1.82224, -1.59475,  1.68247, -1.80611, -1.60922,  0.24936]
-    arm.set_joint_positions(q1, wait=True, t=1.0)
+    arm.set_joint_positions(positions=q1, wait=True, target_time=1.0)
     rospy.sleep(2.0)  # release after 2 secs
 
     # dettach the object "link" to the robot "model_name"::"link_name"
@@ -151,21 +143,20 @@ def get_random_valid_direction(plane):
     else:
         raise ValueError("Invalid value for plane: %s" % plane)
 
+
 def circular_trajectory():
     """ Simple circular trajectory from initial pose. 5cm of radius"""
     initial_q = [1.8391, -1.5659, 1.4889, -1.6421, -1.6115, 0.2656]
-    arm.set_joint_positions(initial_q, wait=True, t=2)
+    arm.set_joint_positions(positions=initial_q, wait=True, target_time=2)
 
     duration = 5.0
     steps = 100
     plane = "XY"
     direction = get_random_valid_direction(plane)
     dummy_trajectory = traj_utils.compute_trajectory(initial_pose=[0, 0, 0, 0, 0, 0, 1.],
-                                                    plane=plane, radius=0.05, 
-                                                    radius_direction=direction, steps=steps, revolutions=1,
-                                                    from_center=False, trajectory_type="circular")
-
-
+                                                     plane=plane, radius=0.05,
+                                                     radius_direction=direction, steps=steps, revolutions=1,
+                                                     from_center=False, trajectory_type="circular")
 
     listener = tf.TransformListener()
     # convert dummy_trajectory (initial pose frame id) to robot's base frame
@@ -176,13 +167,18 @@ def circular_trajectory():
         print(e)
         return False
 
+    actual_trajectory = []
     for p in dummy_trajectory:
         ps = conversions.to_pose_stamped("base_link", p)
         next_pose = conversions.from_pose_to_list(conversions.transform_pose("base_link", transform2target, ps).pose)
-        print("next_pose", np.round(next_pose[:3].tolist(),4))
-        
-        arm.set_target_pose_flex(pose=next_pose, t=duration/steps)
+        print("next_pose", np.round(next_pose[:3].tolist(), 4))
+        actual_trajectory.append(next_pose)
+
+        arm.set_target_pose(pose=next_pose, target_time=duration/steps, wait=False)
         rospy.sleep(duration/steps)
+
+    arm.set_pose_trajectory(trajectory=actual_trajectory, target_time=duration)
+
 
 def main():
     """ Main function to be run. """
@@ -207,10 +203,7 @@ def main():
     rospy.init_node('ur3e_script_control')
 
     global arm
-    arm = Arm(
-        ft_sensor=True,  # get Force/Torque data or not
-        gripper=GENERIC_GRIPPER,  # Enable gripper
-        )
+    arm = Arm(gripper_type=GripperType.GENERIC)
 
     real_start_time = timeit.default_timer()
     ros_start_time = rospy.get_time()

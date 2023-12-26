@@ -33,11 +33,12 @@ import rospy
 
 from ur_control.arm import Arm
 from ur_control import transformations
-from ur_control.constants import ROBOTIQ_GRIPPER
 
 import getch
 
 import numpy as np
+
+from ur_control.constants import GripperType
 np.set_printoptions(linewidth=np.inf)
 np.set_printoptions(suppress=True)
 
@@ -45,7 +46,7 @@ np.set_printoptions(suppress=True)
 def map_keyboard():
     def print_robot_state():
         print("Joint angles:", np.round(arm.joint_angles(), 4).tolist())
-        print("EE Pose:", np.round(arm.end_effector(), 5).tolist())
+        print("EE Pose:", np.round(arm.end_effector(tip_link="b_bot_knife_center"), 5).tolist())
         if arm.gripper:
             print("Gripper position:", np.round(arm.gripper.get_position(), 4))
 
@@ -53,7 +54,7 @@ def map_keyboard():
         global delta_q
         current_position = arm.joint_angles()
         current_position[joint_name] += delta_q * sign
-        arm.set_joint_positions_flex(current_position, t=0.25)
+        arm.set_joint_positions(positions=current_position, target_time=0.25)
 
     def update_d(delta, increment):
         if delta == 'q':
@@ -72,18 +73,13 @@ def map_keyboard():
         x = arm.end_effector()
         delta = np.zeros(6)
 
-        n = 500
-        dt = 0.25/float(n)
-
         if dim <= 2:  # position
-            delta[dim] += delta_x * sign / 0.25
+            delta[dim] += delta_x * sign
         else:  # rotation
-            delta[dim] += delta_q * sign / 0.25
+            delta[dim] += delta_q * sign
 
-        for _ in range(n):
-            x = transformations.pose_from_angular_velocity(x, delta, dt=dt, ee_rotation=relative_ee)
-
-        arm.set_target_pose_flex(pose=x, t=0.25)
+        xc = transformations.transform_pose(x, delta, rotated_frame=relative_to_tcp)
+        arm.set_target_pose(pose=xc, target_time=0.25)
 
     def open_gripper():
         arm.gripper.open()
@@ -186,7 +182,7 @@ See help inside the example with the '?' key for key bindings.
     parser.add_argument(
         '--namespace', type=str, help='Namespace of arm (useful when having multiple arms)', default=None)
     parser.add_argument(
-        '--gripper', action='store_true', help='enable gripper commands')
+        '--robotiq_gripper', action='store_true', help='enable Robotiq gripper commands')
     parser.add_argument(
         '--robot', type=str, help='Version of Universal Robot arm. Default="ur3e"', default='ur3e')
 
@@ -194,21 +190,17 @@ See help inside the example with the '?' key for key bindings.
 
     rospy.init_node("joint_position_keyboard", log_level=rospy.INFO)
 
-    global relative_ee
-    relative_ee = args.relative
+    global relative_to_tcp
+    relative_to_tcp = args.relative
 
-    ns = ''
-    joints_prefix = None
-    robot_urdf = "ur3e"
-    rospackage = None
-    tcp_link = None
-    gripper = ROBOTIQ_GRIPPER if args.gripper else None
+    tcp_link = "tool0"
+    joints_prefix = args.namespace + '_' if args.namespace else None
+    gripper = GripperType.ROBOTIQ if args.robotiq_gripper else GripperType.GENERIC
 
     global arm
-    arm = Arm(ft_sensor=False,
-              gripper=gripper, namespace=ns,
+    arm = Arm(namespace=args.namespace,
+              gripper_type=gripper,
               joint_names_prefix=joints_prefix,
-              robot_urdf=robot_urdf, robot_urdf_package=rospackage,
               ee_link=tcp_link)
 
     map_keyboard()

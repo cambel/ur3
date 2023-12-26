@@ -351,7 +351,6 @@ class MoveGroupPythonIntefaceTutorial(object):
         box_pose.pose.position.z = 0.0  # slightly above the end effector
         box_name = "box_name"
         scene.add_box(box_name, box_pose, size=(0.04, 0.04, 0.04))
-        # scene.add_mesh(box_name, box_pose, "/root/ros_ws/src/ros-universal-robots/ur3e_dual_moveit_config/meshes/tool-holder-pick.stl")
 
         # END_SUB_TUTORIAL
         # Copy local variables back to class variables. In practice, you should use the class
@@ -379,7 +378,6 @@ class MoveGroupPythonIntefaceTutorial(object):
         box_pose.pose.position.z = 1.02  # slightly above the end effector
         box_name = "box_name"
         scene.add_box(box_name, box_pose, size=(0.03, 0.03, 0.03))
-        # scene.add_mesh(box_name, box_pose, "/root/ros_ws/src/ros-universal-robots/ur3e_dual_moveit_config/meshes/tool-holder-pick.stl")
 
         # END_SUB_TUTORIAL
         # Copy local variables back to class variables. In practice, you should use the class
