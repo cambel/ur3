@@ -1,6 +1,6 @@
 # The MIT License (MIT)
 #
-# Copyright (c) 2018-2021 Cristian Beltran
+# Copyright (c) 2018-2023 Cristian Beltran
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,279 +22,254 @@
 #
 # Author: Cristian Beltran
 
+import collections
 import numpy as np
-from pyquaternion import Quaternion
 
 import rospy
-from trajectory_msgs.msg import (
-    JointTrajectory,
-    JointTrajectoryPoint,
-)
-from geometry_msgs.msg import (Wrench)
+
+from geometry_msgs.msg import WrenchStamped
 
 from ur_control import utils, spalg, conversions, transformations
-from ur_control.constants import JOINT_ORDER, JOINT_PUBLISHER_ROBOT, FT_SUBSCRIBER, IKFAST, TRAC_IK, \
-    DONE, SPEED_LIMIT_EXCEEDED, IK_NOT_FOUND, get_arm_joint_names, \
-    BASE_LINK, EE_LINK, FT_LINK, GENERIC_GRIPPER, ROBOTIQ_GRIPPER
+from ur_control.constants import BASE_LINK, EE_LINK, JOINT_TRAJECTORY_CONTROLLER, FT_SUBSCRIBER,  \
+    ExecutionResult, IKSolverType, GripperType, \
+    get_arm_joint_names
+
+from std_srvs.srv import Empty, SetBool, Trigger
+from ur_control.exceptions import InverseKinematicsException
+from ur_control.exceptions import InverseKinematicsException
 
 try:
     from ur_ikfast import ur_kinematics as ur_ikfast
 except ImportError:
     print("Import ur_ikfast not available, IKFAST would not be supported without it")
 
-from ur_control.controllers import JointTrajectoryController, FTsensor, GripperController, RobotiqGripper
+from ur_control.controllers_connection import ControllersConnection
+from ur_control.controllers import JointTrajectoryController
+from ur_control.grippers import GripperController, RobotiqGripper
 from ur_pykdl import ur_kinematics
-from trac_ik_python.trac_ik import IK
+from trac_ik_python.trac_ik import IK as TRACK_IK_SOLVER
 
 cprint = utils.TextColors()
 
 
 class Arm(object):
-    """ UR3 arm controller """
+    """ Universal Robots arm controller """
 
     def __init__(self,
-                 ft_sensor=False,
-                 robot_urdf='ur3e',
-                 robot_urdf_package=None,
-                 ik_solver=TRAC_IK,
-                 namespace='',
-                 gripper=None,
-                 joint_names_prefix=None,
-                 ft_topic=None,
-                 base_link=None,
-                 ee_link=None,
-                 ft_link=None):
-        """ ft_sensor bool: whether or not to try to load ft sensor information
-            ee_transform array [x,y,z,ax,ay,az,w]: optional transformation to the end-effector
-                                                  that is applied before doing any operation in task-space
-            robot_urdf string: name of the robot urdf file to be used
-            namespace string: nodes namespace prefix
-            gripper constant: `simple` or `85` enable gripper control
+                 namespace: str = None,
+                 ik_solver: IKSolverType = IKSolverType.TRAC_IK,
+                 gripper_type: GripperType = GripperType.GENERIC,
+                 ft_topic: str = None,
+                 base_link: str = None,
+                 ee_link: str = None,
+                 joint_names_prefix: str = None):
+        """ 
+
+        Parameters
+        ----------
+        namespace : optional
+            ROS namespace of the robot e.g., '/ns/robot_description'
+        ik_solver : optional
+            inverse kinematic solver to be used
+        gripper_type : optional
+            gripper control approach. Generic or specific for real Robotiq gripper
+        ft_topic: optional
+            topic from which to read the wrench
+        base_link: optional
+            robot base frame. Excluding the prefix used in 'joint_names_prefix'
+        ee_link: optional
+            end-effector frame. Excluding the prefix used in 'joint_names_prefix'
+        joint_names_prefix: optional
+            optionally specify a prefix when multiple robots are defined. For example,
+            if 'a_bot' is defined, all joints will be consider like 'a_bot_link_name'
+
+        Raises
+        ------
+        ValueError
+            If a non-supported gripper type or ik solver is defined
+
         """
 
-        cprint.ok("ft_sensor: {}, ee_link: {}, \n robot_urdf: {}".format(ft_sensor, ee_link, robot_urdf))
+        cprint.ok("Initializing ur robot with parameters\n \
+                   gripper: {}, ft_sensor_topic: {}, \nbase_link: {}, ee_link: {}".format(gripper_type, ft_topic, base_link, ee_link))
 
-        self._joint_angle = dict()
-        self._joint_velocity = dict()
-        self._joint_effort = dict()
-        self._current_ft = []
+        self.ns = utils.solve_namespace(namespace)
 
-        self._robot_urdf = robot_urdf
-        self._robot_urdf_package = robot_urdf_package if robot_urdf_package is not None else 'ur_pykdl'
+        base_link = utils.resolve_parameter(value=base_link, default_value=BASE_LINK)
+        ee_link = utils.resolve_parameter(value=ee_link, default_value=EE_LINK)
 
-        self.ft_sensor = None
-        self.ft_topic = ft_topic if ft_topic is not None else FT_SUBSCRIBER
+        # Support for joint prefixes
+        self.joint_names_prefix = joint_names_prefix
+        self.base_link = base_link if joint_names_prefix is None else joint_names_prefix + base_link
+        self.ee_link = ee_link if joint_names_prefix is None else joint_names_prefix + ee_link
 
         self.ik_solver = ik_solver
-        
-        assert namespace is not None, "namespace cannot be None"
-        self.ns = namespace
-        self.joint_names_prefix = joint_names_prefix
 
-        _base_link = base_link if base_link is not None else BASE_LINK
-        _ee_link = ee_link if ee_link is not None else EE_LINK
-        _ft_frame = ft_link if ft_link is not None else FT_LINK
-
-        self.base_link = _base_link if joint_names_prefix is None else joint_names_prefix + _base_link
-        self.ee_link = _ee_link if joint_names_prefix is None else joint_names_prefix + _ee_link
-        self.ft_frame = _ft_frame if joint_names_prefix is None else joint_names_prefix + _ft_frame
+        self.ft_topic = utils.resolve_parameter(value=ft_topic, default_value=FT_SUBSCRIBER)
+        self.current_ft_value = np.zeros(6)
+        self.wrench_queue = collections.deque(maxlen=25)  # store history of FT data
 
         # self.max_joint_speed = np.deg2rad([100, 100, 100, 200, 200, 200]) # deg/s -> rad/s
         self.max_joint_speed = np.deg2rad([191, 191, 191, 371, 371, 371])
 
-        self._init_ik_solver(self.base_link, self.ee_link)
-        self._init_controllers(gripper, joint_names_prefix)
-        if ft_sensor:
-            self._init_ft_sensor()
+        self.__init_controllers__(gripper_type, joint_names_prefix)
+        self.__init_ik_solver__(self.base_link, self.ee_link)
+        if ft_topic:
+            self.__init_ft_sensor__()
+
+        self.controller_manager = ControllersConnection(namespace)
 
 ### private methods ###
 
-    def _init_controllers(self, gripper, joint_names_prefix=None):
-        traj_publisher = JOINT_PUBLISHER_ROBOT
+    def __init_controllers__(self, gripper_type, joint_names_prefix=None):
         self.joint_names = None if joint_names_prefix is None else get_arm_joint_names(joint_names_prefix)
 
-        # Flexible trajectory (point by point)
-
-        traj_publisher_flex = self.ns + '/' + traj_publisher + '/command'
-
-        cprint.blue("connecting to: {}".format(traj_publisher_flex))
-
-        self._flex_trajectory_pub = rospy.Publisher(traj_publisher_flex,
-                                                    JointTrajectory,
-                                                    queue_size=10)
-
-        self.joint_traj_controller = JointTrajectoryController(
-            publisher_name=traj_publisher, namespace=self.ns, joint_names=self.joint_names, timeout=10.0)
+        self.joint_traj_controller = JointTrajectoryController(publisher_name=JOINT_TRAJECTORY_CONTROLLER,
+                                                               namespace=self.ns,
+                                                               joint_names=self.joint_names,
+                                                               timeout=1.0)
 
         self.gripper = None
-        if not gripper:
-            return
-        elif gripper == GENERIC_GRIPPER:
+        if gripper_type == GripperType.GENERIC:
             self.gripper = GripperController(namespace=self.ns, prefix=self.joint_names_prefix, timeout=2.0)
-        elif gripper == ROBOTIQ_GRIPPER:
+        elif gripper_type == GripperType.ROBOTIQ:
             self.gripper = RobotiqGripper(namespace=self.ns, timeout=2.0)
         else:
-            raise ValueError("Invalid gripper type %s" % gripper)
+            raise ValueError("Invalid gripper type %s" % gripper_type)
 
-    def _init_ik_solver(self, base_link, ee_link):
-        self.base_link = base_link
-        self.ee_link = ee_link
+    def __init_ik_solver__(self, base_link, ee_link):
+        # Instantiate KDL kinematics solver to compute forward kinematics
         if rospy.has_param("robot_description"):
             self.kdl = ur_kinematics(base_link=base_link, ee_link=ee_link)
         else:
-            self.kdl = ur_kinematics(base_link=base_link, ee_link=ee_link, robot=self._robot_urdf, prefix=self.joint_names_prefix, rospackage=self._robot_urdf_package)
+            raise ValueError("robot_description not found in the parameter server")
 
-        if self.ik_solver == IKFAST:
+        # Instantiate Inverse kinematics solver
+        if self.ik_solver == IKSolverType.IKFAST:
             # IKfast libraries
             try:
+                # TODO use the parameter robot_description
                 self.arm_ikfast = ur_ikfast.URKinematics(self._robot_urdf)
             except Exception:
-                rospy.logerr("IK solver set to IKFAST but no ikfast found for: %s. Switching to TRAC_IK" % self._robot_urdf)
-                self.ik_solver == TRAC_IK
-                return self._init_ik_solver(base_link, ee_link)
-        elif self.ik_solver == TRAC_IK:
+                raise ValueError("IK solver set to IKFAST but no ikfast found for: %s. " % self._robot_urdf)
+        elif self.ik_solver == IKSolverType.TRAC_IK:
             try:
-                if not rospy.has_param("robot_description"):
-                    self.trac_ik = IK(base_link=base_link, tip_link=ee_link, solve_type="Distance", timeout=0.002, epsilon=1e-5,
-                                      urdf_string=utils.load_urdf_string(self._robot_urdf_package, self._robot_urdf))
-                else:
-                    self.trac_ik = IK(base_link=base_link, tip_link=ee_link, solve_type="Distance")
+                self.trac_ik = TRACK_IK_SOLVER(base_link=base_link, tip_link=ee_link, solve_type="Distance")
             except Exception as e:
                 rospy.logerr("Could not instantiate TRAC_IK" + str(e))
+        elif self.ik_solver == IKSolverType.KDL:
+            pass
         else:
             raise Exception("unsupported ik_solver", self.ik_solver)
 
-    def _init_ft_sensor(self):
+    def __init_ft_sensor__(self):
         # Publisher of wrench
-        namespace = '' if self.ns is None else self.ns
-        print("publish filtered wrench:", '%s/%s/filtered' % (namespace, self.ft_topic))
-        self.pub_ee_wrench = rospy.Publisher('%s/%s/filtered' % (namespace, self.ft_topic),
-                                             Wrench,
-                                             queue_size=50)
+        ft_namespace = '%s/%s/filtered' % (self.ns, self.ft_topic)
+        rospy.Subscriber(ft_namespace, WrenchStamped, self.__ft_callback__)
 
-        self.ft_sensor = FTsensor(namespace='%s/%s' % (namespace, self.ft_topic))
-        self.set_wrench_offset(override=False)
+        self._zero_ft_filtered = rospy.ServiceProxy('%s/%s/filtered/zero_ftsensor' % (self.ns, self.ft_topic), Empty)
+        self._zero_ft_filtered.wait_for_service(rospy.Duration(2.0))
 
-    def _update_wrench_offset(self):
-        namespace = '' if self.ns is None else self.ns
-        self.wrench_offset = self.get_filtered_ft().tolist()
-        rospy.set_param('%s/ft_offset' % namespace, self.wrench_offset)
+        if not rospy.has_param("use_gazebo_sim"):
+            self._zero_ft = rospy.ServiceProxy('%s/ur_hardware_interface/zero_ftsensor' % self.ns, Trigger)
+            self._zero_ft.wait_for_service(rospy.Duration(2.0))
 
-    def _flexible_trajectory(self, position, time=5.0, vel=None):
-        """ Publish point by point making it more flexible for real-time control """
-        # Set up a trajectory message to publish.
-        action_msg = JointTrajectory()
-        action_msg.joint_names = JOINT_ORDER if self.joint_names is None else self.joint_names
+        self._ft_filtered = rospy.ServiceProxy('%s/%s/filtered/enable_filtering' % (self.ns, self.ft_topic), SetBool)
+        self._ft_filtered.wait_for_service(rospy.Duration(1.0))
 
-        # Create a point to tell the robot to move to.
-        target = JointTrajectoryPoint()
-        target.positions = position
+        # Check that the FT topic is publishing
+        if not utils.wait_for(lambda: self.current_ft_value is not None, timeout=2.0):
+            rospy.logerr('Timed out waiting for {0} topic'.format(ft_namespace))
+            return
 
-        # These times determine the speed at which the robot moves:
-        if vel is not None:
-            target.velocities = [vel] * 6
+    def __ft_callback__(self, msg):
+        self.current_ft_value = conversions.from_wrench(msg.wrench)
+        self.wrench_queue.append(self.current_ft_value)
 
-        target.time_from_start = rospy.Duration(time)
+### Data access methods ###
 
-        # Package the single point into a trajectory of points with length 1.
-        action_msg.points = [target]
-
-        self._flex_trajectory_pub.publish(action_msg)
-
-    def _solve_ik(self, pose, q_guess=None, attempts=5, verbose=True):
-        q_guess_ = q_guess if q_guess is not None else self.joint_angles()
-        # TODO(cambel): weird it shouldn't happen but...
-        if isinstance(q_guess, np.float64):
-            q_guess_ = None
-
-        if self.ik_solver == IKFAST:
-            ik = self.arm_ikfast.inverse(pose, q_guess=q_guess_)
-
-        elif self.ik_solver == TRAC_IK:
-            ik = self.trac_ik.get_ik(q_guess_, *pose)
-            if ik is None:
-                if attempts > 0:
-                    return self._solve_ik(pose, q_guess, attempts-1)
-                if verbose:
-                    rospy.logwarn("TRACK-IK: solution not found!")
-
-        return ik
-
-### Public methods ###
-
-    def get_filtered_ft(self):
-        """ Get measurements from FT Sensor.
-            Measurements are filtered with a low-pass filter.
-            Measurements are given in sensors orientation.
+    def inverse_kinematics(self,
+                           pose: np.ndarray,
+                           seed: np.ndarray = None,
+                           attempts: int = 0,
+                           verbose: bool = True) -> np.ndarray:
         """
-        if self.ft_sensor is None:
-            raise Exception("FT Sensor not initialized")
+        return a joint configuration for a given Cartesian pose of the end-effector
+        (ee_link) if any.
 
-        ft_limitter = [300, 300, 300, 30, 30, 30]  # Enforce measurement limits (simulation)
-        ft = self.ft_sensor.get_filtered_wrench()
-        ft = [
-            ft[i] if abs(ft[i]) < ft_limitter[i] else ft_limitter[i]
-            for i in range(6)
-        ]
-        return np.array(ft)
+        Parameters
+        ----------
+        pose : 
+            Cartesian pose of the end-effector defined as ee_link
+        seed : optional
+            if given, attempt to return a joint configuration closer to the seed
+        attempts : int, optional
+            number of attempts to find a IK solution. It may be useful for sample
+            based solvers such as TRAC-IK. It would not change the result of an
+            analytical solvers such as IKFast.
+        verbose : bool, optional
+            print a warning message when IK solutions are not found
 
-    def set_wrench_offset(self, override=False):
-        """ Set a wrench offset """
-        if override:
-            self._update_wrench_offset()
-        else:
-            namespace = 'ur3' if self.ns is None else self.ns
-            self.wrench_offset = rospy.get_param('/%s/ft_offset' % namespace, None)
-            if self.wrench_offset is None:
-                self._update_wrench_offset()
+        Returns
+        -------
+        res : ndarray
+            Joint configuration if any or None
 
-    def get_ee_wrench_hist(self, hist_size=24):
-        if self.ft_sensor is None:
-            raise Exception("FT Sensor not initialized")
+        Raises
+        ------
+        ValueError
+            If the rot_type is different from 'quaternion' or 'euler'
+        """
+        q_guess_ = seed if seed is not None else self.joint_angles()
 
-        q_hist = self.joint_traj_controller.get_joint_positions_hist()[:hist_size]
-        ft_hist = self.ft_sensor.get_filtered_wrench(hist_size=hist_size)
+        if self.ik_solver == IKSolverType.IKFAST:
+            # TODO: transform pose to the default tip used by IKFast (tool0)
+            ik = self.arm_ikfast.inverse(pose, q_guess=q_guess_)
+        elif self.ik_solver == IKSolverType.TRAC_IK:
+            ik = self.trac_ik.get_ik(q_guess_, *pose)
+        elif self.ik_solver == IKSolverType.KDL:
+            ik = self.kdl.inverse_kinematics(pose[:3], pose[3:], seed=q_guess_)
 
-        if self.wrench_offset is not None:
-            ft_hist = np.array(ft_hist) - np.array(self.wrench_offset)
-
-        poses_hist = [self.end_effector(q) for q in q_hist]
-        wrench_hist = [spalg.convert_wrench(wft, p).tolist() for p, wft in zip(poses_hist, ft_hist)]
-
-        return np.array(wrench_hist)
-
-    def get_ee_wrench(self):
-        """ Compute the wrench (force/torque) in task-space """
-        if self.ft_sensor is None:
-            return np.zeros(6)
-
-        wrench_force = self.ft_sensor.get_filtered_wrench()
-
-        if self.wrench_offset is not None:
-            wrench_force = np.array(wrench_force) - np.array(self.wrench_offset)
-
-        # compute force transformation?
-        # # # Transform of EE
-        pose = self.end_effector(tip_link=self.ft_frame)
-
-        ee_wrench_force = spalg.convert_wrench(wrench_force, pose)
-
-        return ee_wrench_force
-
-    def publish_wrench(self):
-        if self.ft_sensor is None:
-            raise Exception("FT Sensor not initialized")
-
-        " Publish arm's end-effector wrench "
-        wrench = self.get_ee_wrench()
-        # Note you need to call rospy.init_node() before this will work
-        self.pub_ee_wrench.publish(conversions.to_wrench(wrench))
+        if ik is None:
+            if attempts > 0:
+                return self.inverse_kinematics(pose, seed, attempts-1)
+            if verbose:
+                rospy.logwarn(f"{self.ik_solver}: solution not found!")
+            raise InverseKinematicsException(f"{self.ik_solver}: solution not found!")
+        return ik
 
     def end_effector(self,
                      joint_angles=None,
                      rot_type='quaternion',
-                     tip_link=None):
-        """ Return End Effector Pose """
+                     tip_link=None) -> np.ndarray:
+        """ 
+        Return the Cartesian pose of the end-effector in the robot base frame (base_link).
+
+        Parameters
+        ----------
+        joint_angles : ndarray, optional
+            If not given, the current joint configuration will be used.
+            If provided, the joint configuration is expected in the order given by constants.JOINT_ORDER
+        rot_type : str, optional
+            Rotation representation to be returned.
+            Valid types "quaternion" or "euler"
+        tip_link : str, optional
+            Return the Cartesian pose of the tip_link if provided.
+            Otherwise, use the default ee_link
+
+        Returns
+        -------
+        res : ndarray
+            The Cartesian pose in the form of 
+            quaternion: [x, y, z, aw, ax, ay, az] or
+            euler: [x, y, z, roll, pitch, yaw]
+            in radians.
+
+        Raises
+        ------
+        ValueError
+            If the rot_type is different from 'quaternion' or 'euler'
+        """
 
         joint_angles = self.joint_angles() if joint_angles is None else joint_angles
 
@@ -308,162 +283,284 @@ class Arm(object):
             return np.concatenate((x[:3], euler))
 
         else:
-            raise Exception("Rotation Type not supported", rot_type)
+            raise ValueError("Rotation Type not supported", rot_type)
 
-    def joint_angle(self, joint):
+    def joint_angle(self, joint: str) -> float:
         """
-        Return the requested joint angle.
-
-        @type joint: str
-        @param joint: name of a joint
-        @rtype: float
-        @return: angle in radians of individual joint
+        Return the requested joint angle in radians.
         """
         return self.joint_traj_controller.get_joint_positions()[joint]
 
-    def joint_angles(self):
+    def joint_angles(self) -> np.ndarray:
         """
-        Return all joint angles.
-
-        @rtype: dict({str:float})
-        @return: unordered dict of joint name Keys to angle (rad) Values
+        Returns the current joint positions in radians and 
+        in the order given by constants.JOINT_ORDER.
         """
         return self.joint_traj_controller.get_joint_positions()
 
-    def joint_velocity(self, joint):
+    def joint_velocity(self, joint: str) -> float:
         """
-        Return the requested joint velocity.
-
-        @type joint: str
-        @param joint: name of a joint
-        @rtype: float
-        @return: velocity in radians/s of individual joint
+        Return the requested joint velocity in radians/secs.
         """
         return self.joint_traj_controller.get_joint_velocities()[joint]
 
-    def joint_velocities(self):
+    def joint_velocities(self) -> np.ndarray:
         """
-        Return all joint velocities.
-
-        @rtype: dict({str:float})
-        @return: unordered dict of joint name Keys to velocity (rad/s) Values
+        Returns the current joint velocities.
         """
         return self.joint_traj_controller.get_joint_velocities()
 
-### Basic Control Methods ###
+    def get_wrench_history(self, hist_size=24, hand_frame_control=False):
+        if self.current_ft_value is None:
+            raise Exception("FT Sensor not initialized")
+
+        ft_hist = np.array(self.wrench_queue)[:hist_size]
+
+        if hand_frame_control:
+            q_hist = self.joint_traj_controller.get_joint_positions_hist()[:hist_size]
+            poses_hist = [self.end_effector(q, tip_link=self.ee_link) for q in q_hist]
+            wrench_hist = [spalg.convert_wrench(wft, p).tolist() for p, wft in zip(poses_hist, ft_hist)]
+        else:
+            wrench_hist = ft_hist
+
+        return np.array(wrench_hist)
+
+    def get_wrench(self,
+                   base_frame_control=False,
+                   hand_frame_control=False) -> np.ndarray:
+        """ 
+        Returns the wrench (force/torque) in task-space.
+        By default, return the wrench as read from the sensor topic.
+
+        Parameters
+        ----------
+        base_frame_control : bool, optional
+            If True, returns the wrench with respect to the robot base frame
+        hand_frame_control : bool, optional
+            If True, returns the wrench with respect to the end-effector frame
+            If both base_frame_control and hand_frame_control are set to True.
+            the former is considered.
+        Returns
+        -------
+        res : np.ndarray
+            Returns the wrench in the requested frame
+        """
+        if self.current_ft_value is None:
+            # No values have been received from sensor's topic
+            return np.zeros(6)
+
+        wrench_force = self.current_ft_value
+        if not hand_frame_control and not base_frame_control:
+            return wrench_force
+
+        if base_frame_control:
+            # Transform force/torque from sensor to robot base frame
+            transform = self.end_effector(tip_link=self.joint_names_prefix + "wrist_3_link")
+            ee_wrench_force = spalg.convert_wrench(wrench_force, transform)
+
+            return ee_wrench_force
+        else:
+            # Transform force/torque from sensor to end effector frame
+            transform = self.end_effector(tip_link=self.ee_link)
+            ee_wrench_force = spalg.convert_wrench(wrench_force, transform)
+
+            return ee_wrench_force
+
+### Control Methods ###
 
     def set_joint_positions(self,
-                            position,
-                            velocities=None,
-                            accelerations=None,
-                            wait=False,
-                            t=5.0):
-        self.joint_traj_controller.add_point(positions=position,
-                                             time=t,
+                            target_time: float,
+                            positions: np.ndarray,
+                            velocities: np.ndarray = None,
+                            accelerations: np.ndarray = None,
+                            wait: bool = False) -> ExecutionResult:
+        """
+        Run the joint trajectory controller towards a single waypoint starting now.
+
+        Parameters
+        ----------
+        target_time : float
+            time at which target joint should be reach. It can be understood as the 
+            duration of the trajectory.
+        positions : numpy.ndarray
+            target joint configuration in the order given by constants.JOINT_ORDER
+        velocities : numpy.ndarray, optional
+            target joint velocities
+        accelerations : numpy.ndarray, optional
+            target joint accelerations
+        wait : bool, optional
+            whether to block code execution until the trajectory is completed or not.
+
+        Returns
+        -------
+        res : bool
+            True if the trajectory is succesful when waiting for the execution to be 
+            completed. Otherwise returns true if the trajectory was started.
+        """
+        self.joint_traj_controller.add_point(positions=positions,
                                              velocities=velocities,
-                                             accelerations=accelerations)
-        self.joint_traj_controller.start(delay=0.01, wait=wait)
+                                             accelerations=accelerations,
+                                             target_time=target_time)
+        self.joint_traj_controller.start(delay=0, wait=wait)
         self.joint_traj_controller.clear_points()
-        return DONE
+        if wait:
+            res = self.joint_traj_controller.get_result()
+            return ExecutionResult.DONE if res.error_code == 0 else ExecutionResult.CONTROLLER_FAILED
+        return ExecutionResult.DONE
 
-    def set_joint_trajectory(self, trajectory, velocities=None, accelerations=None, t=5.0):
-        dt = float(t)/float(len(trajectory))
+    def set_joint_trajectory(self,
+                             target_time: float,
+                             trajectory: np.ndarray,
+                             velocities: np.ndarray = None,
+                             accelerations: np.ndarray = None) -> ExecutionResult:
+        """
+        Start the joint trajectory controller with a multi-waypoint trajectory.
 
-        vel = None
-        acc = None
+        Parameters
+        ----------
+        target_time : float
+            time at which target joint should be reach. It can be understood as the 
+            duration of the trajectory.
+        positions : 2-D numpy.ndarray
+            list of target joint configuration for each waypoint in the order given by constants.JOINT_ORDER
+        velocities : 2-D numpy.ndarray, optional
+            list of target joint velocities for each waypoint
+        accelerations : 2-D numpy.ndarray, optional
+            list of target joint accelerations for each waypoint
+        wait : bool, optional
+            whether to block code execution until the trajectory is completed or not.
 
-        if velocities is not None:
-            vel = [velocities] * 6
-        if accelerations is not None:
-            acc = [accelerations] * 6
+        Returns
+        -------
+        res : bool
+            True if the trajectory is succesfully executed.
+        """
+        dt = target_time/len(trajectory)
 
         for i, q in enumerate(trajectory):
             self.joint_traj_controller.add_point(positions=q,
-                                                 time=(i+1) * dt,
-                                                 velocities=vel,
-                                                 accelerations=acc)
-        self.joint_traj_controller.start(delay=0.01, wait=True)
+                                                 target_time=(i+1) * dt,
+                                                 velocities=velocities,
+                                                 accelerations=accelerations)
+        self.joint_traj_controller.start(delay=0, wait=True)
         self.joint_traj_controller.clear_points()
 
-    def set_joint_positions_flex(self, position, t=5.0, v=None):
-        qc = self.joint_angles()
-        deltaq = (qc - position)
-        speed = deltaq / t
-        cmd = position
-        if np.any(np.abs(speed) > self.max_joint_speed):
-            rospy.logwarn("Exceeded max speed %s deg/s, ignoring command" % np.round(np.rad2deg(speed), 0))
-            return SPEED_LIMIT_EXCEEDED
-        self._flexible_trajectory(cmd, t, v)
-        return DONE
+        res = self.joint_traj_controller.get_result()
+        return ExecutionResult.DONE if res.error_code == 0 else ExecutionResult.CONTROLLER_FAILED
 
-    def set_target_pose(self, pose, wait=False, t=5.0):
-        """ Supported pose is only x y z aw ax ay az """
-        q = self._solve_ik(pose)
+    def set_target_pose(self,
+                        target_time: float,
+                        pose: np.ndarray,
+                        wait: bool = False) -> ExecutionResult:
+        """
+        Reach a given target cartesian pose with the end-effector (ee_link)
+
+        Parameters
+        ----------
+        target_time : float
+            time at which target joint should be reach. It can be understood as the 
+            duration of the trajectory.
+        pose : numpy.ndarray
+            Cartesian target pose. Only the quaternion representation is supported
+             in the form: [x, y, z, aw, ax, ay, az]
+        wait : bool, optional
+            whether to block code execution until the trajectory is completed or not.
+
+        Returns
+        -------
+        res : bool
+            True if the trajectory is succesfully executed.
+        """
+        q = self.inverse_kinematics(pose)
         if q is None:
-            # IK not found
-            return IK_NOT_FOUND
+            rospy.logdebug("IK not found")
+            raise InverseKinematicsException("IK solver failed to find a solution")
         else:
-            return self.set_joint_positions(q, wait=wait, t=t)
+            return self.set_joint_positions(positions=q, target_time=target_time, wait=wait)
 
-    def set_target_pose_flex(self, pose, t=5.0):
-        """ Supported pose is only x y z aw ax ay az """
-        q = self._solve_ik(pose)
-        if q is None:
-            # IK not found
-            return IK_NOT_FOUND
-        else:
-            return self.set_joint_positions_flex(q, t=t)
-
-### Complementary control methods ###
-
-    def move_relative(self, delta, relative_to_ee=False, wait=True, t=5.):
+    def set_pose_trajectory(self,
+                            target_time: float,
+                            trajectory: np.ndarray) -> ExecutionResult:
         """
-            Move relative to the current pose of the robot
-            delta: array[6], translations and rotations(euler angles) from the current pose
-            relative_to_ee: bool, whether to consider the delta relative to the robot's base or its end-effector (TCP)
-            wait: bool, wait for the motion to be completed
-            t: float, duration of the motion (how fast it will be)
-        """
-        cpose = self.end_effector()
-        cmd = transformations.pose_euler_to_quaternion(cpose, delta, ee_rotation=relative_to_ee)
-        return self.set_target_pose(cmd, wait=True, t=t)
+        Reach a given target cartesian pose with the end-effector (ee_link)
 
-    def move_linear(self, pose, eef_step=0.01, t=5.0):
-        """
-            CAUTION: simple linear interpolation
-            pose: array[7], target translation and rotation
-            granularity: int, number of point for the interpolation
-            t: float, duration in seconds
-        """
-        joint_trajectory = self.compute_cartesian_path(pose, eef_step, t)
-        self.set_joint_trajectory(joint_trajectory, t=t)
+        Parameters
+        ----------
+        target_time : float
+            time at which target joint should be reach. It can be understood as the 
+            duration of the trajectory.
+        pose : numpy.ndarray
+            Cartesian target pose. Only the quaternion representation is supported
+             in the form: [x, y, z, aw, ax, ay, az]
+        wait : bool, optional
+            whether to block code execution until the trajectory is completed or not.
 
-    def compute_cartesian_path(self, pose, eef_step=0.01, t=5.0):
+        Returns
+        -------
+        res : bool or str
+            True if the trajectory is succesfully executed.
+            If the IK solver fails, return "ik_not_found"
         """
-            CAUTION: simple linear interpolation
-            pose: array[7], target translation and rotation
-            granularity: int, number of point for the interpolation
-            t: float, duration in seconds
-        """
-        cpose = self.end_effector()
-        translation_dist = np.linalg.norm(cpose[:3])
-        rotation_dist = Quaternion.distance(transformations.vector_to_pyquaternion(cpose[3:]), transformations.vector_to_pyquaternion(pose[3:])) / 2.0
-
-        steps = int((translation_dist + rotation_dist) / eef_step)
-
-        points = np.linspace(cpose[:3], pose[:3], steps)
-        rotations = Quaternion.intermediates(transformations.vector_to_pyquaternion(cpose[3:]), transformations.vector_to_pyquaternion(pose[3:]), steps, include_endpoints=True)
-
         joint_trajectory = []
+        previous_q = self.joint_angles()
+        for i, pose in enumerate(trajectory):
+            q = self.inverse_kinematics(pose, seed=previous_q)
+            if q is None:
+                raise InverseKinematicsException("IK solver failed to find a solution")
 
-        for i, (point, rotation) in enumerate(zip(points, rotations)):
-            cmd = np.concatenate([point, transformations.vector_from_pyquaternion(rotation)])
-            q_guess = None if i < 2 else np.mean(joint_trajectory[:-1], 0)
-            q = self._solve_ik(cmd, q_guess)
-            if q is not None:  # ignore points with no IK solution, can we do better?
-                joint_trajectory.append(q)
+            previous_q = q
+            joint_trajectory.append(q)
+        return self.set_joint_trajectory(trajectory=joint_trajectory, target_time=target_time)
 
-        dt = t/float(len(joint_trajectory))
-        # TODO(cambel): is this good enough to catch big jumps due to IK solutions?
-        return spalg.jump_threshold(np.array(joint_trajectory), dt, 2.5)
+    def move_relative(self,
+                      target_time: float,
+                      transformation: np.array,
+                      relative_to_tcp: bool = True,
+                      wait: bool = True) -> ExecutionResult:
+        """ 
+        Move end-effector (ee_link) relative to its current position
 
+        Parameters
+        ----------
+        target_time : float
+            time at which target joint should be reach. It can be understood as the 
+            duration of the trajectory.
+        pose : numpy.ndarray
+            Cartesian target pose. Only the quaternion representation is supported
+             in the form: [x, y, z, aw, ax, ay, az]
+        relative_to_tcp : bool, optional
+            if True, consider the current position relative to the end-effector frame.
+            if False, consider the current position relative to the robot base frame.
+        wait : bool, optional
+            whether to block code execution until the trajectory is completed or not.
+
+        Returns
+        -------
+        res : bool or str
+            True if the trajectory is succesfully executed.
+            If the IK solver fails, return "ik_not_found"
+        """
+        new_pose = transformations.transform_pose(self.end_effector(), transformation, rotated_frame=relative_to_tcp)
+        return self.set_target_pose(pose=new_pose, target_time=target_time, wait=wait)
+
+### FT sensor control ###
+
+    def zero_ft_sensor(self):
+        """ 
+        Reset force-torque sensor readings to zeros.
+        """
+        if not rospy.has_param("use_gazebo_sim"):
+            # First try to zero FT from ur_driver
+            self._zero_ft()
+        # Then update filtered one
+        self._zero_ft_filtered()
+
+    def set_ft_filtering(self, active=True):
+        """ 
+        Enable/disable a low-pass filter.
+        If active, the readings returned from self.get_wrench will have been filtered.
+        otherwise, the raw data from the sensor's topic will be returned.
+
+        The filtering is done in an external topic. See scripts/ft_filter.py
+        """
+        self._ft_filtered(active)

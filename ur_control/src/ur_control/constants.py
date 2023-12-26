@@ -1,14 +1,33 @@
-IKFAST = 'ikfast'
-TRAC_IK = 'trac_ik'
-KDL = 'kdl'
+from enum import Enum
+
+
+class IKSolverType(Enum):
+    KDL = 'kdl'
+    TRAC_IK = 'Trac-IK'
+    IKFAST = 'IKFast'
+
+
+class GripperType(Enum):
+    GENERIC = 'generic'
+    ROBOTIQ = 'robotiq'
+
+
+class ExecutionResult(Enum):
+    DONE = 'success'
+    CONTROLLER_FAILED = 'controller_failed'
+    FORCE_TORQUE_EXCEEDED = 'force_exceeded'
+    STOP_ON_TARGET_FORCE = 'stop_on_target_force'
+    IK_NOT_FOUND = 'ik_not_found'
+    SPEED_LIMIT_EXCEEDED = 'speed_limit_exceeded'
+    TERMINATION_CRITERIA = 'termination_criteria_achieved'
+
+
 CARTESIAN_COMPLIANCE_CONTROLLER = 'cartesian_compliance_controller'
 JOINT_TRAJECTORY_CONTROLLER = 'scaled_pos_joint_traj_controller'
 JOINT_SUBSCRIBER = '/arm_controller/state'
 JOINT_STATE_SUBSCRIBER = 'joint_states'
 FT_SUBSCRIBER = 'wrench'
 
-GENERIC_GRIPPER ='generic'
-ROBOTIQ_GRIPPER ='robotiq'
 
 # Set constants for joints
 SHOULDER_PAN_JOINT = 'shoulder_pan_joint'
@@ -27,13 +46,6 @@ JOINT_ORDER = [
     WRIST_2_JOINT, WRIST_3_JOINT
 ]
 
+
 def get_arm_joint_names(prefix):
     return [prefix + joint for joint in JOINT_ORDER]
-
-# RESULT_CODE
-DONE = 'done'
-FORCE_TORQUE_EXCEEDED = 'force_exceeded'
-STOP_ON_TARGET_FORCE = 'stop_on_target_force'
-IK_NOT_FOUND = 'ik_not_found'
-SPEED_LIMIT_EXCEEDED = 'speed_limit_exceeded'
-TERMINATION_CRITERIA = 'termination_criteria_achieved'

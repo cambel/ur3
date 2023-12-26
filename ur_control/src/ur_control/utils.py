@@ -348,6 +348,12 @@ def read_key(echo=False):
         os.system("stty echo")
     return key.lower()
 
+def resolve_parameter(value, default_value):
+    if value:
+        return value
+    if default_value:
+        return default_value
+    raise ValueError("No value defined for parameter")
 
 def read_parameter(name, default):
     """
@@ -413,7 +419,7 @@ def read_parameter_fatal(name):
     return rospy.get_param(name, None)
 
 
-def solve_namespace(namespace=''):
+def solve_namespace(namespace=None):
     """
     Appends neccessary slashes required for a proper ROS namespace.
     @type namespace: string
@@ -421,7 +427,7 @@ def solve_namespace(namespace=''):
     @rtype: string
     @return: Proper ROS namespace.
     """
-    if len(namespace) == 0:
+    if namespace is None or len(namespace) == 0:
         namespace = rospy.get_namespace()
     elif len(namespace) == 1:
         if namespace != '/':
