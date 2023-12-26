@@ -271,8 +271,8 @@ def force_frame_transform(bTa):
     @return: The coordinate transformation from M{A} to M{B} for force
     vectors
     """
-    aTb = transform_inv(bTa)
-    return motion_frame_transform(aTb).T
+    aTb = tr.inverse_matrix(bTa)  # is this necessary?
+    return motion_frame_transform(aTb).T  # do we need to transpose here?
 
 
 def inertia_matrix_from_vector(i):
@@ -479,7 +479,7 @@ def transform_inv(T):
 
 def quaternions_orientation_error(Qd, Qc):
     """
-    Calculates the orientation error between to quaternions
+    Calculates the orientation error between two quaternions
     Qd is the desired orientation
     Qc is the current orientation
     both with respect to the same fixed frame
@@ -492,8 +492,8 @@ def quaternions_orientation_error(Qd, Qc):
         ee *= np.sign(ne)  # disambiguate the sign of the quaternion
         return ee
     else:
-        assert isinstance(Qd, (list, np.ndarray))
-        assert isinstance(Qc, (list, np.ndarray))
+        assert isinstance(Qd, (list, np.ndarray)), "type: " + str(type(Qd))
+        assert isinstance(Qc, (list, np.ndarray)), "type: " + str(type(Qd))
         q1 = tr.vector_to_pyquaternion(Qd)
         q2 = tr.vector_to_pyquaternion(Qc)
         return quaternions_orientation_error(q1, q2)
@@ -598,9 +598,31 @@ def jump_threshold(trajectory, dt, threshold):
     for i, s in enumerate(speed[:-1]):
         if np.any(s > mean + threshold*std):
             # print("### spike:", i, np.round(s-mean,2))
-            # TODO(cambel): fix for cases where spikes are consecutive 
+            # TODO(cambel): fix for cases where spikes are consecutive
             traj[i] = (traj[i-1] + traj[i+1]) / 2.0
         # else:
         #     print("usual:", i, np.round(s-mean,2))
 
     return traj
+
+
+def sensor_torque_to_tcp_force(tcp_position, sensor_torques):
+    """
+        Compute the force as perceive by a point of the TCP
+        Thus, torques registered by the sensor are converted to forces
+
+        tcp_position: list[3]. Define the position of point P relative to the sensor 
+        sensor_torques: list[3]. Define the torque registered by the sensor
+    """
+    # Define the torque applied to frame A
+    T_A = np.array(sensor_torques)  # in N.m
+
+    # Define the position vector from the axis of rotation to the point of application of the force on frame A
+    r_AP = np.array(tcp_position)  # in m
+
+    # Define the position vector from the point of application on frame A to the corresponding point on frame B
+    r_BP = - r_AP
+
+    # Compute the moment arm and the corresponding force on frame B
+    force_B = np.cross(T_A, r_AP) / np.linalg.norm(r_BP)**2
+    return force_B
