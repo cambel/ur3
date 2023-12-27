@@ -10,7 +10,7 @@ from ur_gazebo.model import Model
 from ur_gazebo.basic_models import SPHERE, PEG_BOARD, BOX, SPHERE_COLLISION
 
 rospy.init_node('gazebo_spawner_ur3e')
-spawner = GazeboModels('ur3_gazebo')
+spawner = GazeboModels('ur_gripper_gazebo')
 
 
 def place_target():

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 
 <package format="2">
-  <name>ur3_description</name>
+  <name>ur_gripper_description</name>
   <version>0.1.0</version>
   <description>
     URDF description for Universal UR3 robot with a robotiq gripper.

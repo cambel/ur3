@@ -1,6 +1,6 @@
 moveit_setup_assistant_config:
   URDF:
-    package: ur3_gazebo
+    package: ur_gripper_gazebo
     relative_path: urdf/ur_gripper_hande.xacro
     xacro_args: joint_limit_params:='$(find ur_description)/config/ur3e/joint_limits.yaml' 
                 kinematics_params:='$(find ur_description)/config/ur3e/default_kinematics.yaml'

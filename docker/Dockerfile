@@ -83,4 +83,4 @@ RUN echo 'source /opt/ros/$ROS_DISTRO/setup.bash' >> ~/.bashrc
 RUN echo 'source ~/ros_ws/devel/setup.bash' >> ~/.bashrc
 
 RUN echo 'source /usr/share/gazebo/setup.sh' >> ~/.bashrc
-RUN echo 'export GAZEBO_RESOURCE_PATH=$GAZEBO_RESOURCE_PATH:~/ros_ws/src/ros-universal-robots/ur3_gazebo/models/' >> ~/.bashrc
+RUN echo 'export GAZEBO_RESOURCE_PATH=$GAZEBO_RESOURCE_PATH:~/ros_ws/src/ros-universal-robots/ur_gripper_gazebo/models/' >> ~/.bashrc

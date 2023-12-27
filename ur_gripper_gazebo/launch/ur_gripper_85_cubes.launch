@@ -2,7 +2,7 @@
 <launch>
   <!-- Export env variable so that gazebo finds our models -->
   <env name="GAZEBO_MODEL_PATH"
-       value="$(find ur3_gazebo)/models:$(optenv GAZEBO_MODEL_PATH)" />
+       value="$(find ur_gripper_gazebo)/models:$(optenv GAZEBO_MODEL_PATH)" />
   <!-- Ignore online database -->
   <env name="GAZEBO_MODEL_DATABASE_URI"
        value="/" />
@@ -11,12 +11,12 @@
   <arg name="debug"      default="false"/>
   <arg name="gui"        default="true"/>
   <arg name="rate"       default="500" />
-  <arg name="world_name" default="$(find ur3_gazebo)/worlds/cubes_task.world" />
+  <arg name="world_name" default="$(find ur_gripper_gazebo)/worlds/cubes_task.world" />
   <arg name="grasp_plugin" default="false"/>
 
   <!--Robot description and related parameter files -->
-  <arg name="robot_description_file" default="$(dirname)/inc/load_ur_gripper_hande.launch.xml" doc="Launch file which populates the 'robot_description' parameter."/>
-  <arg name="ur_robot" default="ur3e"/>
+  <arg name="robot_description_file" default="$(dirname)/inc/load_ur_gripper_85.launch.xml" doc="Launch file which populates the 'robot_description' parameter."/>
+  <arg name="ur_robot" default="ur3"/>
 
   <!-- Start up simulated world -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -26,8 +26,8 @@
     <arg name="gui"        value="$(arg gui)"/>
   </include>
 
-  <include file="$(find ur_control)/launch/ur_e_controllers.launch">
-    <arg name="gripper_robotiq_hande" value="true" />
+  <include file="$(find ur_control)/launch/ur_controllers.launch">
+    <arg name="gripper_robotiq_85" value="true" />
   </include>
 
   <!-- Load urdf on the parameter server -->

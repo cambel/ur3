@@ -1,5 +1,5 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.1.3)
-PROJECT(ur3_description)
+PROJECT(ur_gripper_description)
 
 FIND_PACKAGE(catkin REQUIRED)
 CATKIN_PACKAGE()

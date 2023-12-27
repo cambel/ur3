@@ -1,6 +1,6 @@
 moveit_setup_assistant_config:
   URDF:
-    package: ur3_gazebo
+    package: ur_gripper_gazebo
     relative_path: urdf/ur_gripper_85.xacro
     xacro_args: joint_limit_params:='$(find ur_description)/config/ur3/joint_limits.yaml' kinematics_params:='$(find ur_description)/config/ur3/default_kinematics.yaml' physical_params:='$(find ur_description)/config/ur3/physical_parameters.yaml' visual_params:='$(find ur_description)/config/ur3/visual_parameters.yaml' transmission_hw_interface:=hardware_interface/PositionJointInterface safety_limits:=false safety_pos_margin:=0.15 safety_k_position:=20 dual_arm:=true grasp_plugin:=false
   SRDF:

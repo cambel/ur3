@@ -23,7 +23,7 @@
 		],
 		"python.analysis.extraPaths": [
 			"./ur_control/src",
-			"./ur3_gazebo/src",
+			"./ur_gripper_gazebo/src",
 			"./ur3e_openai/src",
 			"./ur3e_rl/src",
 		],

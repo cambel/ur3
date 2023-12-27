@@ -27,7 +27,7 @@
   <arg name="headless_mode" default="false" doc="Automatically send URScript to robot to execute. On e-Series this does require the robot to be in 'remote-control' mode. With this, the URCap is not needed on the robot."/>
   <arg name="ur_hardware_interface_node_required" default="true" doc="Shut down ros environment if ur_hardware_interface-node dies."/>
   
-  <arg name="robot_description_file" default="$(find ur3_description)/launch/load_ur_gripper_85.launch.xml" doc="Robot description launch file."/>
+  <arg name="robot_description_file" default="$(find ur_gripper_description)/launch/load_ur_gripper_85.launch.xml" doc="Robot description launch file."/>
 
   <!-- robot model -->
   <include file="$(arg robot_description_file)">

@@ -2,7 +2,7 @@
 <launch>
   <arg name="gui" default="true" />
 
-  <arg name="robot_description_file" default="$(find ur3_description)/launch/load_ur_gripper_hande.launch.xml" 
+  <arg name="robot_description_file" default="$(find ur_gripper_description)/launch/load_ur_gripper_hande.launch.xml" 
                                      doc="Launch file which populates the 'robot_description' parameter."/>
   <arg name="ur_robot" default="ur3"/>
 
@@ -16,6 +16,6 @@
   
   <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
   
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find ur3_description)/config/config.rviz" required="true" />
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find ur_gripper_description)/config/config.rviz" required="true" />
 
 </launch>

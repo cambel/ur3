@@ -20,7 +20,7 @@ For ROS Melodic see the `melodic-devel` branch.
 
 To visualize the model of the robot with a gripper, launch the following:
   ```
-   roslaunch ur3_description display_with_gripper_hande.launch ur_robot:=ur5e
+   roslaunch ur_gripper_description display_with_gripper_hande.launch ur_robot:=ur5e
   ```
 You can then use the sliders to change the joint values and the gripper values. 
 Change the value of ur_robot to any other valid robot (ur3e, ur5e, ...)
@@ -30,11 +30,11 @@ Change the value of ur_robot to any other valid robot (ur3e, ur5e, ...)
 
 To simulate the robot launch the following:
   ```
-   roslaunch ur3_gazebo ur_gripper_85_cubes.launch ur_robot:=ur3 grasp_plugin:=1
+   roslaunch ur_gripper_gazebo ur_gripper_85_cubes.launch ur_robot:=ur3 grasp_plugin:=1
   ```
 or using ur3e:
   ```
-   roslaunch ur3_gazebo ur_gripper_hande_cubes.launch ur_robot:=ur3e grasp_plugin:=1
+   roslaunch ur_gripper_gazebo ur_gripper_hande_cubes.launch ur_robot:=ur3e grasp_plugin:=1
   ```
 
 You can then send commands to the joints or to the gripper.
@@ -70,7 +70,7 @@ Another option of easy control is using `rqt`
 ## MoveIt
 To test the MoveIt configuration with any UR/URe robot, start one of the gazebo environments, such as:
 ```
-roslaunch ur3_gazebo ur_gripper_hande_cubes.launch ur_robot:=ur3e grasp_plugin:=1
+roslaunch ur_gripper_gazebo ur_gripper_hande_cubes.launch ur_robot:=ur3e grasp_plugin:=1
 ```
 
 Then load the MoveIt configuration
