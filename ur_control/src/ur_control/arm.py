@@ -111,8 +111,8 @@ class Arm(object):
 
         self.__init_controllers__(gripper_type, joint_names_prefix)
         self.__init_ik_solver__(self.base_link, self.ee_link)
-        if ft_topic:
-            self.__init_ft_sensor__()
+
+        self.__init_ft_sensor__()
 
         self.controller_manager = ControllersConnection(namespace)
 
@@ -162,22 +162,29 @@ class Arm(object):
     def __init_ft_sensor__(self):
         # Publisher of wrench
         ft_namespace = '%s/%s/filtered' % (self.ns, self.ft_topic)
-        rospy.Subscriber(ft_namespace, WrenchStamped, self.__ft_callback__)
+        if not utils.topic_exist(ft_namespace):
+            rospy.logwarn("Filtered FT topic not found. Using raw sensor directly.")
+            # Try the raw FT topic
+            ft_namespace = '%s/%s' % (self.ns, self.ft_topic)
+            rospy.Subscriber(ft_namespace, WrenchStamped, self.__ft_callback__)
+            self._zero_ft_filtered = lambda: None
+            self._ft_filtered = lambda: None
+        else:
+            rospy.Subscriber(ft_namespace, WrenchStamped, self.__ft_callback__)
 
-        self._zero_ft_filtered = rospy.ServiceProxy('%s/%s/filtered/zero_ftsensor' % (self.ns, self.ft_topic), Empty)
-        self._zero_ft_filtered.wait_for_service(rospy.Duration(2.0))
+            self._zero_ft_filtered = rospy.ServiceProxy('%s/%s/filtered/zero_ftsensor' % (self.ns, self.ft_topic), Empty)
+            self._zero_ft_filtered.wait_for_service(rospy.Duration(2.0))
 
-        if not rospy.has_param("use_gazebo_sim"):
-            self._zero_ft = rospy.ServiceProxy('%s/ur_hardware_interface/zero_ftsensor' % self.ns, Trigger)
-            self._zero_ft.wait_for_service(rospy.Duration(2.0))
+            if not rospy.has_param("use_gazebo_sim"):
+                self._zero_ft = rospy.ServiceProxy('%s/ur_hardware_interface/zero_ftsensor' % self.ns, Trigger)
+                self._zero_ft.wait_for_service(rospy.Duration(2.0))
 
-        self._ft_filtered = rospy.ServiceProxy('%s/%s/filtered/enable_filtering' % (self.ns, self.ft_topic), SetBool)
-        self._ft_filtered.wait_for_service(rospy.Duration(1.0))
+            self._ft_filtered = rospy.ServiceProxy('%s/%s/filtered/enable_filtering' % (self.ns, self.ft_topic), SetBool)
+            self._ft_filtered.wait_for_service(rospy.Duration(1.0))
 
-        # Check that the FT topic is publishing
-        if not utils.wait_for(lambda: self.current_ft_value is not None, timeout=2.0):
-            rospy.logerr('Timed out waiting for {0} topic'.format(ft_namespace))
-            return
+            # Check that the FT topic is publishing
+            if not utils.wait_for(lambda: self.current_ft_value is not None, timeout=2.0):
+                rospy.logerr('Timed out waiting for {0} topic'.format(ft_namespace))
 
     def __ft_callback__(self, msg):
         self.current_ft_value = conversions.from_wrench(msg.wrench)
