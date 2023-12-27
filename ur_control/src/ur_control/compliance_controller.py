@@ -25,22 +25,19 @@ def getAvg(prev_avg, x, n):
 
 class CompliantController(Arm):
     def __init__(self,
-                 relative_to_ee=False,
-                 namespace='',
+                 model,
                  **kwargs):
         """ Compliant controllertrajectory_time_compensation
-            relative_to_ee bool: if True when moving in task-space move relative to the end-effector otherwise
-                            move relative to the world coordinates
         """
-        Arm.__init__(self, namespace=namespace, **kwargs)
+        Arm.__init__(self, **kwargs)
 
-        self.relative_to_ee = relative_to_ee
+        self.model = model
 
         # read publish rate if it does exist, otherwise set publish rate
-        js_rate = utils.read_parameter(namespace + '/joint_state_controller/publish_rate', 500.0)
+        js_rate = utils.read_parameter(self.ns + 'joint_state_controller/publish_rate', 500.0)
         self.rate = rospy.Rate(js_rate)
 
-    def set_hybrid_control_trajectory(self, trajectory, model, max_force_torque, timeout=5.0,
+    def set_hybrid_control_trajectory(self, trajectory, max_force_torque, timeout=5.0,
                                       stop_on_target_force=False, termination_criteria=None,
                                       displacement_epsilon=0.002, check_displacement_time=2.0,
                                       verbose=True, debug=False, time_compensation=True):
@@ -55,11 +52,6 @@ class CompliantController(Arm):
             check_displacement_time: float,  time interval to check whether the displacement has been larger than displacement_epsilon
         """
 
-        # For debug
-        # data_target = []
-        # data_actual = []
-        # data_target2 = []
-        # data_dxf = []
         reduced_speed = np.deg2rad([100, 100, 100, 250, 250, 250])
 
         xb = self.end_effector()
@@ -68,14 +60,14 @@ class CompliantController(Arm):
         ptp_index = 0
         q_last = self.joint_angles()
 
-        trajectory_time_compensation = model.dt * 10. if time_compensation else 0.0 # Hyperparameter
+        trajectory_time_compensation = self.model.dt * 10. if time_compensation else 0.0 # Hyperparameter
 
         if trajectory.ndim == 1:  # just one point
             ptp_timeout = timeout
-            model.set_goals(position=trajectory)
+            self.model.set_goals(position=trajectory)
         else:  # trajectory
             ptp_timeout = timeout / float(len(trajectory)) - trajectory_time_compensation
-            model.set_goals(position=trajectory[ptp_index])
+            self.model.set_goals(position=trajectory[ptp_index])
 
         log = {ExecutionResult.SPEED_LIMIT_EXCEEDED: 0, ExecutionResult.IK_NOT_FOUND: 0}
 
@@ -113,40 +105,35 @@ class CompliantController(Arm):
                 sub_inittime = rospy.get_time()
                 ptp_index += 1
                 if ptp_index >= len(trajectory):
-                    model.set_goals(position=trajectory[-1])
+                    self.model.set_goals(position=trajectory[-1])
                 elif not trajectory.ndim == 1:  # For some reason the timeout validation is not robust enough
-                    model.set_goals(position=trajectory[ptp_index])
+                    self.model.set_goals(position=trajectory[ptp_index])
 
             Fb = -1 * Wb # Move in the opposite direction of the force
-            if stop_on_target_force and np.all(np.abs(Fb)[model.target_force != 0] > np.abs(model.target_force)[model.target_force != 0]):
+            if stop_on_target_force and np.all(np.abs(Fb)[self.model.target_force != 0] > np.abs(self.model.target_force)[self.model.target_force != 0]):
                 rospy.loginfo('Target F/T reached {}'.format(np.round(Wb, 3)) + ' Stopping!')
-                self.set_target_pose(pose=xb, target_time=model.dt)
+                self.set_target_pose(pose=xb, target_time=self.model.dt)
                 result = ExecutionResult.STOP_ON_TARGET_FORCE
                 break
 
             # Safety limits: max force
             if np.any(np.abs(Wb) > max_force_torque):
                 rospy.logerr('Maximum force/torque exceeded {}'.format(np.round(Wb, 3)))
-                self.set_target_pose(pose=xb, target_time=model.dt)
+                self.set_target_pose(pose=xb, target_time=self.model.dt)
                 result = ExecutionResult.FORCE_TORQUE_EXCEEDED
                 break
 
             # Current Force in task-space
-            dxf, dxf_pos, dxf_force = model.control_position_orientation(Fb, xb)  # angular velocity
+            dxf = self.model.control_position_orientation(Fb, xb)  # angular velocity
 
-            xc = transformations.pose_from_angular_velocity(xb, dxf, dt=model.dt)
+            xc = transformations.pose_from_angular_velocity(xb, dxf, dt=self.model.dt)
 
             # Avoid extra acceleration when a point failed due to IK or other violation
             # So, this corrects the allowed time for the next point
-            dt = model.dt * (failure_counter+1)
+            dt = self.model.dt * (failure_counter+1)
 
             result = self._actuate(xc, dt, q_last, reduced_speed)
 
-            # For debug
-            # data_actual.append(self.end_effector())
-            # data_target.append(xc)
-            # data_target2.append(model.target_position)
-            # data_dxf.append(dxf_force)
 
             if result != ExecutionResult.DONE:
                 failure_counter += 1

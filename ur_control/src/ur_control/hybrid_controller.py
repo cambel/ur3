@@ -98,7 +98,7 @@ class ForcePositionController(object):
         # Sum step from force and step from position PDs
         dxf_pos = np.dot(self.alpha, dxf_pos)
         dxf_force = np.dot((np.identity(6) - self.alpha), dxf_force)
-        return dxf_pos + dxf_force, dxf_pos, dxf_force
+        return dxf_pos + dxf_force
 
     def control_velocity(self, fc, xv):
         """ Obtains the next action from hybrid controller 
