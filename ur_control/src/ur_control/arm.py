@@ -92,7 +92,7 @@ class Arm(object):
         ee_link = utils.resolve_parameter(value=ee_link, default_value=EE_LINK)
 
         # Support for joint prefixes
-        self.joint_names_prefix = joint_names_prefix
+        self.joint_names_prefix = utils.resolve_parameter(joint_names_prefix, '')
         self.base_link = base_link if joint_names_prefix is None else joint_names_prefix + base_link
         self.ee_link = ee_link if joint_names_prefix is None else joint_names_prefix + ee_link
 

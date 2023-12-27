@@ -351,9 +351,8 @@ def read_key(echo=False):
 def resolve_parameter(value, default_value):
     if value:
         return value
-    if default_value:
+    else:
         return default_value
-    raise ValueError("No value defined for parameter")
 
 def read_parameter(name, default):
     """
