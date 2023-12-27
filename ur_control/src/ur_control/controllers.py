@@ -9,7 +9,7 @@ from std_msgs.msg import Float64
 from controller_manager_msgs.srv import ListControllers
 # Joint trajectory action
 from sensor_msgs.msg import JointState
-from trajectory_msgs.msg import JointTrajectoryPoint
+from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal, FollowJointTrajectoryResult
 
 
@@ -226,6 +226,10 @@ class JointTrajectoryController(JointControllerBase):
         @param timeout: Time in seconds that will wait for the controller
         """
         super(JointTrajectoryController, self).__init__(namespace, timeout=timeout, joint_names=joint_names)
+
+        trajectory_publisher_topic = self.ns + '/' + publisher_name + '/command'
+        self.trajectory_pub = rospy.Publisher(trajectory_publisher_topic, JointTrajectory, queue_size=10)
+
         action_server = self.ns + publisher_name + '/follow_joint_trajectory'
         self._client = actionlib.SimpleActionClient(action_server, FollowJointTrajectoryAction)
         self._goal = FollowJointTrajectoryGoal()
@@ -358,3 +362,10 @@ class JointTrajectoryController(JointControllerBase):
         @return: True if the server connected in the allocated time. False on timeout
         """
         return self._client.wait_for_result(timeout=rospy.Duration(timeout))
+    
+    def start_no_action_server(self):
+        """
+        Start the trajectory without expecting any feedback from the action server.
+        """
+        self.trajectory_pub.publish(self._goal.trajectory)
+

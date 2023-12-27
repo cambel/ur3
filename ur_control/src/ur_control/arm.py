@@ -398,8 +398,14 @@ class Arm(object):
                                              velocities=velocities,
                                              accelerations=accelerations,
                                              target_time=target_time)
-        self.joint_traj_controller.start(delay=0, wait=wait)
+        if wait:
+            self.joint_traj_controller.start(delay=0, wait=True)
+        else:
+            self.joint_traj_controller.start_no_action_server()
+        
+        # Always clear the trajectory goal
         self.joint_traj_controller.clear_points()
+
         if wait:
             res = self.joint_traj_controller.get_result()
             return ExecutionResult.DONE if res.error_code == 0 else ExecutionResult.CONTROLLER_FAILED
