@@ -227,7 +227,7 @@ class JointTrajectoryController(JointControllerBase):
         """
         super(JointTrajectoryController, self).__init__(namespace, timeout=timeout, joint_names=joint_names)
 
-        trajectory_publisher_topic = self.ns + '/' + publisher_name + '/command'
+        trajectory_publisher_topic = self.ns + publisher_name + '/command'
         self.trajectory_pub = rospy.Publisher(trajectory_publisher_topic, JointTrajectory, queue_size=10)
 
         action_server = self.ns + publisher_name + '/follow_joint_trajectory'

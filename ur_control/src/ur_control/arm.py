@@ -161,11 +161,11 @@ class Arm(object):
 
     def __init_ft_sensor__(self):
         # Publisher of wrench
-        ft_namespace = '%s/%s/filtered' % (self.ns, self.ft_topic)
+        ft_namespace = self.ns + self.ft_topic + '/filtered'
         if not utils.topic_exist(ft_namespace):
             rospy.logwarn("Filtered FT topic not found. Using raw sensor directly.")
             # Try the raw FT topic
-            ft_namespace = '%s/%s' % (self.ns, self.ft_topic)
+            ft_namespace = self.ns + self.ft_topic
             rospy.Subscriber(ft_namespace, WrenchStamped, self.__ft_callback__)
             self._zero_ft_filtered = lambda: None
             self._ft_filtered = lambda: None
