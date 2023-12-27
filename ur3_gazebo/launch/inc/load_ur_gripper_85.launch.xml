@@ -5,6 +5,7 @@
   <arg name="ur_robot" default="ur3"/>
   <arg name="grasp_plugin" default="false"/>
   <param name="grasp_plugin" type="bool" value="$(arg grasp_plugin)"/>
+  <param name="use_gazebo_sim" type="bool" value="true" />
 
   <!--Common parameters -->
   <arg name="transmission_hw_interface" default="hardware_interface/PositionJointInterface" doc="The hardware_interface to expose for each joint in the simulated robot (one of: [PositionJointInterface, VelocityJointInterface, EffortJointInterface])"/>
