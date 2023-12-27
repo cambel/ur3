@@ -12,7 +12,7 @@ np.set_printoptions(linewidth=np.inf)
 
 from ur_control import transformations
 from ur_control.constants import ROBOT_GAZEBO, ROBOT_UR_RTDE_DRIVER, ROBOT_GAZEBO_DUAL_RIGHT
-from ur_control.compliant_controller import CompliantController
+from ur_control.compliance_controller import ComplianceController
 import timeit
 
 import sys
@@ -62,14 +62,14 @@ def rotate_wrist(q, changes):
     for change in changes:
         for p in change:
             cq[p[0]] = p[1]
-        arm.set_joint_positions(cq, wait=True, t=0.5)
+        arm.set_joint_positions(cq, wait=True, target_time=0.5)
         append_tf_data()
         # input("Enter to continue")
 
 
 def move_arm(wait=True):
     q = [2.37191, -1.88688, -1.82035,  0.4766 ,  2.31206,  3.18758]
-    arm.set_joint_positions(position=q, wait=wait, t=0.5)
+    arm.set_joint_positions(positions=q, wait=wait, target_time=0.5)
     initial_ee = arm.end_effector(q)
 
     deltas = [
@@ -104,7 +104,7 @@ def move_arm(wait=True):
                 delta[2] = deltas[2][y+1]
                 delta[1] = deltas[1][i]
                 cpose = transformations.pose_euler_to_quaternion(initial_ee, delta, ee_rotation=False)
-                arm.set_target_pose(pose=cpose, wait=True, t=0.5)
+                arm.set_target_pose(pose=cpose, wait=True, target_time=0.5)
                 # input("Enter to continue")
                 append_tf_data()
 
@@ -124,7 +124,7 @@ def main():
     driver = ROBOT_GAZEBO #ROBOT_GAZEBO
 
     global arm
-    arm = CompliantController(ft_sensor=False, driver=driver, ee_transform=[-0.,   -0.,   0.05,  0,    0.,    0.,    1.  ])
+    arm = ComplianceController(ft_sensor=False, driver=driver, ee_transform=[-0.,   -0.,   0.05,  0,    0.,    0.,    1.  ])
 
     real_start_time = timeit.default_timer()
     ros_start_time = rospy.get_time()
