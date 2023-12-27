@@ -27,7 +27,7 @@
 import argparse
 import rospy
 
-from ur_control.compliant_controller import CompliantController
+from ur_control.compliance_controller import ComplianceController
 
 def main():
     """ Main function to be run. """
@@ -53,7 +53,7 @@ def main():
         rospackage = ""
     
     global arm
-    arm = CompliantController(ft_sensor=True,
+    arm = ComplianceController(ft_sensor=True,
               namespace=ns, 
               joint_names_prefix=joints_prefix, 
               robot_urdf=robot_urdf, 

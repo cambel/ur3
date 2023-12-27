@@ -71,7 +71,7 @@ def move_endeffector():
     # define the desired translation/rotation
     deltax = np.array([0., 0., 0.04, 0., 0., 0.])
     # add translation/rotation to current position
-    cpose = transformations.pose_euler_to_quaternion(cpose, deltax, ee_rotation=True)
+    cpose = transformations.transform_pose(cpose, deltax, rotated_frame=True)
     # execute desired new pose
     # may fail if IK solution is not found
     arm.set_target_pose(pose=cpose, wait=True, target_time=1.0)
@@ -153,7 +153,7 @@ def circular_trajectory():
     steps = 100
     plane = "XY"
     direction = get_random_valid_direction(plane)
-    dummy_trajectory = traj_utils.compute_trajectory(initial_pose=[0, 0, 0, 0, 0, 0, 1.],
+    dummy_trajectory = traj_utils.compute_trajectory(initial_pose=[0, 0, 0., 0, 0, 0, 1.],
                                                      plane=plane, radius=0.05,
                                                      radius_direction=direction, steps=steps, revolutions=1,
                                                      from_center=False, trajectory_type="circular")
