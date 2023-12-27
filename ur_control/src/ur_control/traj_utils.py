@@ -104,7 +104,7 @@ def get_plane_direction(plane, radius):
     sign = 1. if '+' in plane else -1.
     direction_array[DIRECTION_INDEX.get(plane[1])] = radius * sign
 
-    return np.array(direction_array)
+    return np.array(direction_array, dtype=np.float64)
 
 
 def compute_rotation_wiggle(initial_orientation, direction, angle, steps, revolutions):
@@ -166,7 +166,7 @@ def compute_trajectory(initial_pose, plane, radius, radius_direction, steps=100,
     else:
         raise ValueError("Invalid value for plane: %s" % plane)
 
-    target_pose = transformations.pose_euler_to_quaternion(initial_pose, direction, ee_rotation=False)
+    target_pose = transformations.transform_pose(initial_pose, direction, rotated_frame=False)
 
     # print("Initial", np.round(spalg.translation_rotation_error(target_pose, arm.end_effector()), 4))
     target_orientation = transformations.vector_to_pyquaternion(transformations.quaternion_from_euler(*to_plane))

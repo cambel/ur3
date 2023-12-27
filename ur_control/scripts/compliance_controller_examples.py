@@ -28,7 +28,7 @@ import sys
 import signal
 from ur_control import utils, traj_utils
 from ur_control.hybrid_controller import ForcePositionController
-from ur_control.compliant_controller import CompliantController
+from ur_control.compliance_controller import CompliantController
 import argparse
 import rospy
 import numpy as np
@@ -52,7 +52,7 @@ def move_joints(wait=True):
     # in t time (seconds)
     # wait is for waiting to finish the motion before executing
     # anything else or ignore and continue with whatever is next
-    arm.set_joint_positions(position=q, wait=wait, t=2.0)
+    arm.set_joint_positions(positions=q, wait=wait, target_time=2.0)
 
 
 def spiral_trajectory():
@@ -61,7 +61,7 @@ def spiral_trajectory():
     """
     initial_q = [1.57, -1.57, 1.26, -1.57, -1.57, 0]
 
-    arm.set_joint_positions(initial_q, wait=True, t=2)
+    arm.set_joint_positions(positions=initial_q, wait=True, target_time=2)
 
     plane = "YZ"
     radius = 0.02
@@ -71,7 +71,7 @@ def spiral_trajectory():
     steps = 100 # Number of waypoints of the spiral trajectory
     duration = 30.0 # Duration of the trajectory, affects speed
 
-    arm.set_wrench_offset(True)
+    arm.zero_ft_sensor()
 
     initial_pose = arm.end_effector()
     trajectory = traj_utils.compute_trajectory(initial_pose, plane, radius, radius_direction,
@@ -86,7 +86,7 @@ def circular_trajectory():
     """
     initial_q = [1.57, -1.57, 1.26, -1.57, -1.57, 0]
     
-    arm.set_joint_positions(initial_q, wait=True, t=1)
+    arm.set_joint_positions(positions=initial_q, wait=True, target_time=1)
 
     plane = "YZ"
     radius = 0.02
@@ -96,7 +96,7 @@ def circular_trajectory():
     steps = 100 # Number of waypoints of the circular trajectory
     duration = 30.0 # Duration of the trajectory, affects speed
 
-    arm.set_wrench_offset(True)
+    arm.zero_ft_sensor()
 
     initial_pose = arm.end_effector()
     trajectory = traj_utils.compute_trajectory(initial_pose, plane, radius, radius_direction,
@@ -120,20 +120,20 @@ def execute_trajectory(trajectory, duration, use_force_control=False, terminatio
         joint_trajectory = []
         for point in trajectory:
             joint_trajectory.append(arm._solve_ik(point))
-        arm.set_joint_trajectory(joint_trajectory, t=duration)
+        arm.set_joint_trajectory(trajectory=joint_trajectory, target_time=duration)
 
 
-def init_force_control(selection_matrix, dt=0.002):
-    Kp = np.array([3., 3., 3., 1., 1., 1.])
+def init_force_control(selection_matrix, dt=0.02):
+    Kp = np.array([2., 2., 2., 1., 1., 1.])
     Kp_pos = Kp
     Kd_pos = Kp * 0.01
-    Ki_pos = Kp * 0.01
+    Ki_pos = Kp * 0.0
     position_pd = utils.PID(Kp=Kp_pos, Ki=Ki_pos, Kd=Kd_pos, dynamic_pid=True)
 
     # Force PID gains
     Kp = np.array([0.05, 0.05, 0.05, 0.05, 0.05, 0.05])
     Kp_force = Kp
-    Kd_force = Kp * 0.01
+    Kd_force = Kp * 0.0
     Ki_force = Kp * 0.01
     force_pd = utils.PID(Kp=Kp_force, Kd=Kd_force, Ki=Ki_force)
     pf_model = ForcePositionController(
@@ -156,7 +156,7 @@ def full_force_control(
       timeout: float, duration in seconds of the force control
       termination_criteria: func, optional condition that would stop the compliance controller
     """
-    arm.set_wrench_offset(True)  # offset the force sensor
+    arm.zero_ft_sensor()  # offset the force sensor
     arm.relative_to_ee = relative_to_ee
 
     if model is None:
@@ -185,12 +185,12 @@ def force_control():
         selection_matrix: list[6]. define which direction is controlled by position(1.0) or force(0.0) goal. 
                           Values in between make the controller attempt to achieve both position and force goals.
     """
-    arm.set_wrench_offset(True)
+    arm.zero_ft_sensor()
 
     timeout = 10.0  # Duration of the active control, does not affect speed.
 
     selection_matrix = [1., 1., 0., 1., 1., 1.]
-    target_force = np.array([0., 0., 1., 0., 0., 0.])
+    target_force = np.array([0., 0., 5., 0., 0., 0.])
 
     full_force_control(
         target_force, selection_matrix=selection_matrix, timeout=timeout)
@@ -215,7 +215,6 @@ def main():
 
     ns = ''
     joints_prefix = None
-    robot_urdf = "ur3e"
     tcp_link = None
 
     if args.namespace:
@@ -223,11 +222,8 @@ def main():
         joints_prefix = args.namespace + '_'
 
     global arm
-    arm = CompliantController(ft_sensor=True,
-                              namespace=ns,
-                              joint_names_prefix=joints_prefix,
-                              robot_urdf=robot_urdf,
-                              ee_link=tcp_link)
+    arm = CompliantController(namespace=ns,
+                              joint_names_prefix=joints_prefix)
 
     if args.move:
         move_joints()

@@ -12,7 +12,7 @@ import types
 
 from ur_control.arm import Arm
 from ur_control import transformations, spalg, utils
-from ur_control.constants import DONE, FORCE_TORQUE_EXCEEDED, SPEED_LIMIT_EXCEEDED, STOP_ON_TARGET_FORCE, TERMINATION_CRITERIA, IK_NOT_FOUND
+from ur_control.constants import ExecutionResult
 
 
 # Returns the new average
@@ -77,9 +77,9 @@ class CompliantController(Arm):
             ptp_timeout = timeout / float(len(trajectory)) - trajectory_time_compensation
             model.set_goals(position=trajectory[ptp_index])
 
-        log = {SPEED_LIMIT_EXCEEDED: 0, IK_NOT_FOUND: 0}
+        log = {ExecutionResult.SPEED_LIMIT_EXCEEDED: 0, ExecutionResult.IK_NOT_FOUND: 0}
 
-        result = DONE
+        result = ExecutionResult.DONE
 
         standby_timer = rospy.get_time()
         standby_last_pose = self.end_effector()
@@ -98,7 +98,7 @@ class CompliantController(Arm):
                 start_time = rospy.get_time()
 
             # Transform wrench to the base_link frame
-            Wb = self.get_ee_wrench()
+            Wb = self.get_wrench(base_frame_control=True)
             # Current position in task-space
             xb = self.end_effector()
 
@@ -106,7 +106,7 @@ class CompliantController(Arm):
                 assert isinstance(termination_criteria, types.LambdaType), "Invalid termination criteria, expecting lambda/function with one argument[current pose array[7]]"
                 if termination_criteria(xb, standby):
                     rospy.loginfo("Termination criteria returned True, stopping force control")
-                    result = TERMINATION_CRITERIA
+                    result = ExecutionResult.TERMINATION_CRITERIA
                     break
 
             if (rospy.get_time() - sub_inittime) > ptp_timeout:
@@ -120,15 +120,15 @@ class CompliantController(Arm):
             Fb = -1 * Wb # Move in the opposite direction of the force
             if stop_on_target_force and np.all(np.abs(Fb)[model.target_force != 0] > np.abs(model.target_force)[model.target_force != 0]):
                 rospy.loginfo('Target F/T reached {}'.format(np.round(Wb, 3)) + ' Stopping!')
-                self.set_target_pose_flex(pose=xb, t=model.dt)
-                result = STOP_ON_TARGET_FORCE
+                self.set_target_pose(pose=xb, target_time=model.dt)
+                result = ExecutionResult.STOP_ON_TARGET_FORCE
                 break
 
             # Safety limits: max force
             if np.any(np.abs(Wb) > max_force_torque):
                 rospy.logerr('Maximum force/torque exceeded {}'.format(np.round(Wb, 3)))
-                self.set_target_pose_flex(pose=xb, t=model.dt)
-                result = FORCE_TORQUE_EXCEEDED
+                self.set_target_pose(pose=xb, target_time=model.dt)
+                result = ExecutionResult.FORCE_TORQUE_EXCEEDED
                 break
 
             # Current Force in task-space
@@ -148,12 +148,12 @@ class CompliantController(Arm):
             # data_target2.append(model.target_position)
             # data_dxf.append(dxf_force)
 
-            if result != DONE:
+            if result != ExecutionResult.DONE:
                 failure_counter += 1
-                if result == IK_NOT_FOUND:
-                    log[IK_NOT_FOUND] += 1
-                if result == SPEED_LIMIT_EXCEEDED:
-                    log[SPEED_LIMIT_EXCEEDED] += 1
+                if result == ExecutionResult.IK_NOT_FOUND:
+                    log[ExecutionResult.IK_NOT_FOUND] += 1
+                if result == ExecutionResult.SPEED_LIMIT_EXCEEDED:
+                    log[ExecutionResult.SPEED_LIMIT_EXCEEDED] += 1
                 continue  # Don't wait since there is not motion
             else:
                 failure_counter = 0
@@ -199,21 +199,21 @@ class CompliantController(Arm):
             Similarly, evaluate that the IK solution is viable
         """
         result = None
-        q = self._solve_ik(pose, attempts=0, verbose=False)
+        q = self.inverse_kinematics(pose, attempts=0, verbose=False)
         if q is None:
             if attempts > 0:
                 return self._actuate(pose, dt, q_last, reduced_speed, attempts-1)
             rospy.logwarn("IK not found")
-            result = IK_NOT_FOUND
+            result = ExecutionResult.IK_NOT_FOUND
         else:
             q_speed = (q_last - q)/dt
             if np.any(np.abs(q_speed) > reduced_speed):
                 if attempts > 0:
                     return self._actuate(pose, dt, q_last, reduced_speed, attempts-1)
                 rospy.logwarn_once("Exceeded reduced max speed %s deg/s, Ignoring command" % np.round(np.rad2deg(q_speed), 0))
-                result = SPEED_LIMIT_EXCEEDED
+                result = ExecutionResult.SPEED_LIMIT_EXCEEDED
             else:
-                result = self.set_joint_positions_flex(position=q, t=dt)
+                result = self.set_joint_positions(positions=q, target_time=dt)
                 self.rate.sleep()
         return result
 
@@ -233,20 +233,20 @@ class CompliantController(Arm):
                 and (rospy.get_time() - initime) < timeout:
 
             # Transform wrench to the base_link frame
-            Wb = self.get_ee_wrench()
+            Wb = self.get_wrench()
 
             # Current Force in task-space
             Fb = -1 * Wb
             # Safety limits: max force
             if np.any(np.abs(Fb) > max_force_torque):
                 rospy.logerr('Maximum force/torque exceeded {}'.format(np.round(Wb, 3)))
-                self.set_target_pose_flex(pose=xb, t=model.dt)
-                return FORCE_TORQUE_EXCEEDED
+                self.set_target_pose(pose=xb, target_time=model.dt)
+                return ExecutionResult.FORCE_TORQUE_EXCEEDED
 
             if stop_on_target_force and np.any(np.abs(Fb)[model.target_force != 0] > model.target_force[model.target_force != 0]):
                 rospy.loginfo('Target F/T reached {}'.format(np.round(Wb, 3)) + ' Stopping!')
-                self.set_target_pose_flex(pose=xb, t=model.dt)
-                return STOP_ON_TARGET_FORCE
+                self.set_target_pose(pose=xb, target_time=model.dt)
+                return ExecutionResult.STOP_ON_TARGET_FORCE
 
             # Current position in task-space
             xb = self.end_effector()
@@ -263,19 +263,19 @@ class CompliantController(Arm):
             # So, this corrects the allowed time for the next point
             dt = model.dt * (failure_counter+1)
 
-            q = self._solve_ik(xc)
+            q = self.inverse_kinematics(xc)
             if q is None:
                 rospy.logwarn("IK not found")
-                result = IK_NOT_FOUND
+                result = ExecutionResult.IK_NOT_FOUND
             else:
                 q_speed = (q_last - q)/dt
                 if np.any(np.abs(q_speed) > reduced_speed):
                     rospy.logwarn("Exceeded reduced max speed %s deg/s, Ignoring command" % np.round(np.rad2deg(q_speed), 0))
-                    result = SPEED_LIMIT_EXCEEDED
+                    result = ExecutionResult.SPEED_LIMIT_EXCEEDED
                 else:
-                    result = self.set_joint_positions_flex(position=q, t=dt)
+                    result = self.set_joint_positions(positions=q, target_time=dt)
 
-            if result != DONE:
+            if result != ExecutionResult.DONE:
                 failure_counter += 1
                 continue  # Don't wait since there is not motion
             else:
@@ -286,4 +286,4 @@ class CompliantController(Arm):
                 self.rate.sleep()
 
             q_last = self.joint_angles()
-        return DONE
+        return ExecutionResult.DONE
