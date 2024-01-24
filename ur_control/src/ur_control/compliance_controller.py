@@ -166,16 +166,6 @@ class CompliantController(Arm):
                 avg_step_time = step_time if avg_step_time == 0 else getAvg(avg_step_time, step_time, step_num)
                 step_num += 1
 
-        # For debug
-        # np.save("/root/o2ac-ur/underlay_ws/src/ur_python_utilities/ur_control/config/actual", data_actual)
-        # np.save("/root/o2ac-ur/underlay_ws/src/ur_python_utilities/ur_control/config/target", data_target)
-        # np.save("/root/o2ac-ur/underlay_ws/src/ur_python_utilities/ur_control/config/target2", data_target2)
-        # np.save("/root/o2ac-ur/underlay_ws/src/ur_python_utilities/ur_control/config/trajectory", trajectory)
-        # np.save("/root/o2ac-ur/underlay_ws/src/ur_python_utilities/ur_control/config/data_dxf", data_dxf)
-        if debug:
-            rospy.loginfo(">>> Force Control Aprox. time per step: %s <<<" % str(avg_step_time))
-            hz = 1./avg_step_time if avg_step_time > 0 else 0.0
-            rospy.loginfo(">>> Force Control Aprox. Frequency: %s <<<" % str(hz))
         if verbose:
             rospy.logwarn("Total # of commands ignored: %s" % log)
         return result

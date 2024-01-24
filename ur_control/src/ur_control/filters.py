@@ -1,6 +1,6 @@
 # ROS utilities used by the CRI group
 #! /usr/bin/env python
-import rospy, math
+import math
 import numpy as np
 import scipy.signal
 
