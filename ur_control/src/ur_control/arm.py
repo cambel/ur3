@@ -115,7 +115,7 @@ class Arm(object):
 
         self.__init_ft_sensor__()
 
-        self.controller_manager = ControllersConnection(namespace)
+        self.controller_manager = ControllersConnection(self.ns)
         self.dashboard_services = URServices(self.ns)
 
 ### private methods ###

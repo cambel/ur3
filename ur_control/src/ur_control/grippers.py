@@ -243,24 +243,21 @@ class RobotiqGripper(GripperControllerBase):
 
         self.opening_width = 0.0
 
-        self.sub_gripper_status_ = rospy.Subscriber(self.ns + "/gripper_status", robotiq_msgs.msg.CModelCommandFeedback, self._gripper_status_callback)
-        self.gripper = actionlib.SimpleActionClient(self.ns + '/gripper_action_controller', robotiq_msgs.msg.CModelCommandAction)
-        self.gripper_type = str(rospy.get_param(self.ns + "/gripper_type", "85"))
-        if self.gripper_type == "hand-e":
-            self._max_gap = 0.025 * 2.0
+        self.sub_gripper_status_ = rospy.Subscriber(self.ns + "gripper_status", robotiq_msgs.msg.CModelCommandFeedback, self._gripper_status_callback)
+        self.gripper = actionlib.SimpleActionClient(self.ns + "gripper_action_controller", robotiq_msgs.msg.CModelCommandAction)
+        
+        self.gripper_type = str(rospy.get_param(self.ns + "gripper_action_controller/joint_name", "finger_joint"))
+        self._max_gap = str(rospy.get_param(self.ns + "gripper_action_controller/max_gap", "0.085"))
+        self._max_angle = str(rospy.get_param(self.ns + "gripper_action_controller/counts_to_meters", "0.8"))
+
+        if self.gripper_type == "robotiq_hande_joint_finger":
+            self._max_gap = self._max_gap * 2.0
             self._to_open = 0.0
             self._to_close = self._max_gap
-        elif self.gripper_type == "85":
-            self._max_gap = 0.085
+        elif self.gripper_type == "finger_joint":
             self._to_open = self._max_gap
             self._to_close = 0.001
-            self._max_angle = 0.8028
-        elif self.gripper_type == "140":
-            self._max_gap = 0.140
-            self._to_open = self._max_gap
-            self._to_close = 0.001
-            self._max_angle = 0.69
-
+        
         success = self.gripper.wait_for_server(rospy.Duration(timeout))
         if success:
             rospy.loginfo("=== Connected to ROBOTIQ gripper ===")
@@ -277,11 +274,11 @@ class RobotiqGripper(GripperControllerBase):
         return self.get_position() / self._max_gap
 
     def close(self, force=40.0, velocity=1.0, wait=True):
-        return self.send_command("close", force=force, velocity=velocity, wait=wait)
+        return self.command("close", force=force, velocity=velocity, wait=wait)
 
     def open(self, velocity=1.0, wait=True, opening_width=None):
         command = opening_width if opening_width else "open"
-        return self.send_command(command, wait=wait, velocity=velocity)
+        return self.command(command, wait=wait, velocity=velocity)
 
     def convert_percentage_to_width(self, width):
         if self.gripper_type == "85" or self.gripper_type == "140":
@@ -308,13 +305,13 @@ class RobotiqGripper(GripperControllerBase):
         if self.gripper_type == "85" or self.gripper_type == "140":
             value = np.clip(value, 0.0, 1.0)
             cmd = (value) * self._max_gap
-            return self.send_command(cmd, wait=wait)
+            return self.command(cmd, wait=wait)
         if self.gripper_type == "hand-e":
             value = np.clip(value, 0.0, 1.0)
             cmd = (1.0 - value) * self._max_gap / 2.0
-            return self.send_command(cmd, wait=wait)
+            return self.command(cmd, wait=wait)
 
-    def send_command(self, command, force=40.0, velocity=1.0, wait=True):
+    def command(self, command, force=40.0, velocity=1.0, wait=True):
         """
         command: "open", "close" or opening width
         force: Gripper force in N. From 40 to 100

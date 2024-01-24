@@ -3,16 +3,17 @@
 import rospy
 from controller_manager_msgs.srv import SwitchController, SwitchControllerRequest, \
     LoadController, UnloadController, ListControllers
+from ur_control.utils import solve_namespace
 
 
 class ControllersConnection():
     def __init__(self, namespace=None):
         self.controllers_list = []
 
-        self.ns = namespace
+        self.ns = solve_namespace(namespace)
 
         if namespace:
-            prefix = '/' + namespace + '/controller_manager/'
+            prefix = '/' + namespace + 'controller_manager/'
         else:
             prefix = '/controller_manager/'
 
@@ -88,8 +89,8 @@ class ControllersConnection():
         """
 
         if rospy.has_param("use_gazebo_sim"):
-            controllers_on = [self.ns + "/" + controller for controller in controllers_on]
-            controllers_off = [self.ns + "/" + controller for controller in controllers_off]
+            controllers_on = [self.ns + controller for controller in controllers_on]
+            controllers_off = [self.ns + controller for controller in controllers_off]
 
         try:
             self.switch_service.wait_for_service(0.1)

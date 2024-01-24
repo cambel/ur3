@@ -5,6 +5,7 @@ import time
 import controller_manager_msgs.msg
 import std_srvs.srv
 from ur_control import conversions
+from ur_control.utils import solve_namespace
 import ur_dashboard_msgs.srv
 import ur_msgs.srv
 
@@ -31,31 +32,31 @@ class URServices():
 
         self.use_real_robot = rospy.get_param("use_real_robot", False)
 
-        self.ns = namespace
+        self.ns = solve_namespace(namespace)
 
         self.ur_dashboard_clients = {
-            "get_loaded_program":     rospy.ServiceProxy('/%s/ur_hardware_interface/dashboard/get_loaded_program' % self.ns, ur_dashboard_msgs.srv.GetLoadedProgram),
-            "program_running":        rospy.ServiceProxy('/%s/ur_hardware_interface/dashboard/program_running' % self.ns, ur_dashboard_msgs.srv.IsProgramRunning),
-            "load_program":           rospy.ServiceProxy('/%s/ur_hardware_interface/dashboard/load_program' % self.ns, ur_dashboard_msgs.srv.Load),
-            "play":                   rospy.ServiceProxy('/%s/ur_hardware_interface/dashboard/play' % self.ns, std_srvs.srv.Trigger),
-            "stop":                   rospy.ServiceProxy('/%s/ur_hardware_interface/dashboard/stop' % self.ns, std_srvs.srv.Trigger),
-            "quit":                   rospy.ServiceProxy('/%s/ur_hardware_interface/dashboard/quit' % self.ns, std_srvs.srv.Trigger),
-            "connect":                rospy.ServiceProxy('/%s/ur_hardware_interface/dashboard/connect' % self.ns, std_srvs.srv.Trigger),
-            "close_popup":            rospy.ServiceProxy('/%s/ur_hardware_interface/dashboard/close_popup' % self.ns, std_srvs.srv.Trigger),
-            "unlock_protective_stop": rospy.ServiceProxy("/%s/ur_hardware_interface/dashboard/unlock_protective_stop" % self.ns, std_srvs.srv.Trigger),
-            "is_in_remote_control":   rospy.ServiceProxy("/%s/ur_hardware_interface/dashboard/is_in_remote_control" % self.ns, ur_dashboard_msgs.srv.IsInRemoteControl),
+            "get_loaded_program":     rospy.ServiceProxy(self.ns + 'ur_hardware_interface/dashboard/get_loaded_program', ur_dashboard_msgs.srv.GetLoadedProgram),
+            "program_running":        rospy.ServiceProxy(self.ns + 'ur_hardware_interface/dashboard/program_running', ur_dashboard_msgs.srv.IsProgramRunning),
+            "load_program":           rospy.ServiceProxy(self.ns + 'ur_hardware_interface/dashboard/load_program', ur_dashboard_msgs.srv.Load),
+            "play":                   rospy.ServiceProxy(self.ns + 'ur_hardware_interface/dashboard/play', std_srvs.srv.Trigger),
+            "stop":                   rospy.ServiceProxy(self.ns + 'ur_hardware_interface/dashboard/stop', std_srvs.srv.Trigger),
+            "quit":                   rospy.ServiceProxy(self.ns + 'ur_hardware_interface/dashboard/quit', std_srvs.srv.Trigger),
+            "connect":                rospy.ServiceProxy(self.ns + 'ur_hardware_interface/dashboard/connect', std_srvs.srv.Trigger),
+            "close_popup":            rospy.ServiceProxy(self.ns + 'ur_hardware_interface/dashboard/close_popup', std_srvs.srv.Trigger),
+            "unlock_protective_stop": rospy.ServiceProxy(self.ns + 'ur_hardware_interface/dashboard/unlock_protective_stop', std_srvs.srv.Trigger),
+            "is_in_remote_control":   rospy.ServiceProxy(self.ns + 'ur_hardware_interface/dashboard/is_in_remote_control', ur_dashboard_msgs.srv.IsInRemoteControl),
         }
 
-        self.set_payload_srv = rospy.ServiceProxy('/%s/ur_hardware_interface/set_payload' % self.ns, ur_msgs.srv.SetPayload)
-        self.speed_slider = rospy.ServiceProxy("/%s/ur_hardware_interface/set_speed_slider" % self.ns, ur_msgs.srv.SetSpeedSliderFraction)
+        self.set_payload_srv = rospy.ServiceProxy(self.ns + 'ur_hardware_interface/set_payload', ur_msgs.srv.SetPayload)
+        self.speed_slider = rospy.ServiceProxy(self.ns + 'ur_hardware_interface/set_speed_slider', ur_msgs.srv.SetSpeedSliderFraction)
 
-        self.set_io = rospy.ServiceProxy('/%s/ur_hardware_interface/set_io' % self.ns, ur_msgs.srv.SetIO)
+        self.set_io = rospy.ServiceProxy(self.ns + 'ur_hardware_interface/set_io', ur_msgs.srv.SetIO)
 
-        self.sub_status_ = rospy.Subscriber("/%s/ur_hardware_interface/robot_program_running" % self.ns, Bool, self.ros_control_status_callback)
-        self.service_proxy_list = rospy.ServiceProxy("/" + self.ns + "/controller_manager/list_controllers", controller_manager_msgs.srv.ListControllers)
-        self.service_proxy_switch = rospy.ServiceProxy("/" + self.ns + "/controller_manager/switch_controller", controller_manager_msgs.srv.SwitchController)
+        self.sub_status_ = rospy.Subscriber(self.ns + 'ur_hardware_interface/robot_program_running', Bool, self.ros_control_status_callback)
+        self.service_proxy_list = rospy.ServiceProxy(self.ns + 'controller_manager/list_controllers', controller_manager_msgs.srv.ListControllers)
+        self.service_proxy_switch = rospy.ServiceProxy(self.ns + 'controller_manager/switch_controller', controller_manager_msgs.srv.SwitchController)
 
-        self.sub_robot_safety_mode = rospy.Subscriber("/%s/ur_hardware_interface/safety_mode" % self.ns, ur_dashboard_msgs.msg.SafetyMode, self.safety_mode_callback)
+        self.sub_robot_safety_mode = rospy.Subscriber(self.ns + 'ur_hardware_interface/safety_mode', ur_dashboard_msgs.msg.SafetyMode, self.safety_mode_callback)
 
         self.ur_ros_control_running_on_robot = False
         self.robot_safety_mode = None
@@ -221,7 +222,7 @@ class URServices():
         try:
             # Load program if it not loaded already
             response = self.ur_dashboard_clients["get_loaded_program"].call(ur_dashboard_msgs.srv.GetLoadedProgramRequest())
-            if response.program_name == "/programs/ROS_external_control.urp":
+            if response.program_name == '/programs/ROS_external_control.urp':
                 return True
             else:
                 rospy.loginfo("Currently loaded program was:  " + response.program_name)
@@ -238,7 +239,7 @@ class URServices():
                     # rospy.loginfo("After-load check nr. " + str(i))
                     response = self.ur_dashboard_clients["get_loaded_program"].call(ur_dashboard_msgs.srv.GetLoadedProgramRequest())
                     # rospy.loginfo("Received response: " + response.program_name)
-                    if response.program_name == "/programs/ROS_external_control.urp":
+                    if response.program_name == '/programs/ROS_external_control.urp':
                         break
         except:
             rospy.logwarn("Dashboard service did not respond!")
