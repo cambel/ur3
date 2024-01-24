@@ -37,6 +37,7 @@ from ur_control.grippers import GripperController, RobotiqGripper
 from ur_control.constants import BASE_LINK, EE_LINK, JOINT_TRAJECTORY_CONTROLLER, FT_SUBSCRIBER,  \
     ExecutionResult, IKSolverType, GripperType, \
     get_arm_joint_names
+from ur_control.ur_services import URServices
 
 try:
     from ur_ikfast import ur_kinematics as ur_ikfast
@@ -115,6 +116,7 @@ class Arm(object):
         self.__init_ft_sensor__()
 
         self.controller_manager = ControllersConnection(namespace)
+        self.dashboard_services = URServices(self.ns)
 
 ### private methods ###
 
