@@ -482,7 +482,9 @@
             <geometry>
                 <mesh filename="package://robotiq_description/meshes/robotiq_85_coupler.stl" />
             </geometry>
-            <material name="flat_black" />
+            <material name="flat_black">
+                <color rgba="0 0 0 1.0"/>
+            </material>
         </visual>
         <collision>
             <geometry>
@@ -1126,7 +1128,9 @@
             <geometry>
                 <mesh filename="package://robotiq_description/meshes/robotiq_85_coupler.stl" />
             </geometry>
-            <material name="flat_black" />
+            <material name="flat_black">
+                <color rgba="0 0 0 1.0"/>
+            </material>
         </visual>
         <collision>
             <geometry>
