@@ -295,7 +295,8 @@ class Arm(object):
         """
         Return the requested joint angle in radians.
         """
-        return self.joint_traj_controller.get_joint_positions()[joint]
+        joint_idx = self.joint_traj_controller.valid_joint_names.index(joint)
+        return self.joint_traj_controller.get_joint_positions()[joint_idx]
 
     def joint_angles(self) -> np.ndarray:
         """
@@ -308,13 +309,27 @@ class Arm(object):
         """
         Return the requested joint velocity in radians/secs.
         """
-        return self.joint_traj_controller.get_joint_velocities()[joint]
+        joint_idx = self.joint_traj_controller.valid_joint_names.index(joint)
+        return self.joint_traj_controller.get_joint_velocities()[joint_idx]
 
     def joint_velocities(self) -> np.ndarray:
         """
         Returns the current joint velocities.
         """
         return self.joint_traj_controller.get_joint_velocities()
+
+    def joint_effort(self, joint: str) -> float:
+        """
+        Return the requested joint effort.
+        """
+        joint_idx = self.joint_traj_controller.valid_joint_names.index(joint)
+        return self.joint_traj_controller.get_joint_efforts()[joint_idx]
+
+    def joint_efforts(self) -> np.ndarray:
+        """
+        Returns the current joint efforts.
+        """
+        return self.joint_traj_controller.get_joint_efforts()
 
     def get_wrench_history(self, hist_size=24, hand_frame_control=False):
         if self.current_ft_value is None:
