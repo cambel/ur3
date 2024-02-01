@@ -10,10 +10,10 @@ class ControllersConnection():
     def __init__(self, namespace=None):
         self.controllers_list = []
 
-        self.ns = solve_namespace(namespace)
+        self.ns = solve_namespace(namespace)[1:]
 
         if namespace:
-            prefix = '/' + namespace + 'controller_manager/'
+            prefix = namespace + 'controller_manager/'
         else:
             prefix = '/controller_manager/'
 
@@ -25,9 +25,9 @@ class ControllersConnection():
         self.load_service = rospy.ServiceProxy(prefix + 'load_controller', LoadController)
         self.unload_service = rospy.ServiceProxy(prefix + 'unload_controller', UnloadController)
         self.list_controllers_service = rospy.ServiceProxy(prefix + 'list_controllers', ListControllers)
+        self.list_controllers_service.wait_for_service(1.0)
 
     def get_loaded_controllers(self):
-        self.list_controllers_service.wait_for_service(0.1)
         self.controllers_list = []
         try:
             result = self.list_controllers_service()
@@ -37,7 +37,6 @@ class ControllersConnection():
             pass
 
     def get_controller_state(self, controller_name):
-        self.list_controllers_service.wait_for_service(0.1)
         try:
             result = self.list_controllers_service()
             for controller in result.controller:
@@ -73,7 +72,7 @@ class ControllersConnection():
         for c in on_controllers:
             if self.get_controller_state(c) != "running":
                 return False
-            
+
         for c in off_controllers:
             if self.get_controller_state(c) != "stopped":
                 return False
@@ -139,7 +138,7 @@ class ControllersConnection():
         :param controllers_reset: ["name_controller_1", "name_controller2",...,"name_controller_n"]
         :return:
         """
-        
+
         reset_result = False
 
         result_off_ok = self.switch_controllers(controllers_on=[], controllers_off=self.controllers_list)
