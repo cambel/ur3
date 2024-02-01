@@ -50,7 +50,12 @@ class JointControllerBase(object):
             rospy.sleep(0.01)
             if rospy.is_shutdown():
                 return
-        self.rate = utils.read_parameter('{0}joint_state_controller/publish_rate'.format(self.ns), 500)
+
+        if rospy.has_param(f"{self.ns}joint_state_controller/publish_rate"):
+            self.rate = utils.read_parameter(f"{self.ns}joint_state_controller/publish_rate")
+        elif rospy.has_param(f"/joint_state_controller/publish_rate"):
+            self.rate = utils.read_parameter(f"/joint_state_controller/publish_rate", 500)
+
         self._num_joints = len(self._joint_names)
         rospy.logdebug('Topic [%sjoint_states] found' % self.ns)
 
@@ -362,10 +367,9 @@ class JointTrajectoryController(JointControllerBase):
         @return: True if the server connected in the allocated time. False on timeout
         """
         return self._client.wait_for_result(timeout=rospy.Duration(timeout))
-    
+
     def start_no_action_server(self):
         """
         Start the trajectory without expecting any feedback from the action server.
         """
         self.trajectory_pub.publish(self._goal.trajectory)
-
