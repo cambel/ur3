@@ -52,7 +52,7 @@ class JointControllerBase(object):
                 return
 
         if rospy.has_param(f"{self.ns}joint_state_controller/publish_rate"):
-            self.rate = utils.read_parameter(f"{self.ns}joint_state_controller/publish_rate")
+            self.rate = utils.read_parameter(f"{self.ns}joint_state_controller/publish_rate", 500)
         elif rospy.has_param(f"/joint_state_controller/publish_rate"):
             self.rate = utils.read_parameter(f"/joint_state_controller/publish_rate", 500)
 

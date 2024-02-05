@@ -22,17 +22,20 @@ class GripperControllerBase():
     def __init__(self, namespace='', node_name='', prefix=None, timeout=5.0) -> None:
         self.ns = utils.solve_namespace(namespace)
         self.prefix = prefix if prefix is not None else ''
-        self.gripper_type = str(rospy.get_param(self.ns + node_name + "/gripper_type"))
         self.valid_joint_names = []
         if rospy.has_param(self.ns + node_name + "/joint"):
             self.valid_joint_names = [rospy.get_param(self.ns + node_name + "/joint")]
         elif rospy.has_param(self.ns + node_name + "/joints"):
             self.valid_joint_names = rospy.get_param(self.ns + node_name + "/joints")
+        elif rospy.has_param(self.ns + node_name + "/joint_name"):
+            self.valid_joint_names = rospy.get_param(self.ns + node_name + "/joint_name")
+            if isinstance(self.valid_joint_names, str):
+                 self.valid_joint_names = [prefix + self.valid_joint_names]
         else:
             rospy.logerr("Couldn't find valid joints params in %s" % (self.ns + node_name))
             return
-
-        self._js_sub = rospy.Subscriber('joint_states', JointState, self.joint_states_cb, queue_size=1)
+        
+        self._js_sub = rospy.Subscriber('/joint_states', JointState, self.joint_states_cb, queue_size=1)
 
         retry = False
         rospy.logdebug('Waiting for [%sjoint_states] topic' % self.ns)
@@ -97,6 +100,7 @@ class GripperController(GripperControllerBase):
     def __init__(self, namespace='', prefix=None, timeout=5.0, attach_link='robot::wrist_3_link'):
         node_name = "gripper_controller"
         super().__init__(namespace, node_name, prefix, timeout)
+        self.gripper_type = str(rospy.get_param(self.ns + node_name + "/gripper_type"))
 
         if self.gripper_type == "hand-e":
             self._max_gap = 0.025 * 2.0
@@ -245,7 +249,9 @@ class GripperController(GripperControllerBase):
 
 
 class RobotiqGripper(GripperControllerBase):
-    def __init__(self, namespace="", timeout=2):
+    def __init__(self, namespace="", prefix="", timeout=2):
+        node_name = "gripper_action_controller"
+        super().__init__(namespace, node_name, prefix, timeout)
         self.ns = namespace
 
         self.opening_width = 0.0
@@ -279,9 +285,6 @@ class RobotiqGripper(GripperControllerBase):
 
     def _gripper_status_callback(self, msg):
         self.opening_width = msg.position  # [m]
-
-    def get_position(self):
-        return self._current_jnt_positions[0]
 
     def get_opening_percentage(self):
         return self.get_position() / self._max_gap

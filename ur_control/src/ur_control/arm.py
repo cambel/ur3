@@ -132,7 +132,7 @@ class Arm(object):
         if gripper_type == GripperType.GENERIC:
             self.gripper = GripperController(namespace=self.ns, prefix=self.joint_names_prefix, timeout=2.0)
         elif gripper_type == GripperType.ROBOTIQ:
-            self.gripper = RobotiqGripper(namespace=self.ns, timeout=2.0)
+            self.gripper = RobotiqGripper(namespace=self.ns, prefix=self.joint_names_prefix, timeout=2.0)
         else:
             raise ValueError("Invalid gripper type %s" % gripper_type)
 
