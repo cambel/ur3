@@ -284,8 +284,8 @@ class Arm(object):
             return self.kdl.forward(joint_angles, tip_link)
 
         elif rot_type == 'euler':
-            x = self.end_effector(joint_angles)
-            euler = np.array(transformations.euler_from_quaternion(x[3:], axes='rxyz'))
+            x = self.end_effector(joint_angles, tip_link=tip_link)
+            euler = np.array(transformations.euler_from_quaternion(x[3:], axes='sxyz'))
             return np.concatenate((x[:3], euler))
 
         else:
