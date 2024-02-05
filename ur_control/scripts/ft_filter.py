@@ -81,12 +81,6 @@ class FTsensor(object):
         # Subscribe to incoming topic
         rospy.Subscriber(self.in_topic, WrenchStamped, self.raw_wrench_cb)
 
-        # Check that the incoming topic is publishing data
-        self._active = None
-        if not utils.wait_for(lambda: self._active, timeout=timeout):
-            rospy.logerr('Timed out waiting for {0} topic'.format(self.in_topic))
-            return
-
         rospy.loginfo('FT filter successfully initialized')
         rospy.sleep(1)  # wait some time to fill the filter
 
