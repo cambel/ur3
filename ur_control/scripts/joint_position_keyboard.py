@@ -46,7 +46,8 @@ np.set_printoptions(suppress=True)
 def map_keyboard():
     def print_robot_state():
         print("Joint angles:", np.round(arm.joint_angles(), 4).tolist())
-        print("EE Pose:", np.round(arm.end_effector(tip_link="b_bot_knife_center"), 5).tolist())
+        print("EE Pose:", np.round(arm.end_effector(), 5).tolist())
+        print("EE Pose (euler):", np.round(arm.end_effector(rot_type="euler"), 5).tolist())
         if arm.gripper:
             print("Gripper position:", np.round(arm.gripper.get_position(), 4))
 
@@ -184,7 +185,8 @@ See help inside the example with the '?' key for key bindings.
     parser.add_argument(
         '--robotiq_gripper', action='store_true', help='enable Robotiq gripper commands')
     parser.add_argument(
-        '--robot', type=str, help='Version of Universal Robot arm. Default="ur3e"', default='ur3e')
+        '--tcp', type=str, help='Tool Center Point or End-Effector frame for IK without joint prefix', default='tool0'
+        )
 
     args = parser.parse_args(rospy.myargv()[1:])
 
@@ -193,7 +195,7 @@ See help inside the example with the '?' key for key bindings.
     global relative_to_tcp
     relative_to_tcp = args.relative
 
-    tcp_link = "tool0"
+    tcp_link = args.tcp
     joints_prefix = args.namespace + '_' if args.namespace else None
     gripper = GripperType.ROBOTIQ if args.robotiq_gripper else GripperType.GENERIC
 
