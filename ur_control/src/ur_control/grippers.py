@@ -19,6 +19,38 @@ except ImportError:
 
 
 class GripperControllerBase():
+    def __init__(self, namespace='', node_name='', prefix=None, timeout=5.0) -> None:
+        self.ns = utils.solve_namespace(namespace)
+        self.prefix = prefix if prefix is not None else ''
+        self.gripper_type = str(rospy.get_param(self.ns + node_name + "/gripper_type"))
+        self.valid_joint_names = []
+        if rospy.has_param(self.ns + node_name + "/joint"):
+            self.valid_joint_names = [rospy.get_param(self.ns + node_name + "/joint")]
+        elif rospy.has_param(self.ns + node_name + "/joints"):
+            self.valid_joint_names = rospy.get_param(self.ns + node_name + "/joints")
+        else:
+            rospy.logerr("Couldn't find valid joints params in %s" % (self.ns + node_name))
+            return
+
+        self._js_sub = rospy.Subscriber('joint_states', JointState, self.joint_states_cb, queue_size=1)
+
+        retry = False
+        rospy.logdebug('Waiting for [%sjoint_states] topic' % self.ns)
+        start_time = rospy.get_time()
+        while not hasattr(self, '_joint_names'):
+            if (rospy.get_time() - start_time) > timeout and not retry:
+                # Re-try with namespace
+                self._js_sub = rospy.Subscriber('%sjoint_states' % self.ns, JointState, self.joint_states_cb, queue_size=1)
+                start_time = rospy.get_time()
+                retry = True
+                continue
+            elif (rospy.get_time() - start_time) > timeout and retry:
+                rospy.logerr('Timed out waiting for gripper joint_states topic')
+                return
+            rospy.sleep(0.01)
+            if rospy.is_shutdown():
+                return
+
     def open(self):
         raise NotImplementedError()
 
@@ -26,26 +58,45 @@ class GripperControllerBase():
         raise NotImplementedError()
 
     def get_position(self):
-        raise NotImplementedError()
+        return self._current_jnt_positions[0]
+
+    def get_velocity(self):
+        return self._current_jnt_velocities[0]
 
     def get_opening_percentage(self):
         raise NotImplementedError()
 
+    def joint_states_cb(self, msg):
+        """
+        Callback executed every time a message is publish in the C{joint_states} topic.
+        @type  msg: sensor_msgs/JointState
+        @param msg: The JointState message published by the RT hardware interface.
+        """
+
+        position = []
+        velocity = []
+        effort = []
+        name = []
+
+        for joint_name in self.valid_joint_names:
+            if joint_name in msg.name:
+                idx = msg.name.index(joint_name)
+                name.append(msg.name[idx])
+                effort.append(msg.effort[idx])
+                velocity.append(msg.velocity[idx])
+                position.append(msg.position[idx])
+
+        if set(name) == set(self.valid_joint_names):
+            self._current_jnt_positions = np.array(position)
+            self._current_jnt_velocities = np.array(velocity)
+            self._current_jnt_efforts = np.array(effort)
+            self._joint_names = list(name)
+
 
 class GripperController(GripperControllerBase):
     def __init__(self, namespace='', prefix=None, timeout=5.0, attach_link='robot::wrist_3_link'):
-        self.ns = utils.solve_namespace(namespace)
-        self.prefix = prefix if prefix is not None else ''
         node_name = "gripper_controller"
-        self.gripper_type = str(rospy.get_param(self.ns + node_name + "/gripper_type"))
-        self.valid_joint_names = []
-        if rospy.has_param(self.ns + node_name + "/joint"):
-            self.valid_joint_names = [rospy.get_param(self.ns + node_name + "/joint")]
-        elif rospy.has_param(self.ns + node_name + "/joint"):
-            self.valid_joint_names = rospy.get_param(self.ns + node_name + "/joints")
-        else:
-            rospy.logerr("Couldn't find valid joints params in %s" % (self.ns + node_name))
-            return
+        super().__init__(namespace, node_name, prefix, timeout)
 
         if self.gripper_type == "hand-e":
             self._max_gap = 0.025 * 2.0
@@ -61,24 +112,6 @@ class GripperController(GripperControllerBase):
             self._to_open = self._max_gap
             self._to_close = 0.001
             self._max_angle = 0.69
-        self._js_sub = rospy.Subscriber('joint_states', JointState, self.joint_states_cb, queue_size=1)
-
-        retry = False
-        rospy.logdebug('Waiting for [%sjoint_states] topic' % self.ns)
-        start_time = rospy.get_time()
-        while not hasattr(self, '_joint_names'):
-            if (rospy.get_time() - start_time) > timeout and not retry:
-                # Re-try with namespace
-                self._js_sub = rospy.Subscriber('%sjoint_states' % self.ns, JointState, self.joint_states_cb, queue_size=1)
-                start_time = rospy.get_time()
-                retry = True
-                continue
-            elif (rospy.get_time() - start_time) > timeout and retry:
-                rospy.logerr('Timed out waiting for joint_states topic')
-                return
-            rospy.sleep(0.01)
-            if rospy.is_shutdown():
-                return
 
         attach_plugin = rospy.get_param("grasp_plugin", default=False)
         if attach_plugin:
@@ -144,9 +177,9 @@ class GripperController(GripperControllerBase):
             self._goal.command.position = cmd
         if wait:
             self._client.send_goal_and_wait(self._goal, execute_timeout=rospy.Duration(2))
+            rospy.sleep(0.05)
         else:
             self._client.send_goal(self._goal)
-        rospy.sleep(0.05)
         return True
 
     def _distance_to_angle(self, distance):
@@ -210,32 +243,6 @@ class GripperController(GripperControllerBase):
     def get_opening_percentage(self):
         return self.get_position() / self._max_gap
 
-    def joint_states_cb(self, msg):
-        """
-        Callback executed every time a message is publish in the C{joint_states} topic.
-        @type  msg: sensor_msgs/JointState
-        @param msg: The JointState message published by the RT hardware interface.
-        """
-
-        position = []
-        velocity = []
-        effort = []
-        name = []
-
-        for joint_name in self.valid_joint_names:
-            if joint_name in msg.name:
-                idx = msg.name.index(joint_name)
-                name.append(msg.name[idx])
-                effort.append(msg.effort[idx])
-                velocity.append(msg.velocity[idx])
-                position.append(msg.position[idx])
-
-        if set(name) == set(self.valid_joint_names):
-            self._current_jnt_positions = np.array(position)
-            self._current_jnt_velocities = np.array(velocity)
-            self._current_jnt_efforts = np.array(effort)
-            self._joint_names = list(name)
-
 
 class RobotiqGripper(GripperControllerBase):
     def __init__(self, namespace="", timeout=2):
@@ -245,7 +252,7 @@ class RobotiqGripper(GripperControllerBase):
 
         self.sub_gripper_status_ = rospy.Subscriber(self.ns + "gripper_status", robotiq_msgs.msg.CModelCommandFeedback, self._gripper_status_callback)
         self.gripper = actionlib.SimpleActionClient(self.ns + "gripper_action_controller", robotiq_msgs.msg.CModelCommandAction)
-        
+
         if rospy.has_param(self.ns + "gripper_action_controller/joint_name"):
             self.gripper_type = rospy.get_param(self.ns + "gripper_action_controller/joint_name")
             self._max_gap = float(rospy.get_param(self.ns + "gripper_action_controller/max_gap"))
@@ -263,7 +270,7 @@ class RobotiqGripper(GripperControllerBase):
         elif self.gripper_type == "finger_joint":
             self._to_open = self._max_gap
             self._to_close = 0.001
-        
+
         success = self.gripper.wait_for_server(rospy.Duration(timeout))
         if success:
             rospy.loginfo("=== Connected to ROBOTIQ gripper ===")
@@ -274,7 +281,7 @@ class RobotiqGripper(GripperControllerBase):
         self.opening_width = msg.position  # [m]
 
     def get_position(self):
-        return self.opening_width
+        return self._current_jnt_positions[0]
 
     def get_opening_percentage(self):
         return self.get_position() / self._max_gap
