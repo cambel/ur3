@@ -129,6 +129,11 @@ class Arm(object):
                                                                timeout=1.0)
 
         self.gripper = None
+
+        if not gripper_type:
+            rospy.logwarn("Loading without gripper")
+            return
+
         if gripper_type == GripperType.GENERIC:
             self.gripper = GripperController(namespace=self.ns, prefix=self.joint_names_prefix, timeout=2.0)
         elif gripper_type == GripperType.ROBOTIQ:
@@ -426,7 +431,7 @@ class Arm(object):
             self.joint_traj_controller.start(delay=0, wait=True)
         else:
             self.joint_traj_controller.start_no_action_server()
-        
+
         # Always clear the trajectory goal
         self.joint_traj_controller.clear_points()
 
