@@ -1939,3 +1939,29 @@ def transform_between_poses(p1, p2):
 
     p1_T_inv = inverse_matrix(p1_T)
     return concatenate_matrices(p1_T_inv, p2_T)
+
+
+def quaternion_from_axis_angle(axis_angle):
+    angle = numpy.linalg.norm(axis_angle)
+
+    if math.isclose(angle, 0.0):
+        return numpy.array([0, 0, 0, 1.0])
+    
+    axis = axis_angle / angle
+
+    quat = numpy.zeros(4)
+    quat[3] = numpy.cos(angle / 2.0)
+    quat[:3] = axis * numpy.sin(angle / 2.0)
+    return quat
+
+def axis_angle_from_quaternion(quat):
+    if quat[3] > 1.0:
+        quat[3] = 1.0
+    elif quat[3] < -1.0:
+        quat[3] = -1.0
+    
+    den = numpy.sqrt(1.0 - quat[3] * quat[3])
+    if math.isclose(den, 0.0):
+        return numpy.zeros(3)
+    
+    return (quat[:3] * 2.0 * math.acos(quat[3])) / den
