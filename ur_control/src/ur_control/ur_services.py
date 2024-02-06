@@ -34,6 +34,10 @@ class URServices():
 
         self.ns = solve_namespace(namespace)
 
+        self.ur_ros_control_running_on_robot = False
+        self.robot_safety_mode = None
+        self.robot_status = dict()
+
         self.ur_dashboard_clients = {
             "get_loaded_program":     rospy.ServiceProxy(self.ns + 'ur_hardware_interface/dashboard/get_loaded_program', ur_dashboard_msgs.srv.GetLoadedProgram),
             "program_running":        rospy.ServiceProxy(self.ns + 'ur_hardware_interface/dashboard/program_running', ur_dashboard_msgs.srv.IsProgramRunning),
@@ -57,10 +61,6 @@ class URServices():
         self.service_proxy_switch = rospy.ServiceProxy(self.ns + 'controller_manager/switch_controller', controller_manager_msgs.srv.SwitchController)
 
         self.sub_robot_safety_mode = rospy.Subscriber(self.ns + 'ur_hardware_interface/safety_mode', ur_dashboard_msgs.msg.SafetyMode, self.safety_mode_callback)
-
-        self.ur_ros_control_running_on_robot = False
-        self.robot_safety_mode = None
-        self.robot_status = dict()
 
     @check_for_real_robot
     def safety_mode_callback(self, msg):
